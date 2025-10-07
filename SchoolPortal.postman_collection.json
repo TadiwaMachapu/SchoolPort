@@ -1,0 +1,628 @@
+{
+	"info": {
+		"name": "School Portal API",
+		"description": "Complete API collection for School Portal MVP",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:7071",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', response.accessToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@demo.schoolportal.com\",\n    \"password\": \"Admin@123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refreshToken\": \"your-refresh-token\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/refresh",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "refresh"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get Me",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "me"]
+						}
+					}
+				},
+				{
+					"name": "Get Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/users?page=1&pageSize=20&role=&q=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "pageSize", "value": "20"},
+								{"key": "role", "value": ""},
+								{"key": "q", "value": ""}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create User",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"newuser@demo.schoolportal.com\",\n    \"password\": \"Password@123\",\n    \"firstName\": \"New\",\n    \"lastName\": \"User\",\n    \"role\": \"Teacher\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "users"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Schools",
+			"item": [
+				{
+					"name": "Get Current School",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/schools/current",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "schools", "current"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Classes",
+			"item": [
+				{
+					"name": "Get Classes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/classes?page=1&pageSize=20&year=&q=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "classes"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "pageSize", "value": "20"},
+								{"key": "year", "value": ""},
+								{"key": "q", "value": ""}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Class by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/classes/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "classes", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Class",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Grade 11B\",\n    \"gradeLevel\": 11,\n    \"academicYear\": 2024,\n    \"teacherId\": null,\n    \"maxCapacity\": 30\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/classes",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "classes"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Enrolments",
+			"item": [
+				{
+					"name": "Bulk Enroll",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"enrollments\": [\n        {\n            \"classId\": 1,\n            \"studentId\": 1\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/enrolments/bulk",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "enrolments", "bulk"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Subjects",
+			"item": [
+				{
+					"name": "Get Subjects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/subjects",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "subjects"]
+						}
+					}
+				},
+				{
+					"name": "Create Subject",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Physics\",\n    \"code\": \"PHYS\",\n    \"description\": \"Physics course\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/subjects",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "subjects"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "ClassSubjects",
+			"item": [
+				{
+					"name": "Bulk Assign Class Subjects",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"classSubjects\": [\n        {\n            \"classId\": 1,\n            \"subjectId\": 1,\n            \"teacherId\": 1\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/class-subjects/bulk",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "class-subjects", "bulk"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Assignments",
+			"item": [
+				{
+					"name": "Get Assignments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/assignments?page=1&pageSize=20&classId=&dueFrom=&dueTo=&status=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "assignments"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "pageSize", "value": "20"},
+								{"key": "classId", "value": ""},
+								{"key": "dueFrom", "value": ""},
+								{"key": "dueTo", "value": ""},
+								{"key": "status", "value": ""}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Assignment by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/assignments/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "assignments", "1"]
+						}
+					}
+				},
+				{
+					"name": "Create Assignment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"classSubjectId\": 1,\n    \"title\": \"Chapter 1 Homework\",\n    \"description\": \"Complete exercises 1-10\",\n    \"dueAt\": \"2025-10-15T23:59:59Z\",\n    \"maxMarks\": 100\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/assignments",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "assignments"]
+						}
+					}
+				},
+				{
+					"name": "Update Assignment",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Assignment Title\",\n    \"description\": \"Updated description\",\n    \"dueAt\": \"2025-10-20T23:59:59Z\",\n    \"maxMarks\": 120,\n    \"rowVersion\": \"AAAAAAAAAAA=\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/assignments/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "assignments", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Submissions",
+			"item": [
+				{
+					"name": "Create Submission",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "assignmentId",
+									"value": "1",
+									"type": "text"
+								},
+								{
+									"key": "comments",
+									"value": "My submission",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/submissions",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "submissions"]
+						}
+					}
+				},
+				{
+					"name": "Get Submissions by Assignment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/submissions/by-assignment/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "submissions", "by-assignment", "1"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Grades",
+			"item": [
+				{
+					"name": "Create Grade",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"submissionId\": 1,\n    \"score\": 85.5,\n    \"feedback\": \"Good work!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/grades",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "grades"]
+						}
+					}
+				},
+				{
+					"name": "Bulk Grade",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"grades\": [\n        {\n            \"submissionId\": 1,\n            \"score\": 90,\n            \"feedback\": \"Excellent\"\n        },\n        {\n            \"submissionId\": 2,\n            \"score\": 75,\n            \"feedback\": \"Good\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/grades/bulk",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "grades", "bulk"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Attendance",
+			"item": [
+				{
+					"name": "Get Attendance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance?classId=1&date=2025-10-07",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance"],
+							"query": [
+								{"key": "classId", "value": "1"},
+								{"key": "date", "value": "2025-10-07"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Bulk Upsert Attendance",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"attendances\": [\n        {\n            \"classId\": 1,\n            \"studentId\": 1,\n            \"date\": \"2025-10-07\",\n            \"status\": 1,\n            \"notes\": \"Present\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attendance/bulk",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "attendance", "bulk"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Announcements",
+			"item": [
+				{
+					"name": "Get Announcements",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/announcements?page=1&pageSize=20&since=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "announcements"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "pageSize", "value": "20"},
+								{"key": "since", "value": ""}
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Announcement",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Important Notice\",\n    \"content\": \"School will be closed tomorrow\",\n    \"audience\": \"All\",\n    \"audienceValue\": null,\n    \"expiresAt\": \"2025-10-10T00:00:00Z\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/announcements",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "announcements"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Attendance Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/attendance-summary?classId=&year=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "attendance-summary"],
+							"query": [
+								{"key": "classId", "value": ""},
+								{"key": "year", "value": ""}
+							]
+						}
+					}
+				},
+				{
+					"name": "Gradebook Simple",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/gradebook-simple?classId=",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "gradebook-simple"],
+							"query": [
+								{"key": "classId", "value": ""}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/health",
+					"host": ["{{baseUrl}}"],
+					"path": ["health"]
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,83 @@
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">School Portal</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <AuthorizeView>
+            <Authorized Context="navAuth">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                    </NavLink>
+                </div>
+
+                <AuthorizeView Roles="Admin,Teacher,Student" Context="assignmentsAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="assignments">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Assignments
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin,Teacher" Context="classesAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="classes">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Classes
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin,Teacher" Context="attendanceAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="attendance">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Attendance
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin,Teacher,Student" Context="announcementsAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="announcements">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Announcements
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin" Context="usersAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="users">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Users
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="Admin" Context="subjectsAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="subjects">
+                            <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Subjects
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

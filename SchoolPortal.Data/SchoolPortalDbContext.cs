@@ -32,6 +32,7 @@ public class SchoolPortalDbContext : DbContext
         // School
         modelBuilder.Entity<School>(entity =>
         {
+            entity.ToTable("School");
             entity.HasKey(e => e.SchoolId);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Domain).HasMaxLength(100);
@@ -42,13 +43,14 @@ public class SchoolPortalDbContext : DbContext
         // User
         modelBuilder.Entity<User>(entity =>
         {
+            entity.ToTable("User");
             entity.HasKey(e => e.UserId);
             entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(500);
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
-            entity.Property(e => e.RowVersion).IsRowVersion();
+            entity.Property(e => e.RowVersion).HasColumnName("RowVer").IsRowVersion();
             entity.HasIndex(e => new { e.SchoolId, e.Email }).IsUnique();
             entity.HasOne(e => e.School).WithMany(s => s.Users).HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -56,6 +58,7 @@ public class SchoolPortalDbContext : DbContext
         // Student
         modelBuilder.Entity<Student>(entity =>
         {
+            entity.ToTable("Student");
             entity.HasKey(e => e.StudentId);
             entity.Property(e => e.StudentNumber).IsRequired().HasMaxLength(50);
             entity.Property(e => e.RowVersion).IsRowVersion();
@@ -68,6 +71,7 @@ public class SchoolPortalDbContext : DbContext
         // Teacher
         modelBuilder.Entity<Teacher>(entity =>
         {
+            entity.ToTable("Teacher");
             entity.HasKey(e => e.TeacherId);
             entity.Property(e => e.EmployeeNumber).HasMaxLength(50);
             entity.Property(e => e.Specialization).HasMaxLength(200);
@@ -79,6 +83,7 @@ public class SchoolPortalDbContext : DbContext
         // Class
         modelBuilder.Entity<Class>(entity =>
         {
+            entity.ToTable("Class");
             entity.HasKey(e => e.ClassId);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.RowVersion).IsRowVersion();
@@ -89,6 +94,7 @@ public class SchoolPortalDbContext : DbContext
         // Subject
         modelBuilder.Entity<Subject>(entity =>
         {
+            entity.ToTable("Subject");
             entity.HasKey(e => e.SubjectId);
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Code).HasMaxLength(20);
@@ -100,6 +106,7 @@ public class SchoolPortalDbContext : DbContext
         // ClassSubject
         modelBuilder.Entity<ClassSubject>(entity =>
         {
+            entity.ToTable("ClassSubject");
             entity.HasKey(e => e.ClassSubjectId);
             entity.Property(e => e.RowVersion).IsRowVersion();
             entity.HasIndex(e => new { e.ClassId, e.SubjectId }).IsUnique();
@@ -112,6 +119,7 @@ public class SchoolPortalDbContext : DbContext
         // Enrollment
         modelBuilder.Entity<Enrollment>(entity =>
         {
+            entity.ToTable("Enrollment");
             entity.HasKey(e => e.EnrollmentId);
             entity.Property(e => e.RowVersion).IsRowVersion();
             entity.HasIndex(e => new { e.ClassId, e.StudentId }).IsUnique();
@@ -123,6 +131,7 @@ public class SchoolPortalDbContext : DbContext
         // Assignment
         modelBuilder.Entity<Assignment>(entity =>
         {
+            entity.ToTable("Assignment");
             entity.HasKey(e => e.AssignmentId);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.MaxMarks).HasPrecision(10, 2);
@@ -135,6 +144,7 @@ public class SchoolPortalDbContext : DbContext
         // Submission
         modelBuilder.Entity<Submission>(entity =>
         {
+            entity.ToTable("Submission");
             entity.HasKey(e => e.SubmissionId);
             entity.Property(e => e.FileUrl).HasMaxLength(500);
             entity.Property(e => e.FileName).HasMaxLength(255);
@@ -148,6 +158,7 @@ public class SchoolPortalDbContext : DbContext
         // Grade
         modelBuilder.Entity<Grade>(entity =>
         {
+            entity.ToTable("Grade");
             entity.HasKey(e => e.GradeId);
             entity.Property(e => e.Score).HasPrecision(10, 2);
             entity.Property(e => e.RowVersion).IsRowVersion();
@@ -160,6 +171,7 @@ public class SchoolPortalDbContext : DbContext
         // Attendance
         modelBuilder.Entity<Attendance>(entity =>
         {
+            entity.ToTable("Attendance");
             entity.HasKey(e => e.AttendanceId);
             entity.Property(e => e.RowVersion).IsRowVersion();
             entity.HasIndex(e => new { e.ClassId, e.StudentId, e.Date }).IsUnique();
@@ -171,6 +183,7 @@ public class SchoolPortalDbContext : DbContext
         // Announcement
         modelBuilder.Entity<Announcement>(entity =>
         {
+            entity.ToTable("Announcement");
             entity.HasKey(e => e.AnnouncementId);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Content).IsRequired();
@@ -184,6 +197,7 @@ public class SchoolPortalDbContext : DbContext
         // AuditLog
         modelBuilder.Entity<AuditLog>(entity =>
         {
+            entity.ToTable("AuditLog");
             entity.HasKey(e => e.AuditLogId);
             entity.Property(e => e.Action).IsRequired().HasMaxLength(50);
             entity.Property(e => e.EntityType).IsRequired().HasMaxLength(100);

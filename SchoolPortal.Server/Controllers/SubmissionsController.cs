@@ -21,7 +21,7 @@ public class SubmissionsController : ControllerBase
     [Authorize(Roles = "Student")]
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateSubmission(
-        [FromForm] int assignmentId,
+        [FromForm] Guid assignmentId,
         [FromForm] string? comments,
         [FromForm] IFormFile? file)
     {
@@ -34,7 +34,7 @@ public class SubmissionsController : ControllerBase
     [HttpGet("by-assignment/{assignmentId}")]
     [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(typeof(List<SubmissionDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSubmissionsByAssignment(int assignmentId)
+    public async Task<IActionResult> GetSubmissionsByAssignment(Guid assignmentId)
     {
         var submissions = await _submissionService.GetSubmissionsByAssignmentAsync(assignmentId);
         return Ok(submissions);

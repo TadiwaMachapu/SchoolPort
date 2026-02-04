@@ -19,7 +19,7 @@ public class AttendanceController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(List<AttendanceDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAttendance([FromQuery] int classId, [FromQuery] DateTime date)
+    public async Task<IActionResult> GetAttendance([FromQuery] Guid classId, [FromQuery] DateTime date)
     {
         var attendance = await _attendanceService.GetAttendanceAsync(classId, date);
         return Ok(attendance);

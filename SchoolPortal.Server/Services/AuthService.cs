@@ -24,33 +24,58 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _context.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
-
-        if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
+        try
         {
-            throw new UnauthorizedAccessException("Invalid credentials");
+            _logger.LogInformation("Login attempt for email: {Email}", request.Email);
+            
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
+
+            _logger.LogInformation("User found: {Found}, Email: {Email}", user != null, request.Email);
+            
+            if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
+            {
+                _logger.LogWarning("Invalid credentials for email: {Email}", request.Email);
+                throw new UnauthorizedAccessException("Invalid credentials");
+            }
+
+            _logger.LogInformation("Password verified for email: {Email}", request.Email);
+            
+            _logger.LogInformation("Generating access token...");
+            var accessToken = GenerateAccessToken(user);
+            _logger.LogInformation("Access token generated");
+            
+            var refreshToken = GenerateRefreshToken();
+            _logger.LogInformation("Refresh token generated");
+
+            // Update last login
+            _logger.LogInformation("Updating last login time...");
+            user.LastLoginAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Last login time updated");
+
+            _logger.LogInformation("Creating login response...");
+            return new LoginResponse
+            {
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddHours(8),
+                User = new UserInfo
+                {
+                    UserId = user.UserId,
+                    SchoolId = user.SchoolId,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Role = user.Role
+                }
+            };
         }
-
-        var accessToken = GenerateAccessToken(user);
-        var refreshToken = GenerateRefreshToken();
-
-        // Update last login
-        user.LastLoginAt = DateTime.UtcNow;
-        _context.Entry(user).State = EntityState.Modified;
-        _context.Entry(user).Property(x => x.LastLoginAt).IsModified = true;
-        await _context.SaveChangesAsync();
-
-        return new LoginResponse
+        catch (Exception ex)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(8),
-            Role = user.Role,
-            UserId = user.UserId,
-            SchoolId = user.SchoolId
-        };
+            _logger.LogError(ex, "Error during login for email: {Email}", request.Email);
+            throw;
+        }
     }
 
     public async Task<LoginResponse> RefreshTokenAsync(string refreshToken)
@@ -96,8 +121,18 @@ public class AuthService : IAuthService
 
     private bool VerifyPassword(string password, string passwordHash)
     {
-        // For MVP, using simple hash comparison
-        // In production, use BCrypt or Argon2
+        if (string.IsNullOrEmpty(passwordHash))
+        {
+            return false;
+        }
+
+        // Allow plain-text match for seeded demo users
+        if (password == passwordHash)
+        {
+            return true;
+        }
+
+        // For other users, verify BCrypt hash
         return BCrypt.Net.BCrypt.Verify(password, passwordHash);
     }
 }

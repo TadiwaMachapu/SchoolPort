@@ -7,6 +7,6 @@ public class BulkEnrollmentRequest
 
 public class EnrollmentItem
 {
-    public int ClassId { get; set; }
-    public int StudentId { get; set; }
+    public Guid ClassId { get; set; }
+    public Guid StudentId { get; set; }
 }

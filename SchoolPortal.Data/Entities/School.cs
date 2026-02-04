@@ -2,7 +2,7 @@ namespace SchoolPortal.Data.Entities;
 
 public class School
 {
-    public int SchoolId { get; set; }
+    public Guid SchoolId { get; set; }
     public string Name { get; set; } = null!;
     public string? Domain { get; set; }
     public string? BrandingLogoUrl { get; set; }

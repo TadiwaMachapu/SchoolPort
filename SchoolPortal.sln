@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolPortal.Shared", "Scho
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolPortal.Tests", "SchoolPortal.Tests\SchoolPortal.Tests.csproj", "{C14A1D03-027B-498A-9CD5-1327AC55BD6F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchoolPortal.Client", "SchoolPortal.Client\SchoolPortal.Client.csproj", "{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{C14A1D03-027B-498A-9CD5-1327AC55BD6F}.Release|x64.Build.0 = Release|Any CPU
 		{C14A1D03-027B-498A-9CD5-1327AC55BD6F}.Release|x86.ActiveCfg = Release|Any CPU
 		{C14A1D03-027B-498A-9CD5-1327AC55BD6F}.Release|x86.Build.0 = Release|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Debug|x64.Build.0 = Debug|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Debug|x86.Build.0 = Debug|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Release|x64.ActiveCfg = Release|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Release|x64.Build.0 = Release|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Release|x86.ActiveCfg = Release|Any CPU
+		{8B2E3F4A-9C1D-4E5F-A7B8-1D3E5F7A9B2C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

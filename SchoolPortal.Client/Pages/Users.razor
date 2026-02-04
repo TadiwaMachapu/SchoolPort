@@ -1,0 +1,234 @@
+@page "/users"
+@attribute [Authorize(Roles = "Admin")]
+@inject IUserService UserService
+
+<PageTitle>Users</PageTitle>
+
+<div class="users-page">
+    <div class="page-header">
+        <h1>User Management</h1>
+        <button class="btn btn-primary" @onclick="() => showCreateForm = true">Create User</button>
+    </div>
+
+    @if (showCreateForm)
+    {
+        <div class="create-form-card">
+            <h4>Create New User</h4>
+            <EditForm Model="@createRequest" OnValidSubmit="HandleCreate">
+                <DataAnnotationsValidator />
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name *</label>
+                        <InputText @bind-Value="createRequest.FirstName" class="form-control" />
+                        <ValidationMessage For="@(() => createRequest.FirstName)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Last Name *</label>
+                        <InputText @bind-Value="createRequest.LastName" class="form-control" />
+                        <ValidationMessage For="@(() => createRequest.LastName)" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email *</label>
+                    <InputText @bind-Value="createRequest.Email" class="form-control" type="email" />
+                    <ValidationMessage For="@(() => createRequest.Email)" />
+                </div>
+
+                <div class="form-group">
+                    <label>Password *</label>
+                    <InputText @bind-Value="createRequest.Password" class="form-control" type="password" />
+                    <ValidationMessage For="@(() => createRequest.Password)" />
+                </div>
+
+                <div class="form-group">
+                    <label>Role *</label>
+                    <InputSelect @bind-Value="createRequest.Role" class="form-control">
+                        <option value="">Select Role</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Teacher">Teacher</option>
+                        <option value="Student">Student</option>
+                        <option value="Parent">Parent</option>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => createRequest.Role)" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">@errorMessage</div>
+                }
+
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="alert alert-success">@successMessage</div>
+                }
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success" disabled="@isCreating">
+                        @(isCreating ? "Creating..." : "Create User")
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => { showCreateForm = false; ResetForm(); }">Cancel</button>
+                </div>
+            </EditForm>
+        </div>
+    }
+
+    <div class="filters">
+        <label>Filter by Role:</label>
+        <select @bind="selectedRole" @bind:after="LoadUsers" class="form-control">
+            <option value="">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Teacher">Teacher</option>
+            <option value="Student">Student</option>
+            <option value="Parent">Parent</option>
+        </select>
+    </div>
+
+    @if (isLoading)
+    {
+        <p><em>Loading users...</em></p>
+    }
+    else if (users != null && users.Items.Any())
+    {
+        <div class="users-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in users.Items)
+                    {
+                        <tr>
+                            <td>@user.FirstName @user.LastName</td>
+                            <td>@user.Email</td>
+                            <td><span class="badge badge-@GetRoleBadgeClass(user.Role)">@user.Role</span></td>
+                            <td><span class="badge badge-@(user.IsActive ? "success" : "secondary")">@(user.IsActive ? "Active" : "Inactive")</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <button class="btn btn-secondary" @onclick="PreviousPage" disabled="@(currentPage <= 1)">Previous</button>
+            <span>Page @currentPage of @totalPages</span>
+            <button class="btn btn-secondary" @onclick="NextPage" disabled="@(currentPage >= totalPages)">Next</button>
+        </div>
+    }
+    else
+    {
+        <p>No users found.</p>
+    }
+</div>
+
+@code {
+    private PaginatedResult<UserDto>? users;
+    private bool isLoading = true;
+    private bool showCreateForm = false;
+    private bool isCreating = false;
+    private string? errorMessage;
+    private string? successMessage;
+    private CreateUserRequest createRequest = new();
+    private string selectedRole = "";
+    private int currentPage = 1;
+    private int pageSize = 20;
+    private int totalPages => users != null ? (int)Math.Ceiling((double)users.Total / pageSize) : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        try
+        {
+            string? role = string.IsNullOrEmpty(selectedRole) ? null : selectedRole;
+            users = await UserService.GetUsersAsync(role, currentPage, pageSize);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleCreate()
+    {
+        isCreating = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var result = await UserService.CreateUserAsync(createRequest);
+            
+            if (result != null)
+            {
+                successMessage = $"User {result.FirstName} {result.LastName} created successfully!";
+                ResetForm();
+                await LoadUsers();
+                
+                // Hide form after 2 seconds
+                await Task.Delay(2000);
+                showCreateForm = false;
+                successMessage = null;
+            }
+            else
+            {
+                errorMessage = "Failed to create user. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        createRequest = new CreateUserRequest();
+        errorMessage = null;
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadUsers();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadUsers();
+        }
+    }
+
+    private string GetRoleBadgeClass(string role)
+    {
+        return role switch
+        {
+            "Admin" => "danger",
+            "Teacher" => "primary",
+            "Student" => "success",
+            "Parent" => "info",
+            _ => "secondary"
+        };
+    }
+}

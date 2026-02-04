@@ -3,8 +3,8 @@ namespace SchoolPortal.Data.Entities;
 public class AuditLog
 {
     public long AuditLogId { get; set; }
-    public int? SchoolId { get; set; }
-    public int? UserId { get; set; }
+    public Guid? SchoolId { get; set; }
+    public Guid? UserId { get; set; }
     public string Action { get; set; } = null!;
     public string EntityType { get; set; } = null!;
     public string? EntityId { get; set; }

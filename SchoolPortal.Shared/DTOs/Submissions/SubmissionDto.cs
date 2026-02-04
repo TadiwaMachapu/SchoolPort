@@ -2,9 +2,9 @@ namespace SchoolPortal.Shared.DTOs.Submissions;
 
 public class SubmissionDto
 {
-    public int SubmissionId { get; set; }
-    public int AssignmentId { get; set; }
-    public int StudentId { get; set; }
+    public Guid SubmissionId { get; set; }
+    public Guid AssignmentId { get; set; }
+    public Guid StudentId { get; set; }
     public string StudentName { get; set; } = null!;
     public string StudentNumber { get; set; } = null!;
     public DateTime SubmittedAt { get; set; }
@@ -16,7 +16,7 @@ public class SubmissionDto
 
 public class GradeInfo
 {
-    public int GradeId { get; set; }
+    public Guid GradeId { get; set; }
     public decimal Score { get; set; }
     public string? Feedback { get; set; }
     public DateTime GradedAt { get; set; }

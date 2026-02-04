@@ -55,7 +55,7 @@ public class SchoolService : ISchoolService
 public interface IClassService
 {
     Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize);
-    Task<ClassDto> GetClassByIdAsync(int id);
+    Task<ClassDto> GetClassByIdAsync(Guid id);
     Task<ClassDto> CreateClassAsync(CreateClassRequest request);
     Task BulkEnrollAsync(BulkEnrollmentRequest request);
 }
@@ -102,6 +102,7 @@ public class ClassService : IClassService
                 TeacherId = c.TeacherId,
                 TeacherName = c.Teacher != null ? $"{c.Teacher.User.FirstName} {c.Teacher.User.LastName}" : null,
                 MaxCapacity = c.MaxCapacity,
+                StudentCount = c.Enrollments.Count(e => e.IsActive),
                 EnrollmentCount = c.Enrollments.Count(e => e.IsActive)
             })
             .ToListAsync();
@@ -115,7 +116,7 @@ public class ClassService : IClassService
         };
     }
 
-    public async Task<ClassDto> GetClassByIdAsync(int id)
+    public async Task<ClassDto> GetClassByIdAsync(Guid id)
     {
         var classEntity = await _context.Classes
             .AsNoTracking()
@@ -139,6 +140,7 @@ public class ClassService : IClassService
             TeacherId = classEntity.TeacherId,
             TeacherName = classEntity.Teacher != null ? $"{classEntity.Teacher.User.FirstName} {classEntity.Teacher.User.LastName}" : null,
             MaxCapacity = classEntity.MaxCapacity,
+            StudentCount = classEntity.Enrollments.Count(e => e.IsActive),
             EnrollmentCount = classEntity.Enrollments.Count(e => e.IsActive),
             Subjects = classEntity.ClassSubjects.Select(cs => new SubjectInfo
             {
@@ -173,6 +175,7 @@ public class ClassService : IClassService
             AcademicYear = classEntity.AcademicYear,
             TeacherId = classEntity.TeacherId,
             MaxCapacity = classEntity.MaxCapacity,
+            StudentCount = 0,
             EnrollmentCount = 0
         };
     }
@@ -296,8 +299,8 @@ public class SubjectService : ISubjectService
 // Submission & Grade Service
 public interface ISubmissionService
 {
-    Task<int> CreateSubmissionAsync(int assignmentId, string? comments);
-    Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(int assignmentId);
+    Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments);
+    Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(Guid assignmentId);
 }
 
 public class SubmissionService : ISubmissionService
@@ -311,14 +314,14 @@ public class SubmissionService : ISubmissionService
         _currentUser = currentUser;
     }
 
-    public async Task<int> CreateSubmissionAsync(int assignmentId, string? comments)
+    public async Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments)
     {
         var studentId = await _context.Students
             .Where(s => s.UserId == _currentUser.UserId)
             .Select(s => s.StudentId)
             .FirstOrDefaultAsync();
 
-        if (studentId == 0)
+        if (studentId == Guid.Empty)
         {
             throw new InvalidOperationException("Student not found");
         }
@@ -338,7 +341,7 @@ public class SubmissionService : ISubmissionService
         return submission.SubmissionId;
     }
 
-    public async Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(int assignmentId)
+    public async Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(Guid assignmentId)
     {
         return await _context.Submissions
             .AsNoTracking()

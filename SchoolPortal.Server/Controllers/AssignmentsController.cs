@@ -21,7 +21,7 @@ public class AssignmentsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<AssignmentDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAssignments(
-        [FromQuery] int? classId,
+        [FromQuery] Guid? classId,
         [FromQuery] DateTime? dueFrom,
         [FromQuery] DateTime? dueTo,
         [FromQuery] string? status,
@@ -34,7 +34,7 @@ public class AssignmentsController : ControllerBase
 
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(AssignmentDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAssignment(int id)
+    public async Task<IActionResult> GetAssignment(Guid id)
     {
         var assignment = await _assignmentService.GetAssignmentByIdAsync(id);
         return Ok(assignment);
@@ -52,7 +52,7 @@ public class AssignmentsController : ControllerBase
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(typeof(AssignmentDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateAssignment(int id, [FromBody] UpdateAssignmentRequest request)
+    public async Task<IActionResult> UpdateAssignment(Guid id, [FromBody] UpdateAssignmentRequest request)
     {
         var assignment = await _assignmentService.UpdateAssignmentAsync(id, request);
         return Ok(assignment);

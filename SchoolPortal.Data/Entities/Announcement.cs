@@ -2,13 +2,13 @@ namespace SchoolPortal.Data.Entities;
 
 public class Announcement
 {
-    public int AnnouncementId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid AnnouncementId { get; set; }
+    public Guid SchoolId { get; set; }
     public string Title { get; set; } = null!;
     public string Content { get; set; } = null!;
     public string Audience { get; set; } = null!; // All, Grade, Class
     public string? AudienceValue { get; set; }
-    public int CreatedByUserId { get; set; }
+    public Guid CreatedByUserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? ExpiresAt { get; set; }

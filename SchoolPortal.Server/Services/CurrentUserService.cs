@@ -11,21 +11,21 @@ public class CurrentUserService : ICurrentUserService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public int SchoolId
+    public Guid SchoolId
     {
         get
         {
             var schoolIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst("schoolId")?.Value;
-            return int.TryParse(schoolIdClaim, out var schoolId) ? schoolId : 0;
+            return Guid.TryParse(schoolIdClaim, out var schoolId) ? schoolId : Guid.Empty;
         }
     }
 
-    public int UserId
+    public Guid UserId
     {
         get
         {
             var userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.TryParse(userIdClaim, out var userId) ? userId : 0;
+            return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
         }
     }
 

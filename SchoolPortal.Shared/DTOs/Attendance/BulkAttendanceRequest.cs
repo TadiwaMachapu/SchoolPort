@@ -7,8 +7,8 @@ public class BulkAttendanceRequest
 
 public class AttendanceItem
 {
-    public int ClassId { get; set; }
-    public int StudentId { get; set; }
+    public Guid ClassId { get; set; }
+    public Guid StudentId { get; set; }
     public DateTime Date { get; set; }
     public int Status { get; set; }
     public string? Notes { get; set; }

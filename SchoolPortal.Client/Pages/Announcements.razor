@@ -1,0 +1,190 @@
+@page "/announcements"
+@attribute [Authorize]
+@inject IAnnouncementService AnnouncementService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Announcements</PageTitle>
+
+<div class="announcements-page">
+    <div class="page-header">
+        <h1>Announcements</h1>
+        <AuthorizeView Roles="Admin,Teacher" Context="createButtonAuth">
+            <button class="btn btn-primary" @onclick="() => showCreateForm = true">Create Announcement</button>
+        </AuthorizeView>
+    </div>
+
+    <AuthorizeView Roles="Admin,Teacher" Context="createFormAuth">
+        @if (showCreateForm)
+        {
+            <div class="create-form-card">
+                <h4>Create New Announcement</h4>
+                <EditForm Model="@createRequest" OnValidSubmit="HandleCreate">
+                    <DataAnnotationsValidator />
+                    
+                    <div class="form-group">
+                        <label>Title *</label>
+                        <InputText @bind-Value="createRequest.Title" class="form-control" placeholder="Announcement title" />
+                        <ValidationMessage For="@(() => createRequest.Title)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Content *</label>
+                        <InputTextArea @bind-Value="createRequest.Content" class="form-control" rows="5" placeholder="Announcement content" />
+                        <ValidationMessage For="@(() => createRequest.Content)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Audience *</label>
+                        <InputSelect @bind-Value="createRequest.Audience" class="form-control">
+                            <option value="All">All</option>
+                            <option value="Grade">Specific Grade</option>
+                            <option value="Class">Specific Class</option>
+                        </InputSelect>
+                    </div>
+
+                    @if (createRequest.Audience != "All")
+                    {
+                        <div class="form-group">
+                            <label>Audience Value</label>
+                            <InputText @bind-Value="createRequest.AudienceValue" class="form-control" placeholder="Grade level or Class ID" />
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success" disabled="@isCreating">
+                            @(isCreating ? "Creating..." : "Create Announcement")
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="() => { showCreateForm = false; ResetForm(); }">Cancel</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+    </AuthorizeView>
+
+    @if (isLoading)
+    {
+        <p><em>Loading announcements...</em></p>
+    }
+    else if (announcements != null && announcements.Items.Any())
+    {
+        <div class="announcements-list">
+            @foreach (var announcement in announcements.Items)
+            {
+                <div class="announcement-card">
+                    <div class="announcement-header">
+                        <h4>@announcement.Title</h4>
+                        <span class="announcement-date">@announcement.CreatedAt.ToString("MMM dd, yyyy")</span>
+                    </div>
+                    <p class="announcement-content">@announcement.Content</p>
+                    <div class="announcement-meta">
+                        <span><strong>By:</strong> @announcement.CreatedByName</span>
+                        <span><strong>Audience:</strong> @announcement.Audience</span>
+                        @if (!string.IsNullOrEmpty(announcement.AudienceValue))
+                        {
+                            <span>(@announcement.AudienceValue)</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="pagination">
+            <button class="btn btn-secondary" @onclick="PreviousPage" disabled="@(currentPage <= 1)">Previous</button>
+            <span>Page @currentPage of @totalPages</span>
+            <button class="btn btn-secondary" @onclick="NextPage" disabled="@(currentPage >= totalPages)">Next</button>
+        </div>
+    }
+    else
+    {
+        <p>No announcements found.</p>
+    }
+</div>
+
+@code {
+    private PaginatedResult<AnnouncementDto>? announcements;
+    private bool isLoading = true;
+    private bool showCreateForm = false;
+    private bool isCreating = false;
+    private string? errorMessage;
+    private CreateAnnouncementRequest createRequest = new() { Audience = "All" };
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages => announcements != null ? (int)Math.Ceiling((double)announcements.Total / pageSize) : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAnnouncements();
+    }
+
+    private async Task LoadAnnouncements()
+    {
+        isLoading = true;
+        try
+        {
+            announcements = await AnnouncementService.GetAnnouncementsAsync(currentPage, pageSize);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleCreate()
+    {
+        isCreating = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await AnnouncementService.CreateAnnouncementAsync(createRequest);
+            
+            if (result != null)
+            {
+                showCreateForm = false;
+                ResetForm();
+                await LoadAnnouncements();
+            }
+            else
+            {
+                errorMessage = "Failed to create announcement. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        createRequest = new CreateAnnouncementRequest { Audience = "All" };
+        errorMessage = null;
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadAnnouncements();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadAnnouncements();
+        }
+    }
+}

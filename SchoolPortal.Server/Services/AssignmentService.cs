@@ -19,7 +19,7 @@ public class AssignmentService : IAssignmentService
         _logger = logger;
     }
 
-    public async Task<PaginatedResult<AssignmentDto>> GetAssignmentsAsync(int? classId, DateTime? dueFrom, DateTime? dueTo, string? status, int page, int pageSize)
+    public async Task<PaginatedResult<AssignmentDto>> GetAssignmentsAsync(Guid? classId, DateTime? dueFrom, DateTime? dueTo, string? status, int page, int pageSize)
     {
         var query = _context.Assignments
             .AsNoTracking()
@@ -92,7 +92,7 @@ public class AssignmentService : IAssignmentService
         };
     }
 
-    public async Task<AssignmentDto> GetAssignmentByIdAsync(int id)
+    public async Task<AssignmentDto> GetAssignmentByIdAsync(Guid id)
     {
         var assignment = await _context.Assignments
             .AsNoTracking()
@@ -181,7 +181,7 @@ public class AssignmentService : IAssignmentService
         };
     }
 
-    public async Task<AssignmentDto> UpdateAssignmentAsync(int id, UpdateAssignmentRequest request)
+    public async Task<AssignmentDto> UpdateAssignmentAsync(Guid id, UpdateAssignmentRequest request)
     {
         var assignment = await _context.Assignments
             .Include(a => a.ClassSubject)

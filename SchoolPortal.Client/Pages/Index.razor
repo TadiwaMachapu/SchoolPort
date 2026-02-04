@@ -1,0 +1,81 @@
+@page "/"
+@attribute [Authorize]
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>Dashboard</h1>
+
+@if (userProfile != null)
+{
+    <div class="welcome-section">
+        <h3>Welcome, @userProfile.User.FirstName @userProfile.User.LastName!</h3>
+        <p><strong>Role:</strong> @userProfile.User.Role</p>
+        <p><strong>Email:</strong> @userProfile.User.Email</p>
+        <p><strong>School:</strong> @userProfile.School.Name</p>
+    </div>
+
+    <AuthorizeView Roles="Admin" Context="adminAuth">
+        <div class="dashboard-cards">
+            <div class="card">
+                <h4>Admin Dashboard</h4>
+                <p>Manage users, classes, and school settings</p>
+                <a href="/users" class="btn btn-primary">Manage Users</a>
+                <a href="/classes" class="btn btn-secondary">Manage Classes</a>
+            </div>
+        </div>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Teacher" Context="teacherAuth">
+        <div class="dashboard-cards">
+            <div class="card">
+                <h4>Teacher Dashboard</h4>
+                <p>Manage assignments, grades, and attendance</p>
+                <a href="/assignments" class="btn btn-primary">View Assignments</a>
+                <a href="/attendance" class="btn btn-secondary">Take Attendance</a>
+            </div>
+        </div>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Student" Context="studentAuth">
+        <div class="dashboard-cards">
+            <div class="card">
+                <h4>Student Dashboard</h4>
+                <p>View your assignments and grades</p>
+                <a href="/assignments" class="btn btn-primary">My Assignments</a>
+                <a href="/announcements" class="btn btn-secondary">Announcements</a>
+            </div>
+        </div>
+    </AuthorizeView>
+}
+else if (isLoading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (errorMessage != null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@code {
+    private MeResponse? userProfile;
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            userProfile = await UserService.GetCurrentUserProfileAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading profile: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -25,7 +25,7 @@ public class AttendanceService : IAttendanceService
         _logger = logger;
     }
 
-    public async Task<List<AttendanceDto>> GetAttendanceAsync(int classId, DateTime date)
+    public async Task<List<AttendanceDto>> GetAttendanceAsync(Guid classId, DateTime date)
     {
         var attendances = await _context.Attendances
             .AsNoTracking()

@@ -2,7 +2,7 @@ namespace SchoolPortal.Shared.DTOs.Assignments;
 
 public class AssignmentDto
 {
-    public int AssignmentId { get; set; }
+    public Guid AssignmentId { get; set; }
     public string Title { get; set; } = null!;
     public string? Description { get; set; }
     public DateTime DueAt { get; set; }

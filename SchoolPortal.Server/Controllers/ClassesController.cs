@@ -32,7 +32,7 @@ public class ClassesController : ControllerBase
 
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetClass(int id)
+    public async Task<IActionResult> GetClass(Guid id)
     {
         var classDto = await _classService.GetClassByIdAsync(id);
         return Ok(classDto);

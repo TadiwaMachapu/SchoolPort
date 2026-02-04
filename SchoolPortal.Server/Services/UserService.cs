@@ -106,7 +106,7 @@ public class UserService : IUserService
         };
     }
 
-    public async Task<MeResponse> GetMeAsync(int userId)
+    public async Task<MeResponse> GetMeAsync(Guid userId)
     {
         var user = await _context.Users
             .AsNoTracking()
@@ -120,15 +120,21 @@ public class UserService : IUserService
 
         return new MeResponse
         {
-            UserId = user.UserId,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Role = user.Role,
-            SchoolId = user.SchoolId,
-            SchoolName = user.School.Name,
-            SchoolLogoUrl = user.School.BrandingLogoUrl,
-            SchoolPrimaryColor = user.School.BrandingPrimaryColor
+            User = new UserProfile
+            {
+                UserId = user.UserId,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Role = user.Role
+            },
+            School = new SchoolInfo
+            {
+                SchoolId = user.SchoolId,
+                Name = user.School.Name,
+                LogoUrl = user.School.BrandingLogoUrl,
+                PrimaryColor = user.School.BrandingPrimaryColor
+            }
         };
     }
 }

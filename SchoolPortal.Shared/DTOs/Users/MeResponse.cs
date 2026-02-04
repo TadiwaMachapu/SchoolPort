@@ -2,13 +2,23 @@ namespace SchoolPortal.Shared.DTOs.Users;
 
 public class MeResponse
 {
-    public int UserId { get; set; }
+    public UserProfile User { get; set; } = null!;
+    public SchoolInfo School { get; set; } = null!;
+}
+
+public class UserProfile
+{
+    public Guid UserId { get; set; }
     public string Email { get; set; } = null!;
     public string FirstName { get; set; } = null!;
     public string LastName { get; set; } = null!;
     public string Role { get; set; } = null!;
-    public int SchoolId { get; set; }
-    public string SchoolName { get; set; } = null!;
-    public string? SchoolLogoUrl { get; set; }
-    public string? SchoolPrimaryColor { get; set; }
+}
+
+public class SchoolInfo
+{
+    public Guid SchoolId { get; set; }
+    public string Name { get; set; } = null!;
+    public string? LogoUrl { get; set; }
+    public string? PrimaryColor { get; set; }
 }

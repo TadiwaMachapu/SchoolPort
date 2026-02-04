@@ -7,7 +7,7 @@ public class BulkGradeRequest
 
 public class GradeItem
 {
-    public int SubmissionId { get; set; }
+    public Guid SubmissionId { get; set; }
     public decimal Score { get; set; }
     public string? Feedback { get; set; }
 }

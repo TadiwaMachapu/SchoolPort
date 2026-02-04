@@ -2,8 +2,8 @@ namespace SchoolPortal.Server.Services;
 
 public interface ICurrentUserService
 {
-    int SchoolId { get; }
-    int UserId { get; }
+    Guid SchoolId { get; }
+    Guid UserId { get; }
     string Role { get; }
     bool IsAuthenticated { get; }
 }

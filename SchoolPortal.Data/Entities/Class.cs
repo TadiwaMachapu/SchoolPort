@@ -2,12 +2,12 @@ namespace SchoolPortal.Data.Entities;
 
 public class Class
 {
-    public int ClassId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid ClassId { get; set; }
+    public Guid SchoolId { get; set; }
     public string Name { get; set; } = null!;
     public int? GradeLevel { get; set; }
     public int? AcademicYear { get; set; }
-    public int? TeacherId { get; set; }
+    public Guid? TeacherId { get; set; }
     public int? MaxCapacity { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

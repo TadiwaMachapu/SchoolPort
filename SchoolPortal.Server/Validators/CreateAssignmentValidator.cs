@@ -18,6 +18,6 @@ public class CreateAssignmentValidator : AbstractValidator<CreateAssignmentReque
             .GreaterThan(0).WithMessage("MaxMarks must be greater than 0");
 
         RuleFor(x => x.ClassSubjectId)
-            .GreaterThan(0).WithMessage("ClassSubjectId is required");
+            .NotEqual(Guid.Empty).WithMessage("ClassSubjectId is required");
     }
 }

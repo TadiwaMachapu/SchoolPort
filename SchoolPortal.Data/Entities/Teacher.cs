@@ -2,9 +2,9 @@ namespace SchoolPortal.Data.Entities;
 
 public class Teacher
 {
-    public int TeacherId { get; set; }
-    public int UserId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid TeacherId { get; set; }
+    public Guid UserId { get; set; }
+    public Guid SchoolId { get; set; }
     public string? EmployeeNumber { get; set; }
     public string? Specialization { get; set; }
     public DateTime CreatedAt { get; set; }

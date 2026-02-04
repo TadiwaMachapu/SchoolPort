@@ -1,0 +1,107 @@
+@page "/classes"
+@attribute [Authorize(Roles = "Admin,Teacher")]
+@inject IClassService ClassService
+@inject NavigationManager Navigation
+
+<PageTitle>Classes</PageTitle>
+
+<div class="classes-page">
+    <div class="page-header">
+        <h1>Classes</h1>
+        <AuthorizeView Roles="Admin">
+            <button class="btn btn-primary" @onclick="ShowCreateModal">Create Class</button>
+        </AuthorizeView>
+    </div>
+
+    @if (isLoading)
+    {
+        <p><em>Loading classes...</em></p>
+    }
+    else if (classes != null && classes.Items.Any())
+    {
+        <div class="classes-grid">
+            @foreach (var cls in classes.Items)
+            {
+                <div class="class-card">
+                    <h4>@cls.Name</h4>
+                    <p>@cls.Description</p>
+                    <div class="class-meta">
+                        <span><strong>Grade Level:</strong> @cls.GradeLevel</span>
+                        <span><strong>Academic Year:</strong> @cls.AcademicYear</span>
+                        @if (!string.IsNullOrEmpty(cls.TeacherName))
+                        {
+                            <span><strong>Teacher:</strong> @cls.TeacherName</span>
+                        }
+                    </div>
+                    <div class="class-actions">
+                        <button class="btn btn-sm btn-info" @onclick="() => ViewClass(cls.ClassId)">View Details</button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="pagination">
+            <button class="btn btn-secondary" @onclick="PreviousPage" disabled="@(currentPage <= 1)">Previous</button>
+            <span>Page @currentPage of @totalPages</span>
+            <button class="btn btn-secondary" @onclick="NextPage" disabled="@(currentPage >= totalPages)">Next</button>
+        </div>
+    }
+    else
+    {
+        <p>No classes found.</p>
+    }
+</div>
+
+@code {
+    private PaginatedResult<ClassDto>? classes;
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private int pageSize = 12;
+    private int totalPages => classes != null ? (int)Math.Ceiling((double)classes.Total / pageSize) : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClasses();
+    }
+
+    private async Task LoadClasses()
+    {
+        isLoading = true;
+        try
+        {
+            classes = await ClassService.GetClassesAsync(currentPage, pageSize);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadClasses();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadClasses();
+        }
+    }
+
+    private void ViewClass(Guid id)
+    {
+        Navigation.NavigateTo($"/classes/{id}");
+    }
+
+    private void ShowCreateModal()
+    {
+        Navigation.NavigateTo("/classes/create");
+    }
+}

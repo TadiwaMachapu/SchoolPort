@@ -2,10 +2,10 @@ namespace SchoolPortal.Data.Entities;
 
 public class Attendance
 {
-    public int AttendanceId { get; set; }
-    public int ClassId { get; set; }
-    public int StudentId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid AttendanceId { get; set; }
+    public Guid ClassId { get; set; }
+    public Guid StudentId { get; set; }
+    public Guid SchoolId { get; set; }
     public DateTime Date { get; set; }
     public int Status { get; set; } // 0=Absent, 1=Present, 2=Late
     public string? Notes { get; set; }

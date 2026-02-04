@@ -401,3 +401,146 @@ BEGIN
     ORDER BY an.PublishAt DESC;
 END
 GO
+
+
+
+/* ============================================================
+   SAMPLE DATA FOR TESTING SCHOOL PORTAL
+   ============================================================ */
+
+/* 1) Insert School */
+INSERT INTO dbo.School (Name, Domain, LogoUrl)
+VALUES ('Demo High School', 'demo.schoolportal.com', NULL);
+GO
+
+DECLARE @SchoolId UNIQUEIDENTIFIER =
+(SELECT TOP 1 SchoolId FROM dbo.School);
+
+
+/* 2) Insert Users */
+-- Admin
+INSERT INTO dbo.[User] (SchoolId, FirstName, LastName, Email, PasswordHash, Role)
+VALUES
+(@SchoolId, 'System', 'Admin', 'admin@demo.schoolportal.com', 'Admin@123', 'Admin');
+
+-- Teachers
+INSERT INTO dbo.[User] (SchoolId, FirstName, LastName, Email, PasswordHash, Role)
+VALUES
+(@SchoolId, 'Alice', 'Johnson', 'teacher1@demo.schoolportal.com', 'Admin@123', 'Teacher'),
+(@SchoolId, 'Brian', 'Smith', 'teacher2@demo.schoolportal.com', 'Admin@123', 'Teacher');
+
+-- Students
+INSERT INTO dbo.[User] (SchoolId, FirstName, LastName, Email, PasswordHash, Role)
+VALUES
+(@SchoolId, 'John', 'Doe', 'student1@demo.schoolportal.com', 'Admin@123', 'Student'),
+(@SchoolId, 'Sarah', 'Lee', 'student2@demo.schoolportal.com', 'Admin@123', 'Student'),
+(@SchoolId, 'Michael', 'Brown', 'student3@demo.schoolportal.com', 'Admin@123', 'Student');
+GO
+
+
+/* 3) Create Teacher & Student Profiles */
+INSERT INTO dbo.Teacher (UserId, StaffNumber, Department)
+SELECT UserId, 'T1001', 'Mathematics'
+FROM dbo.[User] WHERE Email='teacher1@demo.schoolportal.com';
+
+INSERT INTO dbo.Teacher (UserId, StaffNumber, Department)
+SELECT UserId, 'T1002', 'Sciences'
+FROM dbo.[User] WHERE Email='teacher2@demo.schoolportal.com';
+
+INSERT INTO dbo.Student (UserId, AdmissionNumber, GradeYear)
+SELECT UserId, 'S2001', 10 FROM dbo.[User] WHERE Email='student1@demo.schoolportal.com';
+
+INSERT INTO dbo.Student (UserId, AdmissionNumber, GradeYear)
+SELECT UserId, 'S2002', 10 FROM dbo.[User] WHERE Email='student2@demo.schoolportal.com';
+
+INSERT INTO dbo.Student (UserId, AdmissionNumber, GradeYear)
+SELECT UserId, 'S2003', 10 FROM dbo.[User] WHERE Email='student3@demo.schoolportal.com';
+GO
+
+
+DECLARE @Teacher1 UNIQUEIDENTIFIER = (SELECT TeacherId FROM dbo.Teacher WHERE StaffNumber='T1001');
+DECLARE @Teacher2 UNIQUEIDENTIFIER = (SELECT TeacherId FROM dbo.Teacher WHERE StaffNumber='T1002');
+
+DECLARE @Student1 UNIQUEIDENTIFIER = (SELECT StudentId FROM dbo.Student WHERE AdmissionNumber='S2001');
+DECLARE @Student2 UNIQUEIDENTIFIER = (SELECT StudentId FROM dbo.Student WHERE AdmissionNumber='S2002');
+DECLARE @Student3 UNIQUEIDENTIFIER = (SELECT StudentId FROM dbo.Student WHERE AdmissionNumber='S2003');
+
+
+/* 4) Create Class */
+INSERT INTO dbo.Class (SchoolId, Name, AcademicYear, HomeroomTeacherId)
+VALUES (@SchoolId, 'Grade 10A', 2025, @Teacher1);
+
+DECLARE @ClassId UNIQUEIDENTIFIER = (SELECT TOP 1 ClassId FROM dbo.Class);
+
+
+/* 5) Create Subjects */
+INSERT INTO dbo.Subject (SchoolId, Name, Code)
+VALUES
+(@SchoolId, 'Mathematics', 'MATH10'),
+(@SchoolId, 'Science', 'SCI10');
+
+DECLARE @Math UNIQUEIDENTIFIER = (SELECT SubjectId FROM dbo.Subject WHERE Code='MATH10');
+DECLARE @Science UNIQUEIDENTIFIER = (SELECT SubjectId FROM dbo.Subject WHERE Code='SCI10');
+
+
+/* 6) Map Class-Subject */
+INSERT INTO dbo.ClassSubject (ClassId, SubjectId, TeacherId)
+VALUES
+(@ClassId, @Math, @Teacher1),
+(@ClassId, @Science, @Teacher2);
+
+DECLARE @CS_Math UNIQUEIDENTIFIER = (SELECT ClassSubjectId FROM dbo.ClassSubject WHERE SubjectId=@Math);
+DECLARE @CS_Sci  UNIQUEIDENTIFIER = (SELECT ClassSubjectId FROM dbo.ClassSubject WHERE SubjectId=@Science);
+
+
+/* 7) Enroll Students */
+INSERT INTO dbo.Enrollment (ClassId, StudentId)
+VALUES
+(@ClassId, @Student1),
+(@ClassId, @Student2),
+(@ClassId, @Student3);
+
+
+/* 8) Assignments */
+INSERT INTO dbo.Assignment (ClassSubjectId, Title, Description, DueAt)
+VALUES
+(@CS_Math, 'Algebra Homework', 'Solve algebra problems', DATEADD(DAY, 5, SYSUTCDATETIME())),
+(@CS_Sci, 'Chemistry Lab Report', 'Write the lab report', DATEADD(DAY, 7, SYSUTCDATETIME()));
+
+DECLARE @AssignMath UNIQUEIDENTIFIER = (SELECT AssignmentId FROM dbo.Assignment WHERE Title='Algebra Homework');
+DECLARE @AssignSci  UNIQUEIDENTIFIER = (SELECT AssignmentId FROM dbo.Assignment WHERE Title='Chemistry Lab Report');
+
+
+/* 9) Submissions */
+INSERT INTO dbo.Submission (AssignmentId, StudentId, BlobPath)
+VALUES
+(@AssignMath, @Student1, '/files/sub1.pdf'),
+(@AssignMath, @Student2, '/files/sub2.pdf');
+
+
+/* 10) Grades */
+INSERT INTO dbo.Grade (SubmissionId, Score, Feedback, TeacherId)
+SELECT SubmissionId, 85, 'Good work', @Teacher1
+FROM dbo.Submission WHERE StudentId=@Student1;
+
+INSERT INTO dbo.Grade (SubmissionId, Score, Feedback, TeacherId)
+SELECT SubmissionId, 90, 'Excellent', @Teacher1
+FROM dbo.Submission WHERE StudentId=@Student2;
+
+
+/* 11) Attendance */
+INSERT INTO dbo.Attendance (ClassId, StudentId, [Date], Status, Note)
+VALUES
+(@ClassId, @Student1, GETDATE(), 0, 'On time'),
+(@ClassId, @Student2, GETDATE(), 1, 'Absent'),
+(@ClassId, @Student3, GETDATE(), 2, 'Late');
+
+
+/* 12) Announcements */
+INSERT INTO dbo.Announcement (SchoolId, Title, Body, Audience, CreatedByUserId)
+SELECT @SchoolId, 'Welcome to the Term', 'School reopens officially.', 'All', UserId
+FROM dbo.[User] WHERE Email='admin@demo.schoolportal.com';
+GO
+
+SELECT Name, Domain FROM dbo.School;
+SELECT Email, Role FROM dbo.[User];

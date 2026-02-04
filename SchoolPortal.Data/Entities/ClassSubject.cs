@@ -2,11 +2,11 @@ namespace SchoolPortal.Data.Entities;
 
 public class ClassSubject
 {
-    public int ClassSubjectId { get; set; }
-    public int ClassId { get; set; }
-    public int SubjectId { get; set; }
-    public int? TeacherId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid ClassSubjectId { get; set; }
+    public Guid ClassId { get; set; }
+    public Guid SubjectId { get; set; }
+    public Guid? TeacherId { get; set; }
+    public Guid SchoolId { get; set; }
     public DateTime CreatedAt { get; set; }
     public byte[] RowVersion { get; set; } = null!;
 

@@ -2,10 +2,10 @@ namespace SchoolPortal.Data.Entities;
 
 public class Submission
 {
-    public int SubmissionId { get; set; }
-    public int AssignmentId { get; set; }
-    public int StudentId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid SubmissionId { get; set; }
+    public Guid AssignmentId { get; set; }
+    public Guid StudentId { get; set; }
+    public Guid SchoolId { get; set; }
     public DateTime SubmittedAt { get; set; }
     public string? FileUrl { get; set; }
     public string? FileName { get; set; }

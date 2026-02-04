@@ -2,8 +2,8 @@ namespace SchoolPortal.Data.Entities;
 
 public class Subject
 {
-    public int SubjectId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid SubjectId { get; set; }
+    public Guid SchoolId { get; set; }
     public string Name { get; set; } = null!;
     public string? Code { get; set; }
     public string? Description { get; set; }

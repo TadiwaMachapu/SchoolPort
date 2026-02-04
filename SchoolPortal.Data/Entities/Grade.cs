@@ -2,12 +2,12 @@ namespace SchoolPortal.Data.Entities;
 
 public class Grade
 {
-    public int GradeId { get; set; }
-    public int SubmissionId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid GradeId { get; set; }
+    public Guid SubmissionId { get; set; }
+    public Guid SchoolId { get; set; }
     public decimal Score { get; set; }
     public string? Feedback { get; set; }
-    public int GradedByUserId { get; set; }
+    public Guid GradedByUserId { get; set; }
     public DateTime GradedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public byte[] RowVersion { get; set; } = null!;

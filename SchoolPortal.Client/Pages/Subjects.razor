@@ -1,0 +1,142 @@
+@page "/subjects"
+@attribute [Authorize(Roles = "Admin")]
+@inject ISubjectService SubjectService
+@inject NavigationManager Navigation
+
+<PageTitle>Subjects</PageTitle>
+
+<div class="subjects-page">
+    <div class="page-header">
+        <h1>Subjects</h1>
+        <button class="btn btn-primary" @onclick="() => showCreateForm = true">Create Subject</button>
+    </div>
+
+    @if (showCreateForm)
+    {
+        <div class="create-form-card">
+            <h4>Create New Subject</h4>
+            <EditForm Model="@createRequest" OnValidSubmit="HandleCreate">
+                <DataAnnotationsValidator />
+                
+                <div class="form-group">
+                    <label>Subject Name *</label>
+                    <InputText @bind-Value="createRequest.Name" class="form-control" placeholder="e.g., Mathematics" />
+                    <ValidationMessage For="@(() => createRequest.Name)" />
+                </div>
+
+                <div class="form-group">
+                    <label>Subject Code</label>
+                    <InputText @bind-Value="createRequest.Code" class="form-control" placeholder="e.g., MATH101" />
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <InputTextArea @bind-Value="createRequest.Description" class="form-control" rows="3" placeholder="Subject description" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">@errorMessage</div>
+                }
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-success" disabled="@isCreating">
+                        @(isCreating ? "Creating..." : "Create Subject")
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => { showCreateForm = false; ResetForm(); }">Cancel</button>
+                </div>
+            </EditForm>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <p><em>Loading subjects...</em></p>
+    }
+    else if (subjects != null && subjects.Any())
+    {
+        <div class="subjects-grid">
+            @foreach (var subject in subjects)
+            {
+                <div class="subject-card">
+                    <h4>@subject.Name</h4>
+                    @if (!string.IsNullOrEmpty(subject.Code))
+                    {
+                        <span class="subject-code">@subject.Code</span>
+                    }
+                    @if (!string.IsNullOrEmpty(subject.Description))
+                    {
+                        <p>@subject.Description</p>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p>No subjects found. Create your first subject to get started!</p>
+    }
+</div>
+
+@code {
+    private List<SubjectDto>? subjects;
+    private bool isLoading = true;
+    private bool showCreateForm = false;
+    private bool isCreating = false;
+    private string? errorMessage;
+    private CreateSubjectRequest createRequest = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSubjects();
+    }
+
+    private async Task LoadSubjects()
+    {
+        isLoading = true;
+        try
+        {
+            subjects = await SubjectService.GetSubjectsAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleCreate()
+    {
+        isCreating = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await SubjectService.CreateSubjectAsync(createRequest);
+            
+            if (result != null)
+            {
+                showCreateForm = false;
+                ResetForm();
+                await LoadSubjects();
+            }
+            else
+            {
+                errorMessage = "Failed to create subject. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        createRequest = new CreateSubjectRequest();
+        errorMessage = null;
+    }
+}

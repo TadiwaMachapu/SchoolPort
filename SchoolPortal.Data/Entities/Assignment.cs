@@ -2,16 +2,16 @@ namespace SchoolPortal.Data.Entities;
 
 public class Assignment
 {
-    public int AssignmentId { get; set; }
-    public int ClassSubjectId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid AssignmentId { get; set; }
+    public Guid ClassSubjectId { get; set; }
+    public Guid SchoolId { get; set; }
     public string Title { get; set; } = null!;
     public string? Description { get; set; }
     public DateTime DueAt { get; set; }
     public decimal MaxMarks { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public int CreatedByUserId { get; set; }
+    public Guid CreatedByUserId { get; set; }
     public byte[] RowVersion { get; set; } = null!;
 
     // Navigation properties

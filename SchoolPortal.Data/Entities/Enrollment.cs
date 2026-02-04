@@ -2,10 +2,10 @@ namespace SchoolPortal.Data.Entities;
 
 public class Enrollment
 {
-    public int EnrollmentId { get; set; }
-    public int ClassId { get; set; }
-    public int StudentId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid EnrollmentId { get; set; }
+    public Guid ClassId { get; set; }
+    public Guid StudentId { get; set; }
+    public Guid SchoolId { get; set; }
     public DateTime EnrolledAt { get; set; }
     public DateTime? DroppedAt { get; set; }
     public bool IsActive { get; set; }

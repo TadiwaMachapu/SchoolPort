@@ -20,8 +20,19 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var response = await _authService.LoginAsync(request);
-        return Ok(response);
+        try
+        {
+            var response = await _authService.LoginAsync(request);
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "Invalid email or password" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred during login", error = ex.Message });
+        }
     }
 
     [HttpPost("refresh")]
@@ -31,5 +42,11 @@ public class AuthController : ControllerBase
     {
         var response = await _authService.RefreshTokenAsync(request.RefreshToken);
         return Ok(response);
+    }
+    
+    [HttpGet("test")]
+    public IActionResult Test()
+    {
+        return Ok(new { message = "API is working", timestamp = DateTime.UtcNow });
     }
 }

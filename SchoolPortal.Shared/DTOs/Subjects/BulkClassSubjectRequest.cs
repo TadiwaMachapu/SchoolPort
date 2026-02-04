@@ -7,7 +7,7 @@ public class BulkClassSubjectRequest
 
 public class ClassSubjectItem
 {
-    public int ClassId { get; set; }
-    public int SubjectId { get; set; }
-    public int? TeacherId { get; set; }
+    public Guid ClassId { get; set; }
+    public Guid SubjectId { get; set; }
+    public Guid? TeacherId { get; set; }
 }

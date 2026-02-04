@@ -4,6 +4,6 @@ namespace SchoolPortal.Server.Services;
 
 public interface IAttendanceService
 {
-    Task<List<AttendanceDto>> GetAttendanceAsync(int classId, DateTime date);
+    Task<List<AttendanceDto>> GetAttendanceAsync(Guid classId, DateTime date);
     Task BulkUpsertAttendanceAsync(BulkAttendanceRequest request);
 }

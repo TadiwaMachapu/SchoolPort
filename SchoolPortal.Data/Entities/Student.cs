@@ -2,13 +2,13 @@ namespace SchoolPortal.Data.Entities;
 
 public class Student
 {
-    public int StudentId { get; set; }
-    public int UserId { get; set; }
-    public int SchoolId { get; set; }
+    public Guid StudentId { get; set; }
+    public Guid UserId { get; set; }
+    public Guid SchoolId { get; set; }
     public string StudentNumber { get; set; } = null!;
     public int? GradeLevel { get; set; }
     public DateTime? DateOfBirth { get; set; }
-    public int? ParentUserId { get; set; }
+    public Guid? ParentUserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public byte[] RowVersion { get; set; } = null!;

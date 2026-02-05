@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SchoolPortal.Data;
@@ -14,7 +13,6 @@ public class AttendanceServiceTests
 {
     private readonly SchoolPortalDbContext _context;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
-    private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly AttendanceService _service;
 
@@ -26,19 +24,15 @@ public class AttendanceServiceTests
 
         _context = new SchoolPortalDbContext(options);
         _mockCurrentUser = new Mock<ICurrentUserService>();
-        _mockConfiguration = new Mock<IConfiguration>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
 
         // Setup mocks
         _mockCurrentUser.Setup(x => x.SchoolId).Returns(1);
         _mockCurrentUser.Setup(x => x.UserId).Returns(1);
-        _mockConfiguration.Setup(x => x.GetConnectionString("DefaultConnection"))
-            .Returns("Server=localhost;Database=Test;");
 
         _service = new AttendanceService(
             _context, 
             _mockCurrentUser.Object, 
-            _mockConfiguration.Object,
             _mockLogger.Object);
 
         SeedTestData();

@@ -197,7 +197,7 @@ public class AssignmentService : IAssignmentService
         }
 
         // Concurrency check
-        if (!assignment.RowVersion.SequenceEqual(request.RowVersion))
+        if (assignment.RowVersion != request.RowVersion)
         {
             throw new DbUpdateConcurrencyException("The assignment has been modified by another user");
         }

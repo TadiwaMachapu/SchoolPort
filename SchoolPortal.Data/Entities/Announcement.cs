@@ -13,7 +13,7 @@ public class Announcement
     public DateTime? UpdatedAt { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public bool IsActive { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     // Navigation properties
     public virtual School School { get; set; } = null!;

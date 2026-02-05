@@ -24,7 +24,7 @@ builder.Host.UseSerilog();
 
 // Add DbContext
 builder.Services.AddDbContext<SchoolPortalDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -121,10 +121,10 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add Health Checks
 builder.Services.AddHealthChecks()
-    .AddSqlServer(
+    .AddNpgSql(
         connectionString: builder.Configuration.GetConnectionString("DefaultConnection")!,
-        name: "sql",
-        tags: new[] { "db", "sql", "sqlserver" });
+        name: "postgres",
+        tags: new[] { "db", "postgres", "supabase" });
 
 // Add Response Caching
 builder.Services.AddResponseCaching();

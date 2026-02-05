@@ -1,8 +1,8 @@
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using SchoolPortal.Data;
 using SchoolPortal.Shared.DTOs.Attendance;
-using System.Data;
+using System.Text;
 
 namespace SchoolPortal.Server.Services;
 
@@ -10,18 +10,16 @@ public class AttendanceService : IAttendanceService
 {
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<AttendanceService> _logger;
+    private const int BatchSize = 100;
 
     public AttendanceService(
         SchoolPortalDbContext context, 
         ICurrentUserService currentUser,
-        IConfiguration configuration,
         ILogger<AttendanceService> logger)
     {
         _context = context;
         _currentUser = currentUser;
-        _configuration = configuration;
         _logger = logger;
     }
 
@@ -39,7 +37,7 @@ public class AttendanceService : IAttendanceService
                 AttendanceId = a.AttendanceId,
                 ClassId = a.ClassId,
                 StudentId = a.StudentId,
-                StudentName = $"{a.Student.User.FirstName} {a.Student.User.LastName}",
+                StudentName = a.Student.User.FirstName + " " + a.Student.User.LastName,
                 StudentNumber = a.Student.StudentNumber,
                 Date = a.Date,
                 Status = a.Status,
@@ -61,44 +59,69 @@ public class AttendanceService : IAttendanceService
             }
         }
 
-        // Use TVP for bulk upsert
-        var connectionString = _configuration.GetConnectionString("DefaultConnection");
-        using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync();
+        var schoolId = _currentUser.SchoolId;
+        var totalRecords = request.Attendances.Count;
+        var processedRecords = 0;
 
-        // Create DataTable for TVP
-        var attendanceTable = new DataTable();
-        attendanceTable.Columns.Add("ClassId", typeof(int));
-        attendanceTable.Columns.Add("StudentId", typeof(int));
-        attendanceTable.Columns.Add("Date", typeof(DateTime));
-        attendanceTable.Columns.Add("Status", typeof(int));
-        attendanceTable.Columns.Add("Notes", typeof(string));
-        attendanceTable.Columns.Add("SchoolId", typeof(int));
+        // Process in batches for efficiency with large datasets
+        var batches = request.Attendances
+            .Select((item, index) => new { item, index })
+            .GroupBy(x => x.index / BatchSize)
+            .Select(g => g.Select(x => x.item).ToList())
+            .ToList();
 
-        foreach (var item in request.Attendances)
+        foreach (var batch in batches)
         {
-            attendanceTable.Rows.Add(
-                item.ClassId,
-                item.StudentId,
-                item.Date.Date,
-                item.Status,
-                item.Notes ?? (object)DBNull.Value,
-                _currentUser.SchoolId
-            );
+            await ExecuteBatchUpsertAsync(batch, schoolId);
+            processedRecords += batch.Count;
         }
 
-        using var command = new SqlCommand("dbo.usp_Attendance_BulkUpsert", connection)
-        {
-            CommandType = CommandType.StoredProcedure
-        };
-
-        var parameter = command.Parameters.AddWithValue("@AttendanceData", attendanceTable);
-        parameter.SqlDbType = SqlDbType.Structured;
-        parameter.TypeName = "dbo.AttendanceTableType";
-
-        await command.ExecuteNonQueryAsync();
-
         _logger.LogInformation("Bulk upserted {Count} attendance records for SchoolId {SchoolId}", 
-            request.Attendances.Count, _currentUser.SchoolId);
+            totalRecords, schoolId);
+    }
+
+    private async Task ExecuteBatchUpsertAsync(List<AttendanceItem> items, int schoolId)
+    {
+        if (items.Count == 0) return;
+
+        var sql = new StringBuilder();
+        var parameters = new List<NpgsqlParameter>();
+        var paramIndex = 0;
+
+        sql.AppendLine(@"
+INSERT INTO attendances (school_id, class_id, student_id, date, status, notes, created_at, row_version)
+VALUES ");
+
+        var valuesClauses = new List<string>();
+
+        foreach (var item in items)
+        {
+            var schoolIdParam = $"@p{paramIndex++}";
+            var classIdParam = $"@p{paramIndex++}";
+            var studentIdParam = $"@p{paramIndex++}";
+            var dateParam = $"@p{paramIndex++}";
+            var statusParam = $"@p{paramIndex++}";
+            var notesParam = $"@p{paramIndex++}";
+
+            valuesClauses.Add($"({schoolIdParam}, {classIdParam}, {studentIdParam}, {dateParam}, {statusParam}, {notesParam}, NOW(), 1)");
+
+            parameters.Add(new NpgsqlParameter(schoolIdParam, schoolId));
+            parameters.Add(new NpgsqlParameter(classIdParam, item.ClassId));
+            parameters.Add(new NpgsqlParameter(studentIdParam, item.StudentId));
+            parameters.Add(new NpgsqlParameter(dateParam, item.Date.Date));
+            parameters.Add(new NpgsqlParameter(statusParam, item.Status));
+            parameters.Add(new NpgsqlParameter(notesParam, (object?)item.Notes ?? DBNull.Value));
+        }
+
+        sql.AppendLine(string.Join(",\n", valuesClauses));
+        sql.AppendLine(@"
+ON CONFLICT (school_id, class_id, student_id, date)
+DO UPDATE SET
+    status = EXCLUDED.status,
+    notes = EXCLUDED.notes,
+    updated_at = NOW(),
+    row_version = attendances.row_version + 1;");
+
+        await _context.Database.ExecuteSqlRawAsync(sql.ToString(), parameters.ToArray());
     }
 }

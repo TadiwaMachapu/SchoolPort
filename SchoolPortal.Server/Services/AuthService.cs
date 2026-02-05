@@ -24,12 +24,23 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
+        _logger.LogInformation("Login attempt for email: {Email}", request.Email);
+        
         var user = await _context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
-        if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
+        if (user == null)
         {
+            _logger.LogWarning("User not found or inactive: {Email}", request.Email);
+            throw new UnauthorizedAccessException("Invalid credentials");
+        }
+        
+        _logger.LogInformation("User found: {UserId}, verifying password...", user.UserId);
+        
+        if (!VerifyPassword(request.Password, user.PasswordHash))
+        {
+            _logger.LogWarning("Password verification failed for user: {Email}", request.Email);
             throw new UnauthorizedAccessException("Invalid credentials");
         }
 

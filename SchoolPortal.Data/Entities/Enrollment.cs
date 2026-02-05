@@ -9,7 +9,7 @@ public class Enrollment
     public DateTime EnrolledAt { get; set; }
     public DateTime? DroppedAt { get; set; }
     public bool IsActive { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     // Navigation properties
     public virtual Class Class { get; set; } = null!;

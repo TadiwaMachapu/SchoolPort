@@ -1,16 +1,16 @@
-# School Portal - Backend API (MVP)
+# School Portal - Backend API
 
 ## Overview
-A comprehensive school management system backend API built with **ASP.NET Core 8**, featuring JWT authentication, role-based authorization, and soft multi-tenancy.
+A comprehensive school management system backend API built with **ASP.NET Core 8**, featuring JWT authentication, role-based authorization, and soft multi-tenancy. Now powered by **Supabase Postgres**.
 
 ## Tech Stack
-- **Framework**: ASP.NET Core 8 (Minimal Controllers)
-- **Database**: SQL Server with EF Core 8 (Database-First)
+- **Framework**: ASP.NET Core 8
+- **Database**: Supabase Postgres with EF Core 8 + Npgsql
 - **Authentication**: JWT Bearer Tokens
 - **Validation**: FluentValidation
 - **Logging**: Serilog
 - **API Documentation**: Swagger/OpenAPI
-- **Testing**: xUnit, Moq
+- **Testing**: xUnit, Moq, Testcontainers.PostgreSql
 
 ## Architecture
 Clean-ish layered architecture:
@@ -31,14 +31,15 @@ Clean-ish layered architecture:
 - Global exception middleware with ProblemDetails responses
 - Request/response logging with Serilog
 - Response caching for GET endpoints
-- Concurrency control using rowversion
-- Health checks with SQL Server database connectivity
+- Concurrency control using BIGINT row_version
+- Health checks with Postgres database connectivity
 
 ### Database
-- SQL Server with existing database: `SchoolPortalDB`
-- EF Core entities with proper relationships
-- Stored procedure support for bulk operations (TVP)
-- Database views for reporting
+- **Supabase Postgres** cloud database
+- EF Core 8 with Npgsql provider
+- Snake_case naming conventions for Postgres compatibility
+- Bulk operations using `INSERT ... ON CONFLICT DO UPDATE`
+- Database views for reporting (`vw_attendance_summary`, `vw_gradebook_simple`)
 
 ## Project Structure
 
@@ -63,30 +64,31 @@ School Portal/
 
 ### Prerequisites
 - .NET 8 SDK
-- SQL Server (LocalDB or Express)
+- Supabase account (free tier works)
 - Visual Studio 2022 or VS Code
 
-### Database Setup
+### Database Setup (Supabase)
 
-1. **Create the database** (or use existing SchoolPortalDB)
+1. **Create a Supabase project** at [supabase.com](https://supabase.com)
 
-2. **Run the setup script**:
-```sql
-sqlcmd -S localhost -d SchoolPortalDB -i DatabaseSetup.sql
-```
+2. **Get your connection string** from Project Settings → Database → Connection string (URI)
 
-This creates:
-- Table-Valued Parameter type for attendance bulk operations
-- Stored procedure: `usp_Attendance_BulkUpsert`
-- Views: `vw_AttendanceSummary`, `vw_GradebookSimple`
-- Seed data with demo users
-
-3. **Update connection string** in `appsettings.json`:
+3. **Update connection string** in `appsettings.json` and `appsettings.Development.json`:
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "Server=localhost;Database=SchoolPortalDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  "DefaultConnection": "Host=YOUR_PROJECT.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.YOUR_PROJECT_REF;Password=YOUR_PASSWORD;SSL Mode=Require"
 }
 ```
+
+4. **Run EF Core migrations**:
+```bash
+cd SchoolPortal.Server
+dotnet ef database update --project ../SchoolPortal.Data
+```
+
+5. **Run the setup script** in Supabase SQL Editor (`PostgresSetup.sql`):
+   - Creates views: `vw_attendance_summary`, `vw_gradebook_simple`
+   - Inserts seed data with demo users
 
 ### Running the API
 
@@ -103,7 +105,7 @@ dotnet run
 
 3. **Access Swagger UI**:
 ```
-https://localhost:7071/swagger
+http://localhost:5128/swagger
 ```
 
 ### Default Login Credentials
@@ -153,7 +155,7 @@ https://localhost:7071/swagger
 
 ### Attendance
 - `GET /api/attendance` - Get attendance records by class and date
-- `POST /api/attendance/bulk` - Bulk upsert attendance (uses TVP stored procedure)
+- `POST /api/attendance/bulk` - Bulk upsert attendance (uses Postgres ON CONFLICT)
 
 ### Announcements
 - `GET /api/announcements` - List announcements
@@ -250,8 +252,9 @@ Common status codes:
 - **AsNoTracking** used for all read operations
 - **Pagination** on all list endpoints (default pageSize: 20)
 - **Response caching** for GET requests
-- **Bulk operations** using TVP for attendance (single DB round-trip)
+- **Bulk operations** using Postgres `ON CONFLICT` for attendance (single DB round-trip)
 - **Efficient queries** with proper includes and projections
+- **Connection pooling** via Supabase pooler
 
 ## Security Best Practices
 
@@ -296,13 +299,14 @@ Serilog configured with:
 ## Deployment Checklist
 
 - [ ] Update JWT SecretKey in production
-- [ ] Configure production connection string
+- [ ] Configure Supabase production connection string
 - [ ] Set up CORS origins for production domains
 - [ ] Enable HTTPS and SSL certificates
 - [ ] Configure file storage for submission uploads
-- [ ] Set up database backups
+- [ ] Set up Supabase database backups (automatic with paid plans)
 - [ ] Configure log retention policies
 - [ ] Review and tighten security policies
+- [ ] Run `PostgresSetup.sql` to create views and seed data
 
 ## Future Enhancements (Post-MVP)
 
@@ -327,4 +331,4 @@ Proprietary - School Portal System
 
 ---
 
-**Built with ❤️ using ASP.NET Core 8**
+**Built with ❤️ using ASP.NET Core 8 + Supabase Postgres**

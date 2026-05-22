@@ -33,7 +33,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.auth.login(email, password);
-      document.cookie = `sp_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=${8 * 3600}; SameSite=Lax`;
+      const maxAge = 8 * 3600;
+      document.cookie = `sp_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      document.cookie = `sp_role=${res.user.role}; path=/; max-age=${maxAge}; SameSite=Lax`;
       router.push("/dashboard");
       router.refresh();
     } catch (err: unknown) {

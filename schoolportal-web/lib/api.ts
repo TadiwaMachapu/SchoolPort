@@ -93,6 +93,7 @@ export const api = {
   },
   gradebook: {
     myGrades: () => request<GradeEntry[]>("/api/gradebook/my-grades"),
+    classGradebook: (classId: string) => request<ClassGradebook>(`/api/gradebook/${classId}`),
   },
   courses: {
     list: (params?: { page?: number; pageSize?: number; publishedOnly?: boolean }) =>
@@ -371,6 +372,17 @@ export interface GradeEntry {
   class: string;
   feedback?: string;
   gradedAt: string;
+}
+export interface ClassGradebook {
+  students: {
+    studentId: string;
+    name: string;
+    studentNumber: string;
+    grades: { assignmentId: string; score?: number; maxMarks: number; percentage?: number }[];
+    average?: number;
+  }[];
+  assignments: { assignmentId: string; title: string; maxMarks: number; subject: string }[];
+  categories: { name: string; weight: number }[];
 }
 export interface Course {
   courseId: string;

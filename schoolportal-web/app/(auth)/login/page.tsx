@@ -36,6 +36,7 @@ export default function LoginPage() {
       const maxAge = 8 * 3600;
       document.cookie = `sp_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=${maxAge}; SameSite=Lax`;
       document.cookie = `sp_role=${res.user.role}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      document.cookie = `sp_userid=${res.user.userId}; path=/; max-age=${maxAge}; SameSite=Lax`;
       router.push("/dashboard");
       router.refresh();
     } catch (err: unknown) {

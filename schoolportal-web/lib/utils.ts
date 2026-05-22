@@ -10,3 +10,9 @@ export function getClientRole(): string {
   const m = document.cookie.match(/(?:^|; )sp_role=([^;]*)/);
   return m ? decodeURIComponent(m[1]) : "";
 }
+
+export function getClientUserId(): string {
+  if (typeof document === "undefined") return "";
+  const m = document.cookie.match(/(?:^|; )sp_userid=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : "";
+}

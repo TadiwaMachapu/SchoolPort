@@ -4,6 +4,8 @@ import { api, CalendarEvent, TimetableSlot } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { getClientRole } from "@/lib/utils";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -20,13 +22,17 @@ const EVENT_COLORS: Record<string, string> = {
 
 export default function CalendarPage() {
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [year,      setYear]      = useState(today.getFullYear());
+  const [month,     setMonth]     = useState(today.getMonth());
+  const [events,    setEvents]    = useState<CalendarEvent[]>([]);
   const [timetable, setTimetable] = useState<TimetableSlot[]>([]);
-  const [selected, setSelected] = useState<Date | null>(null);
-  const [tab, setTab] = useState<"month" | "timetable">("month");
-  const [loading, setLoading] = useState(true);
+  const [selected,  setSelected]  = useState<Date | null>(null);
+  const [tab,       setTab]       = useState<"month" | "timetable">("month");
+  const [loading,   setLoading]   = useState(true);
+  const [showAdd,   setShowAdd]   = useState(false);
+  const [role,      setRole]      = useState("");
+
+  useEffect(() => { setRole(getClientRole()); }, []);
 
   useEffect(() => {
     const from = new Date(year, month, 1).toISOString();
@@ -84,11 +90,26 @@ export default function CalendarPage() {
 
   const slotsByDay = (dow: number) => timetable.filter(s => s.dayOfWeek === dow);
 
+  async function loadEvents() {
+    const from = new Date(year, month, 1).toISOString();
+    const to   = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+    const [ev] = await Promise.allSettled([api.calendar.events({ from, to })]);
+    if (ev.status === "fulfilled") {
+      const data = ev.value as { events?: CalendarEvent[]; assignmentDueDates?: CalendarEvent[] };
+      setEvents([...(data.events ?? []), ...(data.assignmentDueDates ?? []).map((a: any) => ({ ...a, type: "Assignment" }))]);
+    }
+  }
+
   return (
     <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Calendar & Timetable</h1>
-        <p className="text-gray-500 mt-1">School events, deadlines, and weekly schedule</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Calendar & Timetable</h1>
+          <p className="text-gray-500 mt-1">School events, deadlines, and weekly schedule</p>
+        </div>
+        {(role === "Admin" || role === "Teacher") && (
+          <Button size="sm" onClick={() => setShowAdd(true)}>+ Add Event</Button>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -225,6 +246,13 @@ export default function CalendarPage() {
         </div>
       )}
 
+      {showAdd && (
+        <AddEventModal
+          defaultDate={selected ?? today}
+          onClose={() => { setShowAdd(false); loadEvents(); }}
+        />
+      )}
+
       {!loading && tab === "timetable" && (
         <Card>
           <CardHeader><CardTitle>Weekly Timetable</CardTitle></CardHeader>
@@ -272,6 +300,105 @@ export default function CalendarPage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+const EVENT_TYPES = ["exam", "holiday", "meeting", "other"] as const;
+
+function AddEventModal({ defaultDate, onClose }: { defaultDate: Date; onClose: () => void }) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const defaultISO = `${defaultDate.getFullYear()}-${pad(defaultDate.getMonth()+1)}-${pad(defaultDate.getDate())}`;
+  const [form, setForm] = useState({
+    title: "", description: "", type: "other",
+    startAt: `${defaultISO}T09:00`, endAt: `${defaultISO}T10:00`, allDay: false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true); setError("");
+    try {
+      await api.calendar.create({
+        title:       form.title,
+        description: form.description || undefined,
+        type:        form.type,
+        startAt:     new Date(form.startAt).toISOString(),
+        endAt:       form.allDay ? undefined : new Date(form.endAt).toISOString(),
+        allDay:      form.allDay,
+      });
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create");
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900">Add Event</h2>
+          <button onClick={onClose} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form onSubmit={submit} className="p-6 space-y-4">
+          {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Title</label>
+            <Input placeholder="e.g. End of Term Exam" value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required autoFocus />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Type</label>
+              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                {EVENT_TYPES.map(t => <option key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5 flex flex-col justify-end">
+              <label className="flex items-center gap-2 cursor-pointer pb-2">
+                <input type="checkbox" checked={form.allDay}
+                  onChange={e => setForm(f => ({ ...f, allDay: e.target.checked }))}
+                  className="rounded text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">All day</span>
+              </label>
+            </div>
+          </div>
+          <div className={`grid gap-3 ${form.allDay ? "grid-cols-1" : "grid-cols-2"}`}>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">{form.allDay ? "Date" : "Start"}</label>
+              <input type={form.allDay ? "date" : "datetime-local"} required
+                value={form.allDay ? form.startAt.slice(0, 10) : form.startAt}
+                onChange={e => setForm(f => ({ ...f, startAt: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            {!form.allDay && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">End</label>
+                <input type="datetime-local"
+                  value={form.endAt}
+                  onChange={e => setForm(f => ({ ...f, endAt: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+            <textarea rows={2} placeholder="Additional details…" value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          </div>
+          <div className="flex gap-3 pt-1">
+            <Button type="submit" className="flex-1" loading={saving}>Add Event</Button>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

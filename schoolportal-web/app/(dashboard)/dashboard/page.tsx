@@ -4,6 +4,20 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  GraduationCap,
+  Users,
+  BookOpen,
+  CheckSquare,
+  ClipboardList,
+  Clock,
+  GraduationCap as Teacher,
+  BarChart2,
+  Megaphone,
+  Settings,
+  AlertTriangle,
+  type LucideIcon,
+} from "lucide-react";
 
 interface MeData {
   user: { userId: string; email: string; firstName: string; lastName: string; role: string };
@@ -49,13 +63,13 @@ function AdminDashboard() {
     api.announcements.list({ pageSize: 5 }).then(r => setAnnouncements((r as any).items ?? [])).catch(() => {});
   }, []);
 
-  const kpis = overview ? [
-    { label: "Students",        value: overview.totalStudents,         icon: "🎓", color: "text-blue-600" },
-    { label: "Teachers",        value: overview.totalTeachers,         icon: "👨‍🏫", color: "text-purple-600" },
-    { label: "Classes",         value: overview.totalClasses,          icon: "🏫", color: "text-green-600" },
-    { label: "Attendance",      value: `${overview.attendanceRateThisMonth}%`, icon: "✅", color: "text-teal-600" },
-    { label: "Assignments",     value: overview.totalAssignments,      icon: "📝", color: "text-orange-600" },
-    { label: "Pending Grading", value: overview.pendingSubmissions,    icon: "⏳", color: "text-red-600" },
+  const kpis: { label: string; value: string | number; Icon: LucideIcon; color: string; bg: string }[] = overview ? [
+    { label: "Students",        value: overview.totalStudents,                    Icon: GraduationCap, color: "text-blue-600",   bg: "bg-blue-50" },
+    { label: "Teachers",        value: overview.totalTeachers,                    Icon: Users,         color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Classes",         value: overview.totalClasses,                     Icon: BookOpen,      color: "text-green-600",  bg: "bg-green-50" },
+    { label: "Attendance",      value: `${overview.attendanceRateThisMonth}%`,    Icon: CheckSquare,   color: "text-teal-600",   bg: "bg-teal-50" },
+    { label: "Assignments",     value: overview.totalAssignments,                 Icon: ClipboardList, color: "text-orange-600", bg: "bg-orange-50" },
+    { label: "Pending Grading", value: overview.pendingSubmissions,               Icon: Clock,         color: "text-red-600",    bg: "bg-red-50" },
   ] : [];
 
   return (
@@ -63,8 +77,10 @@ function AdminDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {kpis.map(k => (
           <Card key={k.label}>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl mb-1">{k.icon}</div>
+            <CardContent className="p-4">
+              <div className={`h-9 w-9 rounded-lg ${k.bg} flex items-center justify-center mb-3`}>
+                <k.Icon className={`h-5 w-5 ${k.color}`} />
+              </div>
               <p className={`text-2xl font-bold ${k.color}`}>{k.value ?? "—"}</p>
               <p className="text-xs text-gray-500 mt-0.5">{k.label}</p>
             </CardContent>
@@ -98,17 +114,17 @@ function AdminDashboard() {
             <CardTitle className="text-base">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Add User",       href: "/users",       icon: "👤" },
-              { label: "New Class",      href: "/classes",     icon: "🏫" },
-              { label: "Analytics",      href: "/analytics",   icon: "📊" },
-              { label: "Announcements",  href: "/announcements", icon: "📢" },
-              { label: "Settings",       href: "/settings",    icon: "⚙️" },
-              { label: "Courses",        href: "/courses",     icon: "📚" },
-            ].map(a => (
+            {([
+              { label: "Add User",       href: "/users",         Icon: Users },
+              { label: "New Class",      href: "/classes",       Icon: BookOpen },
+              { label: "Analytics",      href: "/analytics",     Icon: BarChart2 },
+              { label: "Announcements",  href: "/announcements", Icon: Megaphone },
+              { label: "Settings",       href: "/settings",      Icon: Settings },
+              { label: "Courses",        href: "/courses",       Icon: BookOpen },
+            ] as { label: string; href: string; Icon: LucideIcon }[]).map(a => (
               <Link key={a.label} href={a.href}
-                className="flex items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm font-medium text-gray-700">
-                <span className="text-lg">{a.icon}</span>{a.label}
+                className="flex items-center gap-2 p-3 rounded-lg border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-colors text-sm font-medium text-gray-700">
+                <a.Icon className="h-4 w-4 text-gray-400 shrink-0" />{a.label}
               </Link>
             ))}
           </CardContent>
@@ -136,15 +152,17 @@ function TeacherDashboard({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "My Classes",   value: classes.length,     icon: "🏫", color: "text-blue-600" },
-          { label: "Assignments",  value: assignments.length, icon: "📝", color: "text-purple-600" },
-          { label: "Overdue",      value: overdue,            icon: "⚠️", color: "text-red-600" },
-          { label: "Announcements", value: announcements.length, icon: "📢", color: "text-green-600" },
-        ].map(k => (
+        {([
+          { label: "My Classes",    value: classes.length,       Icon: BookOpen,      color: "text-blue-600",   bg: "bg-blue-50" },
+          { label: "Assignments",   value: assignments.length,   Icon: ClipboardList, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "Overdue",       value: overdue,              Icon: AlertTriangle, color: "text-red-600",    bg: "bg-red-50" },
+          { label: "Announcements", value: announcements.length, Icon: Megaphone,     color: "text-green-600",  bg: "bg-green-50" },
+        ] as { label: string; value: number; Icon: LucideIcon; color: string; bg: string }[]).map(k => (
           <Card key={k.label}>
             <CardContent className="p-4 flex items-center gap-3">
-              <span className="text-2xl">{k.icon}</span>
+              <div className={`h-10 w-10 rounded-lg ${k.bg} flex items-center justify-center shrink-0`}>
+                <k.Icon className={`h-5 w-5 ${k.color}`} />
+              </div>
               <div>
                 <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
                 <p className="text-xs text-gray-500">{k.label}</p>
@@ -233,15 +251,17 @@ function StudentDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "Overall Average", value: avg !== null ? `${avg}%` : "—", icon: "📊", color: "text-blue-600" },
-          { label: "Graded",          value: grades.length,                   icon: "✅", color: "text-green-600" },
-          { label: "Upcoming",        value: upcoming.length,                 icon: "📝", color: "text-purple-600" },
-          { label: "Overdue",         value: overdue.length,                  icon: "⚠️", color: overdue.length > 0 ? "text-red-600" : "text-gray-400" },
-        ].map(k => (
+        {([
+          { label: "Overall Average", value: avg !== null ? `${avg}%` : "—", Icon: BarChart2,      color: "text-blue-600",                           bg: "bg-blue-50" },
+          { label: "Graded",          value: grades.length,                   Icon: CheckSquare,   color: "text-green-600",                          bg: "bg-green-50" },
+          { label: "Upcoming",        value: upcoming.length,                 Icon: ClipboardList, color: "text-purple-600",                         bg: "bg-purple-50" },
+          { label: "Overdue",         value: overdue.length,                  Icon: AlertTriangle, color: overdue.length > 0 ? "text-red-600" : "text-gray-400", bg: overdue.length > 0 ? "bg-red-50" : "bg-gray-50" },
+        ] as { label: string; value: string | number; Icon: LucideIcon; color: string; bg: string }[]).map(k => (
           <Card key={k.label}>
             <CardContent className="p-4 flex items-center gap-3">
-              <span className="text-2xl">{k.icon}</span>
+              <div className={`h-10 w-10 rounded-lg ${k.bg} flex items-center justify-center shrink-0`}>
+                <k.Icon className={`h-5 w-5 ${k.color}`} />
+              </div>
               <div>
                 <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
                 <p className="text-xs text-gray-500">{k.label}</p>
@@ -340,7 +360,7 @@ function StudentDashboard() {
                 <Link key={c.courseId} href={`/courses/${c.courseId}`}
                   className="group rounded-lg border border-gray-200 overflow-hidden hover:border-blue-400 hover:shadow-sm transition-all">
                   <div className="h-20 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-3xl">📚</span>
+                    <BookOpen className="h-8 w-8 text-white/80" />
                   </div>
                   <div className="p-2">
                     <p className="text-xs font-medium text-gray-900 truncate group-hover:text-blue-600">{c.title}</p>

@@ -3,22 +3,55 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { SchoolFeatures, SchoolTheme } from "@/lib/theme";
+import {
+  LayoutDashboard,
+  BookOpen,
+  GraduationCap,
+  ClipboardList,
+  Brain,
+  BarChart2,
+  CheckSquare,
+  CalendarDays,
+  MessageSquare,
+  Megaphone,
+  TrendingUp,
+  Users,
+  Settings,
+  LogOut,
+  type LucideIcon,
+} from "lucide-react";
 
-const allNavItems = [
-  { href: "/dashboard",     label: "Dashboard",     icon: "🏠", roles: ["Admin","Teacher","Student","Parent"], feature: null },
-  { href: "/courses",       label: "Courses",       icon: "📚", roles: ["Admin","Teacher","Student"],          feature: "courses" },
-  { href: "/classes",       label: "Classes",       icon: "🏫", roles: ["Admin","Teacher","Student"],          feature: null },
-  { href: "/assignments",   label: "Assignments",   icon: "📝", roles: ["Admin","Teacher","Student"],          feature: null },
-  { href: "/quizzes",       label: "Quizzes",       icon: "🧠", roles: ["Admin","Teacher","Student"],          feature: "quizzes" },
-  { href: "/gradebook",     label: "Gradebook",     icon: "📊", roles: ["Admin","Teacher"],                    feature: null },
-  { href: "/attendance",    label: "Attendance",    icon: "✅", roles: ["Admin","Teacher"],                    feature: "attendance" },
-  { href: "/calendar",      label: "Calendar",      icon: "📅", roles: ["Admin","Teacher","Student","Parent"], feature: null },
-  { href: "/messages",      label: "Messages",      icon: "💬", roles: ["Admin","Teacher","Student","Parent"], feature: "messaging" },
-  { href: "/announcements", label: "Announcements", icon: "📢", roles: ["Admin","Teacher","Student","Parent"], feature: null },
-  { href: "/analytics",     label: "Analytics",     icon: "📈", roles: ["Admin"],                             feature: "analytics" },
-  { href: "/users",         label: "Users",         icon: "👥", roles: ["Admin"],                             feature: null },
-  { href: "/settings",      label: "Settings",      icon: "⚙️",  roles: ["Admin"],                             feature: null },
+interface NavItem {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  roles: string[];
+  feature: string | null;
+  group?: string;
+}
+
+const allNavItems: NavItem[] = [
+  { href: "/dashboard",     label: "Dashboard",     Icon: LayoutDashboard, roles: ["Admin","Teacher","Student","Parent"], feature: null,        group: "main" },
+  { href: "/courses",       label: "Courses",        Icon: BookOpen,        roles: ["Admin","Teacher","Student"],          feature: "courses",   group: "learn" },
+  { href: "/classes",       label: "Classes",        Icon: GraduationCap,   roles: ["Admin","Teacher","Student"],          feature: null,        group: "learn" },
+  { href: "/assignments",   label: "Assignments",    Icon: ClipboardList,   roles: ["Admin","Teacher","Student"],          feature: null,        group: "learn" },
+  { href: "/quizzes",       label: "Quizzes",        Icon: Brain,           roles: ["Admin","Teacher","Student"],          feature: "quizzes",   group: "learn" },
+  { href: "/gradebook",     label: "Gradebook",      Icon: BarChart2,       roles: ["Admin","Teacher"],                    feature: null,        group: "learn" },
+  { href: "/attendance",    label: "Attendance",     Icon: CheckSquare,     roles: ["Admin","Teacher"],                    feature: "attendance",group: "learn" },
+  { href: "/calendar",      label: "Calendar",       Icon: CalendarDays,    roles: ["Admin","Teacher","Student","Parent"], feature: null,        group: "tools" },
+  { href: "/messages",      label: "Messages",       Icon: MessageSquare,   roles: ["Admin","Teacher","Student","Parent"], feature: "messaging", group: "tools" },
+  { href: "/announcements", label: "Announcements",  Icon: Megaphone,       roles: ["Admin","Teacher","Student","Parent"], feature: null,        group: "tools" },
+  { href: "/analytics",     label: "Analytics",      Icon: TrendingUp,      roles: ["Admin"],                             feature: "analytics", group: "admin" },
+  { href: "/users",         label: "Users",          Icon: Users,           roles: ["Admin"],                             feature: null,        group: "admin" },
+  { href: "/settings",      label: "Settings",       Icon: Settings,        roles: ["Admin"],                             feature: null,        group: "admin" },
 ];
+
+const GROUP_LABELS: Record<string, string> = {
+  main: "",
+  learn: "Learning",
+  tools: "Communication",
+  admin: "Administration",
+};
 
 interface SidebarProps {
   user: { firstName: string; lastName: string; role: string; email: string };
@@ -30,7 +63,7 @@ export function Sidebar({ user, school }: SidebarProps) {
   const router = useRouter();
   const features = school.features ?? {};
   const theme = school.theme;
-  const primaryColor = theme?.primaryColor ?? "#1E40AF";
+  const primaryColor = theme?.primaryColor ?? "#2563eb";
 
   function logout() {
     document.cookie = "sp_token=; path=/; max-age=0";
@@ -43,57 +76,100 @@ export function Sidebar({ user, school }: SidebarProps) {
     return true;
   });
 
+  // Group items
+  const groupOrder = ["main", "learn", "tools", "admin"];
+  const grouped = groupOrder.map(g => ({
+    group: g,
+    label: GROUP_LABELS[g],
+    items: visibleItems.filter(i => i.group === g),
+  })).filter(g => g.items.length > 0);
+
+  const userInitials = `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase();
+
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-gray-200 bg-gray-900 text-white flex-shrink-0">
+    <aside
+      className="flex h-screen w-64 flex-col flex-shrink-0"
+      style={{ backgroundColor: "var(--sidebar-bg)", borderRight: "1px solid var(--sidebar-border)" }}
+    >
       {/* School header */}
-      <div className="border-b border-gray-700 p-5">
+      <div className="px-4 py-5" style={{ borderBottom: "1px solid var(--sidebar-border)" }}>
         <div className="flex items-center gap-3">
           {theme?.logoUrl ? (
-            <img src={theme.logoUrl} alt="Logo" className="h-8 w-8 rounded object-contain bg-white p-0.5" />
+            <img src={theme.logoUrl} alt="Logo" className="h-8 w-8 rounded-md object-contain bg-white p-0.5 shrink-0" />
           ) : (
-            <div className="h-8 w-8 rounded flex items-center justify-center text-white text-sm font-bold"
-              style={{ backgroundColor: primaryColor }}>
+            <div
+              className="h-8 w-8 rounded-md flex items-center justify-center text-white text-sm font-bold shrink-0"
+              style={{ backgroundColor: primaryColor }}
+            >
               {school.name.charAt(0)}
             </div>
           )}
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-400">School Portal</p>
-            <h1 className="text-sm font-bold truncate">{school.name}</h1>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">School Portal</p>
+            <h1 className="text-sm font-semibold text-white truncate leading-tight mt-0.5">{school.name}</h1>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 p-3 overflow-y-auto">
-        {visibleItems.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                active ? "text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"
-              )}
-              style={active ? { backgroundColor: primaryColor } : undefined}
-            >
-              <span className="text-base">{item.icon}</span>
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        {grouped.map(({ group, label, items }) => (
+          <div key={group}>
+            {label && (
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500 select-none">
+                {label}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {items.map((item) => {
+                const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                const { Icon } = item;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors group",
+                      active
+                        ? "text-white"
+                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                    )}
+                    style={active ? { backgroundColor: primaryColor } : undefined}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-colors",
+                        active ? "text-white" : "text-slate-500 group-hover:text-slate-300"
+                      )}
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* User footer */}
-      <div className="border-t border-gray-700 p-4">
-        <div className="mb-3">
-          <p className="text-sm font-medium truncate">{user.firstName} {user.lastName}</p>
-          <p className="text-xs text-gray-400 truncate">{user.role} · {user.email}</p>
+      <div className="px-3 py-3" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
+        <div className="flex items-center gap-3 rounded-md px-3 py-2.5 mb-1">
+          <div
+            className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+            style={{ backgroundColor: primaryColor }}
+          >
+            {userInitials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-slate-200 truncate leading-none">{user.firstName} {user.lastName}</p>
+            <p className="text-xs text-slate-500 truncate mt-0.5">{user.role}</p>
+          </div>
         </div>
         <button
           onClick={logout}
-          className="w-full rounded-md bg-gray-800 px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
         >
+          <LogOut className="h-4 w-4 shrink-0" />
           Sign out
         </button>
       </div>

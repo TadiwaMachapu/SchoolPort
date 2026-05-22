@@ -60,6 +60,20 @@ export const api = {
       request<User>(`/api/users/${id}`, { method: "PUT", body: JSON.stringify(body) }),
     delete: (id: string) =>
       request<void>(`/api/users/${id}`, { method: "DELETE" }),
+    directory: (q?: string) =>
+      request<DirectoryUser[]>(`/api/users/directory${toQueryString({ q })}`),
+    importCsv: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const token = typeof document !== "undefined"
+        ? (() => { const m = document.cookie.match(/(?:^|; )sp_token=([^;]*)/); return m ? decodeURIComponent(m[1]) : null; })()
+        : null;
+      return fetch(`${API_URL}/api/users/import-csv`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      }).then(r => r.ok ? r.json() as Promise<ImportCsvResult> : r.json().then((e: { message?: string; title?: string }) => { throw new Error(e.message ?? e.title ?? r.statusText); }));
+    },
   },
   subjects: {
     list: () => request<Subject[]>("/api/subjects"),
@@ -205,6 +219,19 @@ export const api = {
 };
 
 // Types
+export interface DirectoryUser {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  email: string;
+}
+
+export interface ImportCsvResult {
+  created: number;
+  failed: { row: number; reason: string }[];
+}
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;

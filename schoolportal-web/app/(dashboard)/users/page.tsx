@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { api, type User } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { Upload, Users as UsersIcon } from "lucide-react";
+import { api, type User, type ImportCsvResult } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +29,9 @@ export default function UsersPage() {
   const [role,    setRole]    = useState("");
   const [page,    setPage]    = useState(1);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [editUser,   setEditUser]   = useState<User | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -59,7 +61,13 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Users</h1>
           <p className="text-gray-500 mt-1">{total} total users</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>+ Add User</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)} className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          <Button onClick={() => setShowAdd(true)}>+ Add User</Button>
+        </div>
       </div>
 
       <Card className="mb-6">
@@ -92,7 +100,9 @@ export default function UsersPage() {
                 {users.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-16 text-center text-gray-400">
-                      <div className="text-4xl mb-2">👥</div>
+                      <div className="flex justify-center mb-3">
+                        <UsersIcon className="h-10 w-10 text-gray-300" />
+                      </div>
                       <p>No users found</p>
                     </td>
                   </tr>
@@ -155,8 +165,9 @@ export default function UsersPage() {
         </div>
       )}
 
-      {showAdd && <UserModal onClose={() => { setShowAdd(false); load(); }} />}
-      {editUser && <UserModal user={editUser} onClose={() => { setEditUser(null); load(); }} />}
+      {showAdd    && <UserModal onClose={() => { setShowAdd(false); load(); }} />}
+      {editUser   && <UserModal user={editUser} onClose={() => { setEditUser(null); load(); }} />}
+      {showImport && <ImportCsvModal onClose={() => { setShowImport(false); load(); }} />}
     </div>
   );
 }
@@ -259,6 +270,125 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+function ImportCsvModal({ onClose }: { onClose: () => void }) {
+  const fileRef   = useRef<HTMLInputElement>(null);
+  const [file,     setFile]     = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [result,   setResult]   = useState<ImportCsvResult | null>(null);
+  const [error,    setError]    = useState("");
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5128";
+
+  async function handleUpload() {
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    setResult(null);
+    try {
+      const res = await api.users.importCsv(file);
+      setResult(res);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900">Import Users via CSV</h2>
+          <button onClick={onClose} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Template download */}
+          <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-blue-900">Download template</p>
+              <p className="text-xs text-blue-600 mt-0.5">CSV with columns: FirstName, LastName, Email, Role</p>
+            </div>
+            <a
+              href={`${API_URL}/api/users/import-csv`}
+              download="users_import_template.csv"
+              className="shrink-0 text-sm font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2"
+            >
+              Download
+            </a>
+          </div>
+
+          {/* File picker */}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Upload CSV file</label>
+            <div
+              className="relative flex items-center gap-3 rounded-lg border-2 border-dashed border-gray-200 px-4 py-5 hover:border-blue-300 transition-colors cursor-pointer"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="h-5 w-5 text-gray-400 shrink-0" />
+              <div className="min-w-0 flex-1">
+                {file ? (
+                  <p className="text-sm text-gray-900 truncate">{file.name}</p>
+                ) : (
+                  <p className="text-sm text-gray-400">Click to choose a .csv file</p>
+                )}
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="sr-only"
+                onChange={e => setFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+          )}
+
+          {/* Results */}
+          {result && (
+            <div className="rounded-lg border border-gray-200 overflow-hidden">
+              <div className={`px-4 py-3 flex items-center gap-2 ${result.failed.length === 0 ? "bg-green-50 border-b border-green-100" : "bg-amber-50 border-b border-amber-100"}`}>
+                <span className={`text-sm font-semibold ${result.failed.length === 0 ? "text-green-800" : "text-amber-800"}`}>
+                  {result.created} user{result.created !== 1 ? "s" : ""} created
+                  {result.failed.length > 0 && `, ${result.failed.length} failed`}
+                </span>
+              </div>
+              {result.failed.length > 0 && (
+                <div className="max-h-40 overflow-y-auto divide-y divide-gray-50">
+                  {result.failed.map((f, i) => (
+                    <div key={i} className="px-4 py-2.5 text-sm">
+                      <span className="font-medium text-gray-600">Row {f.row}:</span>{" "}
+                      <span className="text-red-600">{f.reason}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            {result ? (
+              <Button className="flex-1" onClick={onClose}>Done</Button>
+            ) : (
+              <Button className="flex-1" onClick={handleUpload} disabled={!file} loading={uploading}>
+                Upload & Import
+              </Button>
+            )}
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+          </div>
+        </div>
       </div>
     </div>
   );

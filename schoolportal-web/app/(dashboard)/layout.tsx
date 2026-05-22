@@ -1,8 +1,30 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { NotificationBell } from "@/components/notification-bell";
 import type { SchoolFeatures, SchoolTheme } from "@/lib/theme";
+
+const PAGE_TITLES: Record<string, string> = {
+  dashboard:     "Dashboard",
+  courses:       "Courses",
+  classes:       "Classes",
+  assignments:   "Assignments",
+  quizzes:       "Quizzes",
+  gradebook:     "Gradebook",
+  attendance:    "Attendance",
+  calendar:      "Calendar",
+  messages:      "Messages",
+  announcements: "Announcements",
+  analytics:     "Analytics",
+  users:         "Users",
+  settings:      "Settings",
+  parent:        "Parent Portal",
+};
+
+function getPageTitle(pathname: string): string {
+  const segment = pathname.replace(/^\//, "").split("/")[0];
+  return PAGE_TITLES[segment] ?? segment.charAt(0).toUpperCase() + segment.slice(1);
+}
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
@@ -37,13 +59,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const token = cookieStore.get("sp_token")?.value;
   if (!token) redirect("/login");
 
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+  const pageTitle = getPageTitle(pathname);
+
   const [me, school] = await Promise.all([getMe(token), getSchool(token)]);
 
   if (!me) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900 p-8">
         <div className="text-center text-white max-w-md">
-          <div className="text-5xl mb-4">🔌</div>
+          <div className="flex justify-center mb-4">
+            <svg className="h-14 w-14 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+          </div>
           <h1 className="text-2xl font-bold mb-2">API server not reachable</h1>
           <p className="text-gray-400 mb-6">Make sure the backend is running:</p>
           <code className="block bg-gray-800 rounded-lg p-4 text-left text-sm text-green-400 mb-6">
@@ -73,19 +101,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="flex flex-1 flex-col overflow-hidden">
 
         {/* Sticky top header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span className="font-medium text-gray-900">{me.school?.name ?? "School Portal"}</span>
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-100 bg-white px-6 gap-4">
+          {/* Left: breadcrumb */}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs text-gray-400 font-medium hidden sm:block truncate">{me.school?.name ?? "School Portal"}</span>
+            <span className="text-gray-300 hidden sm:block">/</span>
+            <h2 className="text-sm font-semibold text-gray-900 truncate">{pageTitle}</h2>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Right: notification bell + user */}
+          <div className="flex items-center gap-3 shrink-0">
             <NotificationBell />
-            <div className="flex items-center gap-2.5 pl-3 border-l border-gray-200">
-              <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                style={{ backgroundColor: theme.primaryColor }}>
+            <div className="flex items-center gap-2.5 pl-3 border-l border-gray-100">
+              <div
+                className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                style={{ backgroundColor: theme.primaryColor }}
+              >
                 {me.user.firstName?.[0]}{me.user.lastName?.[0]}
               </div>
               <div className="hidden sm:block leading-tight">
-                <p className="text-sm font-medium text-gray-900 leading-none">
+                <p className="text-sm font-semibold text-gray-900 leading-none">
                   {me.user.firstName} {me.user.lastName}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{me.user.role}</p>

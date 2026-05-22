@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { api, type MessageThread, type ChatMessage, type User } from "@/lib/api";
+import { MessageSquare } from "lucide-react";
+import { api, type MessageThread, type ChatMessage, type DirectoryUser } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,7 +95,9 @@ export default function MessagesPage() {
               </div>
             ) : threads.length === 0 ? (
               <div className="p-8 text-center text-gray-400">
-                <div className="text-4xl mb-3">💬</div>
+                <div className="flex justify-center mb-3">
+                  <MessageSquare className="h-10 w-10 text-gray-300" />
+                </div>
                 <p className="text-sm font-medium text-gray-500">No conversations yet</p>
                 <p className="text-xs text-gray-400 mt-1">Start a new message to connect</p>
               </div>
@@ -135,7 +138,9 @@ export default function MessagesPage() {
           {!active ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="text-5xl mb-4">💬</div>
+                <div className="flex justify-center mb-4">
+                  <MessageSquare className="h-12 w-12 text-gray-300" />
+                </div>
                 <p className="text-base font-semibold text-gray-600">Select a conversation</p>
                 <p className="text-sm text-gray-400 mt-1">Choose a thread from the left to start messaging</p>
                 <Button className="mt-4" size="sm" onClick={() => setShowNewDM(true)}>+ New Message</Button>
@@ -206,22 +211,26 @@ export default function MessagesPage() {
 }
 
 function NewDMModal({ onClose }: { onClose: (thread?: MessageThread) => void }) {
-  const [users,     setUsers]     = useState<User[]>([]);
+  const [results,   setResults]   = useState<DirectoryUser[]>([]);
   const [q,         setQ]         = useState("");
-  const [selected,  setSelected]  = useState<User | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [selected,  setSelected]  = useState<DirectoryUser | null>(null);
   const [subject,   setSubject]   = useState("");
   const [creating,  setCreating]  = useState(false);
   const [error,     setError]     = useState("");
 
+  // Debounced live search against the directory endpoint
   useEffect(() => {
-    api.users.list({ pageSize: 50 })
-      .then(r => setUsers(r.items))
-      .catch(() => {});
-  }, []);
-
-  const filtered = q.trim()
-    ? users.filter(u => `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(q.toLowerCase()))
-    : users;
+    if (!q.trim()) { setResults([]); return; }
+    const timer = setTimeout(() => {
+      setSearching(true);
+      api.users.directory(q.trim())
+        .then(r => setResults(r))
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   async function create() {
     if (!selected) return;
@@ -259,7 +268,7 @@ function NewDMModal({ onClose }: { onClose: (thread?: MessageThread) => void }) 
                   {selected.firstName[0]}{selected.lastName[0]}
                 </div>
                 <span className="text-sm font-medium text-blue-900">{selected.firstName} {selected.lastName}</span>
-                <button onClick={() => setSelected(null)} className="ml-auto text-blue-400 hover:text-blue-600">×</button>
+                <button onClick={() => { setSelected(null); setResults([]); }} className="ml-auto text-blue-400 hover:text-blue-600">×</button>
               </div>
             ) : (
               <Input placeholder="Search by name or email…" value={q} onChange={e => setQ(e.target.value)} autoFocus />
@@ -268,10 +277,12 @@ function NewDMModal({ onClose }: { onClose: (thread?: MessageThread) => void }) 
 
           {!selected && q.trim() && (
             <div className="rounded-lg border border-gray-200 overflow-hidden max-h-48 overflow-y-auto">
-              {filtered.length === 0 ? (
+              {searching ? (
+                <p className="p-3 text-sm text-gray-400 text-center">Searching…</p>
+              ) : results.length === 0 ? (
                 <p className="p-3 text-sm text-gray-400 text-center">No users found</p>
-              ) : filtered.slice(0, 8).map(u => (
-                <button key={u.userId} onClick={() => { setSelected(u); setQ(""); }}
+              ) : results.slice(0, 8).map(u => (
+                <button key={u.userId} onClick={() => { setSelected(u); setQ(""); setResults([]); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors text-left border-b border-gray-50 last:border-0">
                   <div className="h-7 w-7 rounded-full bg-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center">
                     {u.firstName[0]}{u.lastName[0]}

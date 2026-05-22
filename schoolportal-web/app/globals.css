@@ -4,6 +4,10 @@
   --background: #ffffff;
   --foreground: #171717;
   --color-primary: #1E40AF;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --sidebar-bg: #0f172a;
+  --sidebar-border: #1e293b;
 }
 
 @theme inline {

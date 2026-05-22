@@ -6,13 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
+import { getClientRole } from "@/lib/utils";
 
 export default function ClassesPage() {
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [total,   setTotal]   = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
+  const [classes,   setClasses]   = useState<Class[]>([]);
+  const [total,     setTotal]     = useState(0);
+  const [loading,   setLoading]   = useState(true);
+  const [showAdd,   setShowAdd]   = useState(false);
   const [editClass, setEditClass] = useState<Class | null>(null);
+  const [role,      setRole]      = useState("");
+
+  useEffect(() => { setRole(getClientRole()); }, []);
 
   async function load() {
     setLoading(true);
@@ -27,6 +31,8 @@ export default function ClassesPage() {
 
   useEffect(() => { load(); }, []);
 
+  const isAdmin = role === "Admin";
+
   return (
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
@@ -34,7 +40,7 @@ export default function ClassesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Classes</h1>
           <p className="text-gray-500 mt-1">{total} class{total !== 1 ? "es" : ""}</p>
         </div>
-        <Button onClick={() => setShowAdd(true)}>+ Add Class</Button>
+        {isAdmin && <Button onClick={() => setShowAdd(true)}>+ Add Class</Button>}
       </div>
 
       {loading ? (
@@ -43,8 +49,10 @@ export default function ClassesPage() {
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
           <div className="text-5xl mb-4">🏫</div>
           <p className="text-lg font-medium text-gray-700">No classes yet</p>
-          <p className="text-sm text-gray-400 mt-1">Create the first class for your school</p>
-          <Button className="mt-4" onClick={() => setShowAdd(true)}>+ Add Class</Button>
+          <p className="text-sm text-gray-400 mt-1">
+            {isAdmin ? "Create the first class for your school" : "Classes created by admins will appear here"}
+          </p>
+          {isAdmin && <Button className="mt-4" onClick={() => setShowAdd(true)}>+ Add Class</Button>}
         </div>
       ) : (
         <Card>
@@ -52,7 +60,7 @@ export default function ClassesPage() {
             <table className="w-full text-sm">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  {["Class Name", "Grade", "Year", "Teacher", "Students", "Capacity", "Actions"].map(h => (
+                  {["Class Name", "Grade", "Year", "Teacher", "Students", "Capacity", ...(isAdmin ? ["Actions"] : [])].map(h => (
                     <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -81,12 +89,14 @@ export default function ClassesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500">{c.maxCapacity ?? "—"}</td>
-                    <td className="px-6 py-4">
-                      <button onClick={() => setEditClass(c)}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline">
-                        Edit
-                      </button>
-                    </td>
+                    {isAdmin && (
+                      <td className="px-6 py-4">
+                        <button onClick={() => setEditClass(c)}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                          Edit
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -95,7 +105,7 @@ export default function ClassesPage() {
         </Card>
       )}
 
-      {(showAdd || editClass) && (
+      {isAdmin && (showAdd || editClass) && (
         <ClassModal
           cls={editClass ?? undefined}
           onClose={() => { setShowAdd(false); setEditClass(null); load(); }}

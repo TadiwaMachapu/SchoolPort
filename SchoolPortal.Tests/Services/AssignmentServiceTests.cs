@@ -11,9 +11,16 @@ namespace SchoolPortal.Tests.Services;
 
 public class AssignmentServiceTests
 {
+    private static readonly Guid TestSchoolId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+    private static readonly Guid TestClassId = Guid.Parse("00000000-0000-0000-0000-000000000003");
+    private static readonly Guid TestSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000004");
+    private static readonly Guid TestClassSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000005");
+
     private readonly SchoolPortalDbContext _context;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<ILogger<AssignmentService>> _mockLogger;
+    private readonly Mock<INotificationService> _mockNotifications;
     private readonly AssignmentService _service;
 
     public AssignmentServiceTests()
@@ -25,11 +32,11 @@ public class AssignmentServiceTests
         _context = new SchoolPortalDbContext(options);
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockLogger = new Mock<ILogger<AssignmentService>>();
-        _service = new AssignmentService(_context, _mockCurrentUser.Object, _mockLogger.Object);
+        _mockNotifications = new Mock<INotificationService>();
+        _service = new AssignmentService(_context, _mockCurrentUser.Object, _mockLogger.Object, _mockNotifications.Object);
 
-        // Setup default mock values
-        _mockCurrentUser.Setup(x => x.SchoolId).Returns(1);
-        _mockCurrentUser.Setup(x => x.UserId).Returns(1);
+        _mockCurrentUser.Setup(x => x.SchoolId).Returns(TestSchoolId);
+        _mockCurrentUser.Setup(x => x.UserId).Returns(TestUserId);
         _mockCurrentUser.Setup(x => x.Role).Returns("Teacher");
 
         SeedTestData();
@@ -39,7 +46,7 @@ public class AssignmentServiceTests
     {
         var school = new School
         {
-            SchoolId = 1,
+            SchoolId = TestSchoolId,
             Name = "Test School",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -47,8 +54,8 @@ public class AssignmentServiceTests
 
         var user = new User
         {
-            UserId = 1,
-            SchoolId = 1,
+            UserId = TestUserId,
+            SchoolId = TestSchoolId,
             Email = "teacher@test.com",
             PasswordHash = "hash",
             FirstName = "Test",
@@ -60,8 +67,8 @@ public class AssignmentServiceTests
 
         var classEntity = new Class
         {
-            ClassId = 1,
-            SchoolId = 1,
+            ClassId = TestClassId,
+            SchoolId = TestSchoolId,
             Name = "Grade 10A",
             GradeLevel = 10,
             CreatedAt = DateTime.UtcNow
@@ -69,8 +76,8 @@ public class AssignmentServiceTests
 
         var subject = new Subject
         {
-            SubjectId = 1,
-            SchoolId = 1,
+            SubjectId = TestSubjectId,
+            SchoolId = TestSchoolId,
             Name = "Mathematics",
             Code = "MATH",
             CreatedAt = DateTime.UtcNow
@@ -78,10 +85,10 @@ public class AssignmentServiceTests
 
         var classSubject = new ClassSubject
         {
-            ClassSubjectId = 1,
-            ClassId = 1,
-            SubjectId = 1,
-            SchoolId = 1,
+            ClassSubjectId = TestClassSubjectId,
+            ClassId = TestClassId,
+            SubjectId = TestSubjectId,
+            SchoolId = TestSchoolId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -99,7 +106,7 @@ public class AssignmentServiceTests
         // Arrange
         var request = new CreateAssignmentRequest
         {
-            ClassSubjectId = 1,
+            ClassSubjectId = TestClassSubjectId,
             Title = "Test Assignment",
             Description = "Test Description",
             DueAt = DateTime.UtcNow.AddDays(7),
@@ -122,14 +129,14 @@ public class AssignmentServiceTests
         // Arrange
         var request = new CreateAssignmentRequest
         {
-            ClassSubjectId = 1,
+            ClassSubjectId = TestClassSubjectId,
             Title = "Test Assignment",
             DueAt = DateTime.UtcNow.AddDays(-1),
             MaxMarks = 100
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() =>
             _service.CreateAssignmentAsync(request));
     }
 
@@ -139,29 +146,29 @@ public class AssignmentServiceTests
         // Arrange
         var request = new CreateAssignmentRequest
         {
-            ClassSubjectId = 1,
+            ClassSubjectId = TestClassSubjectId,
             Title = "Test Assignment",
             DueAt = DateTime.UtcNow.AddDays(7),
             MaxMarks = 0
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() =>
             _service.CreateAssignmentAsync(request));
     }
 
     [Fact]
     public async Task GetAssignments_ShouldReturnPaginatedResults()
     {
-        // Arrange - Create test assignment
+        // Arrange
         var assignment = new Assignment
         {
-            ClassSubjectId = 1,
-            SchoolId = 1,
+            ClassSubjectId = TestClassSubjectId,
+            SchoolId = TestSchoolId,
             Title = "Test Assignment",
             DueAt = DateTime.UtcNow.AddDays(7),
             MaxMarks = 100,
-            CreatedByUserId = 1,
+            CreatedByUserId = TestUserId,
             CreatedAt = DateTime.UtcNow
         };
         _context.Assignments.Add(assignment);
@@ -183,12 +190,12 @@ public class AssignmentServiceTests
         // Arrange
         var assignment = new Assignment
         {
-            ClassSubjectId = 1,
-            SchoolId = 1,
+            ClassSubjectId = TestClassSubjectId,
+            SchoolId = TestSchoolId,
             Title = "Test Assignment",
             DueAt = DateTime.UtcNow.AddDays(7),
             MaxMarks = 100,
-            CreatedByUserId = 1,
+            CreatedByUserId = TestUserId,
             CreatedAt = DateTime.UtcNow
         };
         _context.Assignments.Add(assignment);
@@ -206,7 +213,7 @@ public class AssignmentServiceTests
     public async Task GetAssignmentById_NonExistingId_ShouldThrowException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(() => 
-            _service.GetAssignmentByIdAsync(999));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            _service.GetAssignmentByIdAsync(Guid.NewGuid()));
     }
 }

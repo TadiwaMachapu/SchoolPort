@@ -11,5 +11,5 @@ public class AssignmentDto
     public string ClassName { get; set; } = null!;
     public string SubjectName { get; set; } = null!;
     public string CreatedByName { get; set; } = null!;
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; }
 }

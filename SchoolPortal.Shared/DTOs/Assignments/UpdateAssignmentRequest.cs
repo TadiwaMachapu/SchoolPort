@@ -6,5 +6,5 @@ public class UpdateAssignmentRequest
     public string? Description { get; set; }
     public DateTime DueAt { get; set; }
     public decimal MaxMarks { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; }
 }

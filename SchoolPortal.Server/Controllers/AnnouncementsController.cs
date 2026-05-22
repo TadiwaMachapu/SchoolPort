@@ -37,4 +37,24 @@ public class AnnouncementsController : ControllerBase
         var announcement = await _announcementService.CreateAnnouncementAsync(request);
         return CreatedAtAction(nameof(GetAnnouncements), new { }, announcement);
     }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,Teacher")]
+    [ProducesResponseType(typeof(AnnouncementDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateAnnouncement(Guid id, [FromBody] UpdateAnnouncementRequest request)
+    {
+        var announcement = await _announcementService.UpdateAnnouncementAsync(id, request);
+        return Ok(announcement);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin,Teacher")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAnnouncement(Guid id)
+    {
+        await _announcementService.DeleteAnnouncementAsync(id);
+        return NoContent();
+    }
 }

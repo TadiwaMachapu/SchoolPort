@@ -24,4 +24,22 @@ public class SchoolsController : ControllerBase
         var school = await _schoolService.GetCurrentSchoolAsync();
         return Ok(school);
     }
+
+    [HttpPut("theme")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SchoolDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateTheme([FromBody] UpdateSchoolThemeRequest request)
+    {
+        var school = await _schoolService.UpdateThemeAsync(request);
+        return Ok(school);
+    }
+
+    [HttpPut("features")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(SchoolDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateFeatures([FromBody] UpdateSchoolFeaturesRequest request)
+    {
+        var school = await _schoolService.UpdateFeaturesAsync(request);
+        return Ok(school);
+    }
 }

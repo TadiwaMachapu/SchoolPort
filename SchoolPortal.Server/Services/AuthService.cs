@@ -27,34 +27,22 @@ public class AuthService : IAuthService
         try
         {
             _logger.LogInformation("Login attempt for email: {Email}", request.Email);
-            
+
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
-            _logger.LogInformation("User found: {Found}, Email: {Email}", user != null, request.Email);
-            
             if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
             {
                 _logger.LogWarning("Invalid credentials for email: {Email}", request.Email);
                 throw new UnauthorizedAccessException("Invalid credentials");
             }
 
-            _logger.LogInformation("Password verified for email: {Email}", request.Email);
-            
-            _logger.LogInformation("Generating access token...");
             var accessToken = GenerateAccessToken(user);
-            _logger.LogInformation("Access token generated");
-            
             var refreshToken = GenerateRefreshToken();
-            _logger.LogInformation("Refresh token generated");
 
-            // Update last login
-            _logger.LogInformation("Updating last login time...");
             user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Last login time updated");
 
-            _logger.LogInformation("Creating login response...");
             return new LoginResponse
             {
                 AccessToken = accessToken,
@@ -78,11 +66,9 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<LoginResponse> RefreshTokenAsync(string refreshToken)
+    public Task<LoginResponse> RefreshTokenAsync(string refreshToken)
     {
-        // For MVP, we'll implement a simplified refresh mechanism
-        // In production, store refresh tokens in database
-        throw new NotImplementedException("Refresh token not implemented in MVP");
+        throw new UnauthorizedAccessException("Refresh tokens are not supported; please log in again");
     }
 
     private string GenerateAccessToken(Data.Entities.User user)
@@ -111,7 +97,7 @@ public class AuthService : IAuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private string GenerateRefreshToken()
+    private static string GenerateRefreshToken()
     {
         var randomNumber = new byte[32];
         using var rng = RandomNumberGenerator.Create();
@@ -119,20 +105,11 @@ public class AuthService : IAuthService
         return Convert.ToBase64String(randomNumber);
     }
 
-    private bool VerifyPassword(string password, string passwordHash)
+    private static bool VerifyPassword(string password, string passwordHash)
     {
         if (string.IsNullOrEmpty(passwordHash))
-        {
             return false;
-        }
 
-        // Allow plain-text match for seeded demo users
-        if (password == passwordHash)
-        {
-            return true;
-        }
-
-        // For other users, verify BCrypt hash
         return BCrypt.Net.BCrypt.Verify(password, passwordHash);
     }
 }

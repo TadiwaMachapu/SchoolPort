@@ -10,7 +10,7 @@ public class Grade
     public Guid GradedByUserId { get; set; }
     public DateTime GradedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     // Navigation properties
     public virtual Submission Submission { get; set; } = null!;

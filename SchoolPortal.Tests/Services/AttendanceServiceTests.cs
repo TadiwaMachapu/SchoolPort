@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SchoolPortal.Data;
@@ -12,9 +11,13 @@ namespace SchoolPortal.Tests.Services;
 
 public class AttendanceServiceTests
 {
+    private static readonly Guid TestSchoolId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+    private static readonly Guid TestClassId = Guid.Parse("00000000-0000-0000-0000-000000000003");
+    private static readonly Guid TestStudentId = Guid.Parse("00000000-0000-0000-0000-000000000004");
+
     private readonly SchoolPortalDbContext _context;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
-    private readonly Mock<IConfiguration> _mockConfiguration;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly AttendanceService _service;
 
@@ -26,19 +29,14 @@ public class AttendanceServiceTests
 
         _context = new SchoolPortalDbContext(options);
         _mockCurrentUser = new Mock<ICurrentUserService>();
-        _mockConfiguration = new Mock<IConfiguration>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
 
-        // Setup mocks
-        _mockCurrentUser.Setup(x => x.SchoolId).Returns(1);
-        _mockCurrentUser.Setup(x => x.UserId).Returns(1);
-        _mockConfiguration.Setup(x => x.GetConnectionString("DefaultConnection"))
-            .Returns("Server=localhost;Database=Test;");
+        _mockCurrentUser.Setup(x => x.SchoolId).Returns(TestSchoolId);
+        _mockCurrentUser.Setup(x => x.UserId).Returns(TestUserId);
 
         _service = new AttendanceService(
-            _context, 
-            _mockCurrentUser.Object, 
-            _mockConfiguration.Object,
+            _context,
+            _mockCurrentUser.Object,
             _mockLogger.Object);
 
         SeedTestData();
@@ -48,7 +46,7 @@ public class AttendanceServiceTests
     {
         var school = new School
         {
-            SchoolId = 1,
+            SchoolId = TestSchoolId,
             Name = "Test School",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -56,16 +54,16 @@ public class AttendanceServiceTests
 
         var classEntity = new Class
         {
-            ClassId = 1,
-            SchoolId = 1,
+            ClassId = TestClassId,
+            SchoolId = TestSchoolId,
             Name = "Grade 10A",
             CreatedAt = DateTime.UtcNow
         };
 
         var user = new User
         {
-            UserId = 1,
-            SchoolId = 1,
+            UserId = TestUserId,
+            SchoolId = TestSchoolId,
             Email = "student@test.com",
             PasswordHash = "hash",
             FirstName = "Test",
@@ -77,9 +75,9 @@ public class AttendanceServiceTests
 
         var student = new Student
         {
-            StudentId = 1,
-            UserId = 1,
-            SchoolId = 1,
+            StudentId = TestStudentId,
+            UserId = TestUserId,
+            SchoolId = TestSchoolId,
             StudentNumber = "S001",
             CreatedAt = DateTime.UtcNow
         };
@@ -98,9 +96,9 @@ public class AttendanceServiceTests
         var date = DateTime.UtcNow.Date;
         var attendance = new Attendance
         {
-            ClassId = 1,
-            StudentId = 1,
-            SchoolId = 1,
+            ClassId = TestClassId,
+            StudentId = TestStudentId,
+            SchoolId = TestSchoolId,
             Date = date,
             Status = 1,
             CreatedAt = DateTime.UtcNow
@@ -109,7 +107,7 @@ public class AttendanceServiceTests
         await _context.SaveChangesAsync();
 
         // Act
-        var result = await _service.GetAttendanceAsync(1, date);
+        var result = await _service.GetAttendanceAsync(TestClassId, date);
 
         // Assert
         Assert.NotNull(result);
@@ -125,7 +123,7 @@ public class AttendanceServiceTests
         var date = DateTime.UtcNow.Date.AddDays(-30);
 
         // Act
-        var result = await _service.GetAttendanceAsync(1, date);
+        var result = await _service.GetAttendanceAsync(TestClassId, date);
 
         // Assert
         Assert.NotNull(result);
@@ -145,8 +143,8 @@ public class AttendanceServiceTests
             {
                 new AttendanceItem
                 {
-                    ClassId = 1,
-                    StudentId = 1,
+                    ClassId = TestClassId,
+                    StudentId = TestStudentId,
                     Date = DateTime.UtcNow.Date,
                     Status = invalidStatus
                 }
@@ -154,7 +152,7 @@ public class AttendanceServiceTests
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() =>
             _service.BulkUpsertAttendanceAsync(request));
     }
 }

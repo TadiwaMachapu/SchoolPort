@@ -41,4 +41,24 @@ public class UsersController : ControllerBase
         var user = await _userService.CreateUserAsync(request);
         return CreatedAtAction(nameof(GetUsers), new { }, user);
     }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
+    {
+        var user = await _userService.UpdateUserAsync(id, request);
+        return Ok(user);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteUser(Guid id)
+    {
+        await _userService.DeleteUserAsync(id);
+        return NoContent();
+    }
 }

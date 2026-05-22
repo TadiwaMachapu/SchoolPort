@@ -8,7 +8,7 @@ public class ClassSubject
     public Guid? TeacherId { get; set; }
     public Guid SchoolId { get; set; }
     public DateTime CreatedAt { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     // Navigation properties
     public virtual Class Class { get; set; } = null!;

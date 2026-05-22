@@ -11,23 +11,38 @@ namespace SchoolPortal.Server.Controllers;
 public class SubmissionsController : ControllerBase
 {
     private readonly ISubmissionService _submissionService;
+    private readonly IStorageService _storageService;
+    private readonly ICurrentUserService _currentUser;
 
-    public SubmissionsController(ISubmissionService submissionService)
+    public SubmissionsController(
+        ISubmissionService submissionService,
+        IStorageService storageService,
+        ICurrentUserService currentUser)
     {
         _submissionService = submissionService;
+        _storageService = storageService;
+        _currentUser = currentUser;
     }
 
     [HttpPost]
     [Authorize(Roles = "Student")]
+    [RequestSizeLimit(52_428_800)] // 50 MB
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateSubmission(
         [FromForm] Guid assignmentId,
         [FromForm] string? comments,
-        [FromForm] IFormFile? file)
+        IFormFile? file)
     {
-        // For MVP, file upload handling is simplified
-        // In production, upload to blob storage
-        var submissionId = await _submissionService.CreateSubmissionAsync(assignmentId, comments);
+        string? fileUrl = null;
+        string? fileName = null;
+
+        if (file != null && file.Length > 0)
+        {
+            (fileUrl, fileName) = await _storageService.UploadSubmissionFileAsync(
+                _currentUser.SchoolId, assignmentId, _currentUser.UserId, file);
+        }
+
+        var submissionId = await _submissionService.CreateSubmissionAsync(assignmentId, comments, fileUrl, fileName);
         return CreatedAtAction(nameof(CreateSubmission), new { }, new { submissionId });
     }
 
@@ -38,5 +53,16 @@ public class SubmissionsController : ControllerBase
     {
         var submissions = await _submissionService.GetSubmissionsByAssignmentAsync(assignmentId);
         return Ok(submissions);
+    }
+
+    [HttpGet("by-assignment/{assignmentId}/mine")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(SubmissionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMySubmission(Guid assignmentId)
+    {
+        var submission = await _submissionService.GetMySubmissionAsync(assignmentId);
+        if (submission == null) return NotFound();
+        return Ok(submission);
     }
 }

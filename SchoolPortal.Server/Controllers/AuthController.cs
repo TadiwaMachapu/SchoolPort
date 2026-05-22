@@ -40,10 +40,17 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
     {
-        var response = await _authService.RefreshTokenAsync(request.RefreshToken);
-        return Ok(response);
+        try
+        {
+            var response = await _authService.RefreshTokenAsync(request.RefreshToken);
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
     }
-    
+
     [HttpGet("test")]
     public IActionResult Test()
     {

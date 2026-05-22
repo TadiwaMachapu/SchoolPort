@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Hubs;
 using SchoolPortal.Server.Middleware;
 using SchoolPortal.Server.Services;
 using Serilog;
@@ -22,9 +24,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Serilog
 builder.Host.UseSerilog();
 
-// Add DbContext
+// Add DbContext — EnableDynamicJson() required for Npgsql 8 to deserialize jsonb columns into POCOs
+var npgsqlDataSource = new NpgsqlDataSourceBuilder(
+        builder.Configuration.GetConnectionString("DefaultConnection"))
+    .EnableDynamicJson()
+    .Build();
+
 builder.Services.AddDbContext<SchoolPortalDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(npgsqlDataSource));
 
 // Add Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -45,6 +52,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// SSO — Google & Microsoft 365 (add to existing authentication)
+builder.Services.AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = builder.Configuration["Sso:Google:ClientId"] ?? "CHANGE_ME";
+        options.ClientSecret = builder.Configuration["Sso:Google:ClientSecret"] ?? "CHANGE_ME";
+    })
+    .AddMicrosoftAccount(options =>
+    {
+        options.ClientId = builder.Configuration["Sso:Microsoft:ClientId"] ?? "CHANGE_ME";
+        options.ClientSecret = builder.Configuration["Sso:Microsoft:ClientSecret"] ?? "CHANGE_ME";
+    });
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
@@ -53,7 +73,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" })
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowCredentials()
+              .SetIsOriginAllowed(_ => true); // required for SignalR WebSocket
     });
 });
 
@@ -66,8 +87,13 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 // Add HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
+// Add HttpClient for Supabase Storage and Anthropic AI
+builder.Services.AddHttpClient("supabase-storage");
+builder.Services.AddHttpClient("anthropic");
+
 // Add Services
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ISchoolService, SchoolService>();
@@ -78,6 +104,15 @@ builder.Services.AddScoped<ISubmissionService, SubmissionService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<IQuizService, QuizService>();
+builder.Services.AddScoped<IAiService, AiService>();
+
+// Add SignalR
+builder.Services.AddSignalR();
+
+// Add Notification Service
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Add ProblemDetails
 builder.Services.AddProblemDetails();
@@ -121,10 +156,10 @@ builder.Services.AddSwaggerGen(c =>
 
 // Add Health Checks
 builder.Services.AddHealthChecks()
-    .AddSqlServer(
+    .AddNpgSql(
         connectionString: builder.Configuration.GetConnectionString("DefaultConnection")!,
-        name: "sql",
-        tags: new[] { "db", "sql", "sqlserver" });
+        name: "postgres",
+        tags: new[] { "db", "postgres", "supabase" });
 
 // Add Response Caching
 builder.Services.AddResponseCaching();
@@ -155,15 +190,20 @@ app.UseCors("AllowSPA");
 // Use Response Caching
 app.UseResponseCaching();
 
-// Use Authentication & Authorization
+// Use Authentication
 app.UseAuthentication();
-app.UseAuthorization();
 
-// Use Tenant Middleware
+// Use Tenant Middleware (after auth so JWT claims are populated)
 app.UseMiddleware<TenantMiddleware>();
+
+// Use Authorization
+app.UseAuthorization();
 
 // Map Controllers
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 // Map Health Checks
 app.MapHealthChecks("/health");

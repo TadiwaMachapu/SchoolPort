@@ -12,7 +12,7 @@ public class Assignment
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid CreatedByUserId { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     // Navigation properties
     public virtual ClassSubject ClassSubject { get; set; } = null!;

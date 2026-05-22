@@ -7,7 +7,6 @@ using SchoolPortal.Shared.DTOs.Assignments;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using Xunit;
 
@@ -15,6 +14,12 @@ namespace SchoolPortal.Tests.Integration;
 
 public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
+    private static readonly Guid TestSchoolId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+    private static readonly Guid TestClassId = Guid.Parse("00000000-0000-0000-0000-000000000003");
+    private static readonly Guid TestSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000004");
+    private static readonly Guid TestClassSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000005");
+
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
@@ -24,22 +29,19 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
         {
             builder.ConfigureServices(services =>
             {
-                // Remove the existing DbContext
                 var descriptor = services.SingleOrDefault(
                     d => d.ServiceType == typeof(DbContextOptions<SchoolPortalDbContext>));
-                
+
                 if (descriptor != null)
                 {
                     services.Remove(descriptor);
                 }
 
-                // Add in-memory database for testing
                 services.AddDbContext<SchoolPortalDbContext>(options =>
                 {
                     options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid());
                 });
 
-                // Seed test data
                 var sp = services.BuildServiceProvider();
                 using var scope = sp.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<SchoolPortalDbContext>();
@@ -54,7 +56,7 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
     {
         var school = new School
         {
-            SchoolId = 1,
+            SchoolId = TestSchoolId,
             Name = "Test School",
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -62,8 +64,8 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
         var user = new User
         {
-            UserId = 1,
-            SchoolId = 1,
+            UserId = TestUserId,
+            SchoolId = TestSchoolId,
             Email = "test@school.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
             FirstName = "Test",
@@ -75,16 +77,16 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
         var classEntity = new Class
         {
-            ClassId = 1,
-            SchoolId = 1,
+            ClassId = TestClassId,
+            SchoolId = TestSchoolId,
             Name = "Grade 10A",
             CreatedAt = DateTime.UtcNow
         };
 
         var subject = new Subject
         {
-            SubjectId = 1,
-            SchoolId = 1,
+            SubjectId = TestSubjectId,
+            SchoolId = TestSchoolId,
             Name = "Mathematics",
             Code = "MATH",
             CreatedAt = DateTime.UtcNow
@@ -92,10 +94,10 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
         var classSubject = new ClassSubject
         {
-            ClassSubjectId = 1,
-            ClassId = 1,
-            SubjectId = 1,
-            SchoolId = 1,
+            ClassSubjectId = TestClassSubjectId,
+            ClassId = TestClassId,
+            SubjectId = TestSubjectId,
+            SchoolId = TestSchoolId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -132,7 +134,7 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
         var request = new CreateAssignmentRequest
         {
-            ClassSubjectId = 1,
+            ClassSubjectId = TestClassSubjectId,
             Title = "Integration Test Assignment",
             Description = "Test Description",
             DueAt = DateTime.UtcNow.AddDays(7),
@@ -144,7 +146,7 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        
+
         var content = await response.Content.ReadAsStringAsync();
         var assignment = JsonSerializer.Deserialize<JsonElement>(content);
         Assert.Equal("Integration Test Assignment", assignment.GetProperty("title").GetString());
@@ -183,9 +185,9 @@ public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Progr
 
         var request = new CreateAssignmentRequest
         {
-            ClassSubjectId = 1,
+            ClassSubjectId = TestClassSubjectId,
             Title = "Test Assignment",
-            DueAt = DateTime.UtcNow.AddDays(-1), // Past date
+            DueAt = DateTime.UtcNow.AddDays(-1),
             MaxMarks = 100
         };
 

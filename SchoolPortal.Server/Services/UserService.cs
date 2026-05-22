@@ -32,9 +32,9 @@ public class UserService : IUserService
 
         if (!string.IsNullOrWhiteSpace(q))
         {
-            query = query.Where(u => 
-                u.Email.Contains(q) || 
-                u.FirstName.Contains(q) || 
+            query = query.Where(u =>
+                u.Email.Contains(q) ||
+                u.FirstName.Contains(q) ||
                 u.LastName.Contains(q));
         }
 
@@ -69,7 +69,6 @@ public class UserService : IUserService
 
     public async Task<UserDto> CreateUserAsync(CreateUserRequest request)
     {
-        // Check if email already exists for this school
         var exists = await _context.Users
             .AnyAsync(u => u.SchoolId == _currentUser.SchoolId && u.Email == request.Email);
 
@@ -104,6 +103,51 @@ public class UserService : IUserService
             IsActive = user.IsActive,
             CreatedAt = user.CreatedAt
         };
+    }
+
+    public async Task<UserDto> UpdateUserAsync(Guid id, UpdateUserRequest request)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.UserId == id && u.SchoolId == _currentUser.SchoolId);
+
+        if (user == null)
+            throw new KeyNotFoundException("User not found");
+
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
+        user.Role = request.Role;
+        user.IsActive = request.IsActive;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return new UserDto
+        {
+            UserId = user.UserId,
+            SchoolId = user.SchoolId,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            CreatedAt = user.CreatedAt,
+            LastLoginAt = user.LastLoginAt
+        };
+    }
+
+    public async Task DeleteUserAsync(Guid id)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.UserId == id && u.SchoolId == _currentUser.SchoolId);
+
+        if (user == null)
+            throw new KeyNotFoundException("User not found");
+
+        // Soft delete
+        user.IsActive = false;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
     }
 
     public async Task<MeResponse> GetMeAsync(Guid userId)

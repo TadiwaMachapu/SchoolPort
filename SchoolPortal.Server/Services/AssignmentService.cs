@@ -11,12 +11,15 @@ public class AssignmentService : IAssignmentService
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<AssignmentService> _logger;
+    private readonly INotificationService _notifications;
 
-    public AssignmentService(SchoolPortalDbContext context, ICurrentUserService currentUser, ILogger<AssignmentService> logger)
+    public AssignmentService(SchoolPortalDbContext context, ICurrentUserService currentUser,
+        ILogger<AssignmentService> logger, INotificationService notifications)
     {
         _context = context;
         _currentUser = currentUser;
         _logger = logger;
+        _notifications = notifications;
     }
 
     public async Task<PaginatedResult<AssignmentDto>> GetAssignmentsAsync(Guid? classId, DateTime? dueFrom, DateTime? dueTo, string? status, int page, int pageSize)
@@ -166,6 +169,13 @@ public class AssignmentService : IAssignmentService
         // Reload to get related data
         await _context.Entry(assignment).Reference(a => a.CreatedByUser).LoadAsync();
 
+        // Notify all students in the class
+        _ = _notifications.NotifyRoleAsync(_currentUser.SchoolId, "Student", new Notification(
+            Type: "new_assignment",
+            Title: "New Assignment",
+            Message: $"{assignment.Title} is due {assignment.DueAt:MMM d}",
+            Link: $"/assignments/{assignment.AssignmentId}"));
+
         return new AssignmentDto
         {
             AssignmentId = assignment.AssignmentId,
@@ -197,7 +207,7 @@ public class AssignmentService : IAssignmentService
         }
 
         // Concurrency check
-        if (!assignment.RowVersion.SequenceEqual(request.RowVersion))
+        if (assignment.RowVersion != request.RowVersion)
         {
             throw new DbUpdateConcurrencyException("The assignment has been modified by another user");
         }

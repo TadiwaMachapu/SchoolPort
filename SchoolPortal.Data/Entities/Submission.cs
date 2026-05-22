@@ -10,7 +10,7 @@ public class Submission
     public string? FileUrl { get; set; }
     public string? FileName { get; set; }
     public string? Comments { get; set; }
-    public byte[] RowVersion { get; set; } = null!;
+    public long RowVersion { get; set; } = 1;
 
     // Navigation properties
     public virtual Assignment Assignment { get; set; } = null!;

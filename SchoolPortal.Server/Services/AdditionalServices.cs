@@ -15,6 +15,8 @@ namespace SchoolPortal.Server.Services;
 public interface ISchoolService
 {
     Task<SchoolDto> GetCurrentSchoolAsync();
+    Task<SchoolDto> UpdateThemeAsync(UpdateSchoolThemeRequest request);
+    Task<SchoolDto> UpdateFeaturesAsync(UpdateSchoolFeaturesRequest request);
 }
 
 public class SchoolService : ISchoolService
@@ -32,23 +34,66 @@ public class SchoolService : ISchoolService
     {
         var school = await _context.Schools
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.SchoolId == _currentUser.SchoolId);
+            .FirstOrDefaultAsync(s => s.SchoolId == _currentUser.SchoolId)
+            ?? throw new KeyNotFoundException("School not found");
 
-        if (school == null)
-        {
-            throw new KeyNotFoundException("School not found");
-        }
-
-        return new SchoolDto
-        {
-            SchoolId = school.SchoolId,
-            Name = school.Name,
-            Domain = school.Domain,
-            BrandingLogoUrl = school.BrandingLogoUrl,
-            BrandingPrimaryColor = school.BrandingPrimaryColor,
-            IsActive = school.IsActive
-        };
+        return MapToDto(school);
     }
+
+    public async Task<SchoolDto> UpdateThemeAsync(UpdateSchoolThemeRequest request)
+    {
+        var school = await _context.Schools
+            .FirstOrDefaultAsync(s => s.SchoolId == _currentUser.SchoolId)
+            ?? throw new KeyNotFoundException("School not found");
+
+        school.Theme ??= new();
+        school.Theme.PrimaryColor = request.PrimaryColor;
+        school.Theme.LogoUrl = request.LogoUrl;
+        school.Theme.FaviconUrl = request.FaviconUrl;
+        school.Theme.FontFamily = request.FontFamily;
+        school.Theme.WelcomeMessage = request.WelcomeMessage;
+        school.Theme.SupportEmail = request.SupportEmail;
+        school.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return MapToDto(school);
+    }
+
+    public async Task<SchoolDto> UpdateFeaturesAsync(UpdateSchoolFeaturesRequest request)
+    {
+        var school = await _context.Schools
+            .FirstOrDefaultAsync(s => s.SchoolId == _currentUser.SchoolId)
+            ?? throw new KeyNotFoundException("School not found");
+
+        school.Features.Quizzes = request.Quizzes;
+        school.Features.Attendance = request.Attendance;
+        school.Features.ParentPortal = request.ParentPortal;
+        school.Features.Messaging = request.Messaging;
+        school.Features.Courses = request.Courses;
+        school.Features.Analytics = request.Analytics;
+        school.Features.AiGrading = request.AiGrading;
+        school.Features.PlagiarismDetection = request.PlagiarismDetection;
+        school.Features.Sso = request.Sso;
+        school.Features.CustomReports = request.CustomReports;
+        school.Features.WhiteLabel = request.WhiteLabel;
+        school.Features.PluginApi = request.PluginApi;
+        school.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return MapToDto(school);
+    }
+
+    private static SchoolDto MapToDto(Data.Entities.School school) => new()
+    {
+        SchoolId = school.SchoolId,
+        Name = school.Name,
+        Domain = school.Domain,
+        BrandingLogoUrl = school.BrandingLogoUrl,
+        BrandingPrimaryColor = school.BrandingPrimaryColor,
+        IsActive = school.IsActive,
+        Features = school.Features,
+        Theme = school.Theme
+    };
 }
 
 // Class Service
@@ -57,7 +102,11 @@ public interface IClassService
     Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize);
     Task<ClassDto> GetClassByIdAsync(Guid id);
     Task<ClassDto> CreateClassAsync(CreateClassRequest request);
+    Task<ClassDto> UpdateClassAsync(Guid id, UpdateClassRequest request);
+    Task DeleteClassAsync(Guid id);
     Task BulkEnrollAsync(BulkEnrollmentRequest request);
+    Task<List<object>> GetStudentsAsync(Guid classId);
+    Task<List<object>> GetSubjectsForClassAsync(Guid classId);
 }
 
 public class ClassService : IClassService
@@ -180,14 +229,71 @@ public class ClassService : IClassService
         };
     }
 
+    public async Task<ClassDto> UpdateClassAsync(Guid id, UpdateClassRequest request)
+    {
+        var classEntity = await _context.Classes
+            .FirstOrDefaultAsync(c => c.ClassId == id && c.SchoolId == _currentUser.SchoolId);
+
+        if (classEntity == null)
+            throw new KeyNotFoundException("Class not found");
+
+        classEntity.Name = request.Name;
+        classEntity.GradeLevel = request.GradeLevel;
+        classEntity.AcademicYear = request.AcademicYear;
+        classEntity.TeacherId = request.TeacherId;
+        classEntity.MaxCapacity = request.MaxCapacity;
+        classEntity.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return new ClassDto
+        {
+            ClassId = classEntity.ClassId,
+            Name = classEntity.Name,
+            GradeLevel = classEntity.GradeLevel,
+            AcademicYear = classEntity.AcademicYear,
+            TeacherId = classEntity.TeacherId,
+            MaxCapacity = classEntity.MaxCapacity,
+            StudentCount = 0,
+            EnrollmentCount = 0
+        };
+    }
+
+    public async Task DeleteClassAsync(Guid id)
+    {
+        var classEntity = await _context.Classes
+            .FirstOrDefaultAsync(c => c.ClassId == id && c.SchoolId == _currentUser.SchoolId);
+
+        if (classEntity == null)
+            throw new KeyNotFoundException("Class not found");
+
+        _context.Classes.Remove(classEntity);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task BulkEnrollAsync(BulkEnrollmentRequest request)
     {
+        var classIds = request.Enrollments.Select(e => e.ClassId).ToList();
+        var studentIds = request.Enrollments.Select(e => e.StudentId).ToList();
+
+        var existing = await _context.Enrollments
+            .Where(e => classIds.Contains(e.ClassId) && studentIds.Contains(e.StudentId))
+            .ToListAsync();
+
+        var existingLookup = existing.ToDictionary(e => (e.ClassId, e.StudentId));
+
         foreach (var item in request.Enrollments)
         {
-            var existing = await _context.Enrollments
-                .FirstOrDefaultAsync(e => e.ClassId == item.ClassId && e.StudentId == item.StudentId);
-
-            if (existing == null)
+            if (existingLookup.TryGetValue((item.ClassId, item.StudentId), out var existingEnrollment))
+            {
+                if (!existingEnrollment.IsActive)
+                {
+                    existingEnrollment.IsActive = true;
+                    existingEnrollment.EnrolledAt = DateTime.UtcNow;
+                    existingEnrollment.DroppedAt = null;
+                }
+            }
+            else
             {
                 _context.Enrollments.Add(new Enrollment
                 {
@@ -198,15 +304,49 @@ public class ClassService : IClassService
                     IsActive = true
                 });
             }
-            else if (!existing.IsActive)
-            {
-                existing.IsActive = true;
-                existing.EnrolledAt = DateTime.UtcNow;
-                existing.DroppedAt = null;
-            }
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<object>> GetStudentsAsync(Guid classId)
+    {
+        return await _context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.ClassId == classId && e.IsActive && e.Class.SchoolId == _currentUser.SchoolId)
+            .Include(e => e.Student).ThenInclude(s => s.User)
+            .OrderBy(e => e.Student.User.LastName)
+            .Select(e => (object)new
+            {
+                UserId = e.Student.UserId,
+                SchoolId = e.Student.SchoolId,
+                Email = e.Student.User.Email,
+                FirstName = e.Student.User.FirstName,
+                LastName = e.Student.User.LastName,
+                Role = "Student",
+                IsActive = e.Student.User.IsActive,
+                CreatedAt = e.Student.User.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<object>> GetSubjectsForClassAsync(Guid classId)
+    {
+        return await _context.ClassSubjects
+            .AsNoTracking()
+            .Where(cs => cs.ClassId == classId && cs.Class.SchoolId == _currentUser.SchoolId)
+            .Include(cs => cs.Subject)
+            .Include(cs => cs.Teacher).ThenInclude(t => t!.User)
+            .OrderBy(cs => cs.Subject.Name)
+            .Select(cs => (object)new
+            {
+                ClassSubjectId = cs.ClassSubjectId,
+                SubjectId = cs.SubjectId,
+                SubjectName = cs.Subject.Name,
+                TeacherId = cs.TeacherId,
+                TeacherName = cs.Teacher != null ? $"{cs.Teacher.User.FirstName} {cs.Teacher.User.LastName}" : null
+            })
+            .ToListAsync();
     }
 }
 
@@ -214,7 +354,10 @@ public class ClassService : IClassService
 public interface ISubjectService
 {
     Task<List<SubjectDto>> GetSubjectsAsync();
+    Task<SubjectDto> GetSubjectByIdAsync(Guid id);
     Task<SubjectDto> CreateSubjectAsync(CreateSubjectRequest request);
+    Task<SubjectDto> UpdateSubjectAsync(Guid id, UpdateSubjectRequest request);
+    Task DeleteSubjectAsync(Guid id);
     Task BulkAssignClassSubjectsAsync(BulkClassSubjectRequest request);
 }
 
@@ -245,6 +388,24 @@ public class SubjectService : ISubjectService
             .ToListAsync();
     }
 
+    public async Task<SubjectDto> GetSubjectByIdAsync(Guid id)
+    {
+        var subject = await _context.Subjects
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SubjectId == id && s.SchoolId == _currentUser.SchoolId);
+
+        if (subject == null)
+            throw new KeyNotFoundException("Subject not found");
+
+        return new SubjectDto
+        {
+            SubjectId = subject.SubjectId,
+            Name = subject.Name,
+            Code = subject.Code,
+            Description = subject.Description
+        };
+    }
+
     public async Task<SubjectDto> CreateSubjectAsync(CreateSubjectRequest request)
     {
         var subject = new Subject
@@ -268,14 +429,61 @@ public class SubjectService : ISubjectService
         };
     }
 
+    public async Task<SubjectDto> UpdateSubjectAsync(Guid id, UpdateSubjectRequest request)
+    {
+        var subject = await _context.Subjects
+            .FirstOrDefaultAsync(s => s.SubjectId == id && s.SchoolId == _currentUser.SchoolId);
+
+        if (subject == null)
+            throw new KeyNotFoundException("Subject not found");
+
+        subject.Name = request.Name;
+        subject.Code = request.Code;
+        subject.Description = request.Description;
+        subject.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return new SubjectDto
+        {
+            SubjectId = subject.SubjectId,
+            Name = subject.Name,
+            Code = subject.Code,
+            Description = subject.Description
+        };
+    }
+
+    public async Task DeleteSubjectAsync(Guid id)
+    {
+        var subject = await _context.Subjects
+            .FirstOrDefaultAsync(s => s.SubjectId == id && s.SchoolId == _currentUser.SchoolId);
+
+        if (subject == null)
+            throw new KeyNotFoundException("Subject not found");
+
+        _context.Subjects.Remove(subject);
+        await _context.SaveChangesAsync();
+    }
+
     public async Task BulkAssignClassSubjectsAsync(BulkClassSubjectRequest request)
     {
+        var classIds = request.ClassSubjects.Select(cs => cs.ClassId).ToList();
+        var subjectIds = request.ClassSubjects.Select(cs => cs.SubjectId).ToList();
+
+        var existing = await _context.ClassSubjects
+            .Where(cs => classIds.Contains(cs.ClassId) && subjectIds.Contains(cs.SubjectId))
+            .ToListAsync();
+
+        var existingLookup = existing.ToDictionary(cs => (cs.ClassId, cs.SubjectId));
+
         foreach (var item in request.ClassSubjects)
         {
-            var existing = await _context.ClassSubjects
-                .FirstOrDefaultAsync(cs => cs.ClassId == item.ClassId && cs.SubjectId == item.SubjectId);
-
-            if (existing == null)
+            if (existingLookup.TryGetValue((item.ClassId, item.SubjectId), out var existingCs))
+            {
+                if (item.TeacherId.HasValue)
+                    existingCs.TeacherId = item.TeacherId;
+            }
+            else
             {
                 _context.ClassSubjects.Add(new ClassSubject
                 {
@@ -286,21 +494,18 @@ public class SubjectService : ISubjectService
                     CreatedAt = DateTime.UtcNow
                 });
             }
-            else if (item.TeacherId.HasValue)
-            {
-                existing.TeacherId = item.TeacherId;
-            }
         }
 
         await _context.SaveChangesAsync();
     }
 }
 
-// Submission & Grade Service
+// Submission Service
 public interface ISubmissionService
 {
-    Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments);
+    Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? fileUrl = null, string? fileName = null);
     Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(Guid assignmentId);
+    Task<SubmissionDto?> GetMySubmissionAsync(Guid assignmentId);
 }
 
 public class SubmissionService : ISubmissionService
@@ -314,7 +519,7 @@ public class SubmissionService : ISubmissionService
         _currentUser = currentUser;
     }
 
-    public async Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments)
+    public async Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? fileUrl = null, string? fileName = null)
     {
         var studentId = await _context.Students
             .Where(s => s.UserId == _currentUser.UserId)
@@ -332,7 +537,9 @@ public class SubmissionService : ISubmissionService
             StudentId = studentId,
             SchoolId = _currentUser.SchoolId,
             SubmittedAt = DateTime.UtcNow,
-            Comments = comments
+            Comments = comments,
+            FileUrl = fileUrl,
+            FileName = fileName
         };
 
         _context.Submissions.Add(submission);
@@ -370,6 +577,42 @@ public class SubmissionService : ISubmissionService
             })
             .ToListAsync();
     }
+
+    public async Task<SubmissionDto?> GetMySubmissionAsync(Guid assignmentId)
+    {
+        var studentId = await _context.Students
+            .Where(s => s.UserId == _currentUser.UserId)
+            .Select(s => s.StudentId)
+            .FirstOrDefaultAsync();
+
+        if (studentId == Guid.Empty) return null;
+
+        return await _context.Submissions
+            .AsNoTracking()
+            .Where(s => s.AssignmentId == assignmentId && s.StudentId == studentId)
+            .Include(s => s.Student).ThenInclude(st => st.User)
+            .Include(s => s.Grade)
+            .Select(s => new SubmissionDto
+            {
+                SubmissionId = s.SubmissionId,
+                AssignmentId = s.AssignmentId,
+                StudentId = s.StudentId,
+                StudentName = $"{s.Student.User.FirstName} {s.Student.User.LastName}",
+                StudentNumber = s.Student.StudentNumber,
+                SubmittedAt = s.SubmittedAt,
+                FileUrl = s.FileUrl,
+                FileName = s.FileName,
+                Comments = s.Comments,
+                Grade = s.Grade != null ? new GradeInfo
+                {
+                    GradeId = s.Grade.GradeId,
+                    Score = s.Grade.Score,
+                    Feedback = s.Grade.Feedback,
+                    GradedAt = s.Grade.GradedAt
+                } : null
+            })
+            .FirstOrDefaultAsync();
+    }
 }
 
 public interface IGradeService
@@ -382,11 +625,13 @@ public class GradeService : IGradeService
 {
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly INotificationService _notifications;
 
-    public GradeService(SchoolPortalDbContext context, ICurrentUserService currentUser)
+    public GradeService(SchoolPortalDbContext context, ICurrentUserService currentUser, INotificationService notifications)
     {
         _context = context;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     public async Task CreateGradeAsync(CreateGradeRequest request)
@@ -417,24 +662,45 @@ public class GradeService : IGradeService
 
         _context.Grades.Add(grade);
         await _context.SaveChangesAsync();
+
+        // Notify the student
+        var studentUserId = await _context.Students
+            .Where(s => s.StudentId == submission.StudentId)
+            .Select(s => s.UserId)
+            .FirstOrDefaultAsync();
+
+        if (studentUserId != Guid.Empty)
+        {
+            _ = _notifications.NotifyUserAsync(studentUserId, new Notification(
+                Type: "grade_posted",
+                Title: "Grade Posted",
+                Message: $"Your submission for {submission.Assignment.Title} has been graded: {request.Score}/{submission.Assignment.MaxMarks}",
+                Link: $"/assignments/{submission.AssignmentId}"));
+        }
     }
 
     public async Task BulkGradeAsync(BulkGradeRequest request)
     {
+        var submissionIds = request.Grades.Select(g => g.SubmissionId).ToList();
+
+        var submissions = await _context.Submissions
+            .Include(s => s.Assignment)
+            .Where(s => submissionIds.Contains(s.SubmissionId) && s.SchoolId == _currentUser.SchoolId)
+            .ToListAsync();
+
+        var existingGrades = await _context.Grades
+            .Where(g => submissionIds.Contains(g.SubmissionId))
+            .ToListAsync();
+
+        var submissionLookup = submissions.ToDictionary(s => s.SubmissionId);
+        var gradeLookup = existingGrades.ToDictionary(g => g.SubmissionId);
+
         foreach (var item in request.Grades)
         {
-            var submission = await _context.Submissions
-                .Include(s => s.Assignment)
-                .FirstOrDefaultAsync(s => s.SubmissionId == item.SubmissionId && s.SchoolId == _currentUser.SchoolId);
-
-            if (submission == null) continue;
-
+            if (!submissionLookup.TryGetValue(item.SubmissionId, out var submission)) continue;
             if (item.Score < 0 || item.Score > submission.Assignment.MaxMarks) continue;
 
-            var existingGrade = await _context.Grades
-                .FirstOrDefaultAsync(g => g.SubmissionId == item.SubmissionId);
-
-            if (existingGrade != null)
+            if (gradeLookup.TryGetValue(item.SubmissionId, out var existingGrade))
             {
                 existingGrade.Score = item.Score;
                 existingGrade.Feedback = item.Feedback;
@@ -463,6 +729,8 @@ public interface IAnnouncementService
 {
     Task<PaginatedResult<AnnouncementDto>> GetAnnouncementsAsync(DateTime? since, int page, int pageSize);
     Task<AnnouncementDto> CreateAnnouncementAsync(CreateAnnouncementRequest request);
+    Task<AnnouncementDto> UpdateAnnouncementAsync(Guid id, UpdateAnnouncementRequest request);
+    Task DeleteAnnouncementAsync(Guid id);
 }
 
 public class AnnouncementService : IAnnouncementService
@@ -553,5 +821,56 @@ public class AnnouncementService : IAnnouncementService
             ExpiresAt = announcement.ExpiresAt,
             IsActive = announcement.IsActive
         };
+    }
+
+    public async Task<AnnouncementDto> UpdateAnnouncementAsync(Guid id, UpdateAnnouncementRequest request)
+    {
+        if (request.Audience != "All" && string.IsNullOrWhiteSpace(request.AudienceValue))
+            throw new ArgumentException("AudienceValue is required when Audience is not 'All'");
+
+        var announcement = await _context.Announcements
+            .Include(a => a.CreatedByUser)
+            .FirstOrDefaultAsync(a => a.AnnouncementId == id && a.SchoolId == _currentUser.SchoolId);
+
+        if (announcement == null)
+            throw new KeyNotFoundException("Announcement not found");
+
+        announcement.Title = request.Title;
+        announcement.Content = request.Content;
+        announcement.Audience = request.Audience;
+        announcement.AudienceValue = request.AudienceValue;
+        announcement.ExpiresAt = request.ExpiresAt;
+        announcement.IsActive = request.IsActive;
+        announcement.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return new AnnouncementDto
+        {
+            AnnouncementId = announcement.AnnouncementId,
+            Title = announcement.Title,
+            Content = announcement.Content,
+            Audience = announcement.Audience,
+            AudienceValue = announcement.AudienceValue,
+            CreatedByName = $"{announcement.CreatedByUser.FirstName} {announcement.CreatedByUser.LastName}",
+            CreatedAt = announcement.CreatedAt,
+            ExpiresAt = announcement.ExpiresAt,
+            IsActive = announcement.IsActive
+        };
+    }
+
+    public async Task DeleteAnnouncementAsync(Guid id)
+    {
+        var announcement = await _context.Announcements
+            .FirstOrDefaultAsync(a => a.AnnouncementId == id && a.SchoolId == _currentUser.SchoolId);
+
+        if (announcement == null)
+            throw new KeyNotFoundException("Announcement not found");
+
+        // Soft delete
+        announcement.IsActive = false;
+        announcement.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
     }
 }

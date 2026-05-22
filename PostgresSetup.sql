@@ -81,6 +81,7 @@ DECLARE
     v_admin_user_id INTEGER;
     v_teacher_user_id INTEGER;
     v_student_user_id INTEGER;
+    v_parent_user_id INTEGER;
     v_teacher_id INTEGER;
     v_student_id INTEGER;
     v_class_id INTEGER;
@@ -144,6 +145,19 @@ BEGIN
         SELECT student_id INTO v_student_id FROM students WHERE school_id = v_school_id LIMIT 1;
     END IF;
 
+    -- Insert Sample Parent
+    INSERT INTO users (school_id, email, password_hash, first_name, last_name, role, is_active, created_at, row_version)
+    SELECT v_school_id, 'parent@demo.schoolportal.com',
+           '$2a$11$k9j/L2NaoEQfrhbDKyHM6O3SK3UoMX7RiPTaprJYoSD/tFzq03Rf.',
+           'Mary', 'Parent', 'Parent', true, NOW(), 1
+    WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'parent@demo.schoolportal.com')
+    RETURNING user_id INTO v_parent_user_id;
+
+    IF v_parent_user_id IS NOT NULL AND v_student_id IS NOT NULL THEN
+        UPDATE students SET parent_user_id = v_parent_user_id WHERE student_id = v_student_id;
+        RAISE NOTICE 'Parent user created (email: parent@demo.schoolportal.com, password: Admin@123)';
+    END IF;
+
     -- Insert Sample Subjects
     INSERT INTO subjects (school_id, name, code, created_at, row_version)
     SELECT v_school_id, 'Mathematics', 'MATH', NOW(), 1
@@ -190,4 +204,5 @@ BEGIN
     RAISE NOTICE '  Admin:   admin@demo.schoolportal.com / Admin@123';
     RAISE NOTICE '  Teacher: teacher@demo.schoolportal.com / Admin@123';
     RAISE NOTICE '  Student: student@demo.schoolportal.com / Admin@123';
+    RAISE NOTICE '  Parent:  parent@demo.schoolportal.com / Admin@123';
 END $$;

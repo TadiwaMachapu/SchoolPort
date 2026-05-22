@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { SkeletonCards } from "@/components/ui/skeleton";
 
 interface Quiz {
   quizId: string;
@@ -71,7 +72,7 @@ export default function QuizzesPage() {
       {error && <div className="mb-4 rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
 
       {loading ? (
-        <div className="flex justify-center py-12 text-gray-400">Loading…</div>
+        <SkeletonCards count={6} />
       ) : quizzes.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-gray-300 py-16 text-center">
           <div className="text-5xl mb-4">🧠</div>

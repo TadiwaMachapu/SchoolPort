@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { SkeletonTable } from "@/components/ui/skeleton";
 
 interface GradeEntry {
   gradeId: string;
@@ -88,7 +89,7 @@ export default function GradebookPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12 text-gray-400">Loading…</div>
+        <SkeletonTable rows={6} cols={6} />
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-gray-300 py-16 text-center">
           <div className="text-5xl mb-4">📊</div>

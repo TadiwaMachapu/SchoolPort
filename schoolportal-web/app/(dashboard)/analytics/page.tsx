@@ -63,7 +63,18 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="p-8 text-gray-400 flex justify-center py-16">Loading analytics…</div>;
+  if (loading) return (
+    <div className="p-8 space-y-6">
+      <div className="h-8 w-48 animate-pulse rounded-md bg-gray-200" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[1,2,3,4].map(i => <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200" />)}
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
+        <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
+      </div>
+    </div>
+  );
   if (error) return <div className="p-8 text-red-600">{error}</div>;
 
   const gradeData = gradeDist ? [

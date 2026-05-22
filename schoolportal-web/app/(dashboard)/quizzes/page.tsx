@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonCards } from "@/components/ui/skeleton";
+import { Brain, FileQuestion, Clock, RefreshCw } from "lucide-react";
 
 interface Quiz {
   quizId: string;
@@ -61,11 +62,11 @@ export default function QuizzesPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quizzes</h1>
-          <p className="text-gray-500 mt-1">{total} quizzes available</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Quizzes</h1>
+          <p className="text-sm text-gray-500 mt-1">{total} quizzes available</p>
         </div>
       </div>
 
@@ -75,7 +76,9 @@ export default function QuizzesPage() {
         <SkeletonCards count={6} />
       ) : quizzes.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">🧠</div>
+          <div className="flex justify-center mb-4">
+            <Brain className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No quizzes yet</p>
           <p className="text-sm text-gray-400 mt-1">Quizzes created by teachers will appear here</p>
         </div>
@@ -95,10 +98,21 @@ export default function QuizzesPage() {
                   <p className="text-sm text-gray-500 mb-3 line-clamp-2">{q.description}</p>
                 )}
 
-                <div className="flex flex-wrap gap-2 text-xs text-gray-500 mb-4">
-                  <span>📝 {q.questionCount} questions</span>
-                  {q.timeLimitMinutes && <span>⏱ {q.timeLimitMinutes} min</span>}
-                  <span>🔄 {q.maxAttempts} attempt{q.maxAttempts !== 1 ? "s" : ""}</span>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-4">
+                  <span className="flex items-center gap-1">
+                    <FileQuestion className="h-3.5 w-3.5" />
+                    {q.questionCount} questions
+                  </span>
+                  {q.timeLimitMinutes && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {q.timeLimitMinutes} min
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1">
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    {q.maxAttempts} attempt{q.maxAttempts !== 1 ? "s" : ""}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -188,7 +202,9 @@ function QuizModal({ quizId, onClose }: { quizId: string; onClose: () => void })
 
           {result && (
             <div className="text-center py-8">
-              <div className="text-6xl mb-4">{result.percentage >= 80 ? "🎉" : result.percentage >= 60 ? "👍" : "📚"}</div>
+              <div className="flex justify-center mb-4">
+                <Brain className={`h-14 w-14 ${result.percentage >= 80 ? "text-emerald-500" : result.percentage >= 60 ? "text-amber-500" : "text-rose-500"}`} />
+              </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Quiz Complete!</h3>
               <p className="text-4xl font-bold text-blue-600 mb-2">{result.percentage}%</p>
               <p className="text-gray-500">{result.score} / {result.maxScore} marks</p>

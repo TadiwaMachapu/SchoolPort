@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { getClientRole } from "@/lib/utils";
+import { BarChart2, Users } from "lucide-react";
 
 function gradeLetter(pct: number) {
   if (pct >= 90) return { letter: "A+", variant: "success" as const };
@@ -45,10 +46,10 @@ function StudentGradebook() {
     ? Math.round(filtered.reduce((s, g) => s + g.percentage, 0) / filtered.length) : 0;
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">My Gradebook</h1>
-        <p className="text-gray-500 mt-1">Your grades and academic performance</p>
+        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">My Gradebook</h1>
+        <p className="text-sm text-gray-500 mt-1">Your grades and academic performance</p>
       </div>
 
       {error && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
@@ -84,7 +85,9 @@ function StudentGradebook() {
         <SkeletonTable rows={6} cols={6} />
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">📊</div>
+          <div className="flex justify-center mb-4">
+            <BarChart2 className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No grades yet</p>
           <p className="text-sm text-gray-400 mt-1">Grades will appear here once assignments are marked</p>
         </div>
@@ -157,11 +160,11 @@ function TeacherGradebook() {
   const selectedClass = classes.find(c => c.classId === classId);
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gradebook</h1>
-          <p className="text-gray-500 mt-1">Class performance overview</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Gradebook</h1>
+          <p className="text-sm text-gray-500 mt-1">Class performance overview</p>
         </div>
         {!classLoading && classes.length > 0 && (
           <select value={classId} onChange={e => setClassId(e.target.value)}
@@ -175,13 +178,17 @@ function TeacherGradebook() {
         <SkeletonTable rows={6} cols={5} />
       ) : !gradebook ? (
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">📊</div>
+          <div className="flex justify-center mb-4">
+            <BarChart2 className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No gradebook data</p>
           <p className="text-sm text-gray-400 mt-1">Grades will appear here once assignments are created and marked</p>
         </div>
       ) : gradebook.students.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">👥</div>
+          <div className="flex justify-center mb-4">
+            <Users className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No students enrolled</p>
           <p className="text-sm text-gray-400 mt-1">Students need to be enrolled in {selectedClass?.name} to appear here</p>
         </div>

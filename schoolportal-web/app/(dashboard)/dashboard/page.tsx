@@ -4,18 +4,19 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/ui/stat-card";
 import {
   GraduationCap,
   Users,
   BookOpen,
-  CheckSquare,
+  CheckCircle2,
   ClipboardList,
   Clock,
-  GraduationCap as Teacher,
   BarChart2,
   Megaphone,
   Settings,
   AlertTriangle,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,17 +39,17 @@ export default function DashboardPage() {
   const role = me.user.role;
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">
           Welcome back, {me.user.firstName}
         </h1>
-        <p className="text-gray-500 mt-1">{me.school.name}</p>
+        <p className="text-sm text-gray-500 mt-1">{me.school.name}</p>
       </div>
-      {role === "Admin"    && <AdminDashboard />}
-      {role === "Teacher"  && <TeacherDashboard userId={me.user.userId} />}
-      {role === "Student"  && <StudentDashboard />}
-      {role === "Parent"   && <ParentDashboardHome />}
+      {role === "Admin"   && <AdminDashboard />}
+      {role === "Teacher" && <TeacherDashboard userId={me.user.userId} />}
+      {role === "Student" && <StudentDashboard />}
+      {role === "Parent"  && <ParentDashboardHome />}
     </div>
   );
 }
@@ -63,35 +64,23 @@ function AdminDashboard() {
     api.announcements.list({ pageSize: 5 }).then(r => setAnnouncements((r as any).items ?? [])).catch(() => {});
   }, []);
 
-  const kpis: { label: string; value: string | number; Icon: LucideIcon; color: string; bg: string }[] = overview ? [
-    { label: "Students",        value: overview.totalStudents,                    Icon: GraduationCap, color: "text-blue-600",   bg: "bg-blue-50" },
-    { label: "Teachers",        value: overview.totalTeachers,                    Icon: Users,         color: "text-purple-600", bg: "bg-purple-50" },
-    { label: "Classes",         value: overview.totalClasses,                     Icon: BookOpen,      color: "text-green-600",  bg: "bg-green-50" },
-    { label: "Attendance",      value: `${overview.attendanceRateThisMonth}%`,    Icon: CheckSquare,   color: "text-teal-600",   bg: "bg-teal-50" },
-    { label: "Assignments",     value: overview.totalAssignments,                 Icon: ClipboardList, color: "text-orange-600", bg: "bg-orange-50" },
-    { label: "Pending Grading", value: overview.pendingSubmissions,               Icon: Clock,         color: "text-red-600",    bg: "bg-red-50" },
-  ] : [];
-
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {kpis.map(k => (
-          <Card key={k.label}>
-            <CardContent className="p-4">
-              <div className={`h-9 w-9 rounded-lg ${k.bg} flex items-center justify-center mb-3`}>
-                <k.Icon className={`h-5 w-5 ${k.color}`} />
-              </div>
-              <p className={`text-2xl font-bold ${k.color}`}>{k.value ?? "—"}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{k.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {overview && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatCard icon={GraduationCap} label="Students"        value={overview.totalStudents ?? "—"}               color="blue" />
+          <StatCard icon={Users}         label="Teachers"        value={overview.totalTeachers ?? "—"}               color="purple" />
+          <StatCard icon={BookOpen}      label="Classes"         value={overview.totalClasses ?? "—"}                color="green" />
+          <StatCard icon={CheckCircle2}  label="Attendance"      value={`${overview.attendanceRateThisMonth ?? 0}%`} color="teal" />
+          <StatCard icon={ClipboardList} label="Assignments"     value={overview.totalAssignments ?? "—"}            color="orange" />
+          <StatCard icon={Clock}         label="Pending Grading" value={overview.pendingSubmissions ?? "—"}          color="red" />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between">
               Recent Announcements
               <Link href="/announcements" className="text-xs text-blue-600 font-normal hover:underline">View all</Link>
             </CardTitle>
@@ -111,20 +100,22 @@ function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Quick Actions</CardTitle>
+            <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             {([
-              { label: "Add User",       href: "/users",         Icon: Users },
-              { label: "New Class",      href: "/classes",       Icon: BookOpen },
-              { label: "Analytics",      href: "/analytics",     Icon: BarChart2 },
-              { label: "Announcements",  href: "/announcements", Icon: Megaphone },
-              { label: "Settings",       href: "/settings",      Icon: Settings },
-              { label: "Courses",        href: "/courses",       Icon: BookOpen },
+              { label: "Add User",      href: "/users",         Icon: Users },
+              { label: "New Class",     href: "/classes",       Icon: BookOpen },
+              { label: "Analytics",     href: "/analytics",     Icon: BarChart2 },
+              { label: "Announcements", href: "/announcements", Icon: Megaphone },
+              { label: "Settings",      href: "/settings",      Icon: Settings },
+              { label: "Courses",       href: "/courses",       Icon: BookOpen },
             ] as { label: string; href: string; Icon: LucideIcon }[]).map(a => (
               <Link key={a.label} href={a.href}
                 className="flex items-center gap-2 p-3 rounded-lg border border-gray-100 hover:border-blue-300 hover:bg-blue-50 transition-colors text-sm font-medium text-gray-700">
-                <a.Icon className="h-4 w-4 text-gray-400 shrink-0" />{a.label}
+                <a.Icon className="h-4 w-4 text-gray-400 shrink-0" />
+                {a.label}
+                <ChevronRight className="h-3 w-3 text-gray-300 ml-auto" />
               </Link>
             ))}
           </CardContent>
@@ -152,30 +143,16 @@ function TeacherDashboard({ userId }: { userId: string }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {([
-          { label: "My Classes",    value: classes.length,       Icon: BookOpen,      color: "text-blue-600",   bg: "bg-blue-50" },
-          { label: "Assignments",   value: assignments.length,   Icon: ClipboardList, color: "text-purple-600", bg: "bg-purple-50" },
-          { label: "Overdue",       value: overdue,              Icon: AlertTriangle, color: "text-red-600",    bg: "bg-red-50" },
-          { label: "Announcements", value: announcements.length, Icon: Megaphone,     color: "text-green-600",  bg: "bg-green-50" },
-        ] as { label: string; value: number; Icon: LucideIcon; color: string; bg: string }[]).map(k => (
-          <Card key={k.label}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`h-10 w-10 rounded-lg ${k.bg} flex items-center justify-center shrink-0`}>
-                <k.Icon className={`h-5 w-5 ${k.color}`} />
-              </div>
-              <div>
-                <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
-                <p className="text-xs text-gray-500">{k.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <StatCard icon={BookOpen}      label="My Classes"    value={classes.length}       color="blue" />
+        <StatCard icon={ClipboardList} label="Assignments"   value={assignments.length}   color="purple" />
+        <StatCard icon={AlertTriangle} label="Overdue"       value={overdue}              color="red" />
+        <StatCard icon={Megaphone}     label="Announcements" value={announcements.length} color="green" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between">
               My Classes
               <Link href="/classes" className="text-xs text-blue-600 font-normal hover:underline">View all</Link>
             </CardTitle>
@@ -188,7 +165,7 @@ function TeacherDashboard({ userId }: { userId: string }) {
                   <p className="text-sm font-medium text-gray-900 group-hover:text-blue-600">{c.name}</p>
                   <p className="text-xs text-gray-400">{c.studentCount} students{c.gradeLevel ? ` · Grade ${c.gradeLevel}` : ""}</p>
                 </div>
-                <span className="text-gray-300 group-hover:text-blue-400">→</span>
+                <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-400" />
               </Link>
             ))}
             {classes.length === 0 && <p className="text-sm text-gray-400">No classes assigned</p>}
@@ -197,7 +174,7 @@ function TeacherDashboard({ userId }: { userId: string }) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between">
               Upcoming Assignments
               <Link href="/assignments" className="text-xs text-blue-600 font-normal hover:underline">View all</Link>
             </CardTitle>
@@ -251,30 +228,16 @@ function StudentDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {([
-          { label: "Overall Average", value: avg !== null ? `${avg}%` : "—", Icon: BarChart2,      color: "text-blue-600",                           bg: "bg-blue-50" },
-          { label: "Graded",          value: grades.length,                   Icon: CheckSquare,   color: "text-green-600",                          bg: "bg-green-50" },
-          { label: "Upcoming",        value: upcoming.length,                 Icon: ClipboardList, color: "text-purple-600",                         bg: "bg-purple-50" },
-          { label: "Overdue",         value: overdue.length,                  Icon: AlertTriangle, color: overdue.length > 0 ? "text-red-600" : "text-gray-400", bg: overdue.length > 0 ? "bg-red-50" : "bg-gray-50" },
-        ] as { label: string; value: string | number; Icon: LucideIcon; color: string; bg: string }[]).map(k => (
-          <Card key={k.label}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`h-10 w-10 rounded-lg ${k.bg} flex items-center justify-center shrink-0`}>
-                <k.Icon className={`h-5 w-5 ${k.color}`} />
-              </div>
-              <div>
-                <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
-                <p className="text-xs text-gray-500">{k.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <StatCard icon={BarChart2}     label="Overall Average" value={avg !== null ? `${avg}%` : "—"} color="blue" />
+        <StatCard icon={CheckCircle2}  label="Graded"          value={grades.length}                  color="green" />
+        <StatCard icon={ClipboardList} label="Upcoming"        value={upcoming.length}                color="purple" />
+        <StatCard icon={AlertTriangle} label="Overdue"         value={overdue.length}                 color={overdue.length > 0 ? "red" : "teal"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between">
               Upcoming Assignments
               <Link href="/assignments" className="text-xs text-blue-600 font-normal hover:underline">View all</Link>
             </CardTitle>
@@ -308,7 +271,7 @@ function StudentDashboard() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between">
                 Recent Grades
                 <Link href="/gradebook" className="text-xs text-blue-600 font-normal hover:underline">View all</Link>
               </CardTitle>
@@ -332,7 +295,7 @@ function StudentDashboard() {
 
           {announcements.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-base">Announcements</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Announcements</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {announcements.map((a: any) => (
                   <div key={a.announcementId} className="border-l-2 border-blue-300 pl-2">
@@ -349,7 +312,7 @@ function StudentDashboard() {
       {courses.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between">
               Courses
               <Link href="/courses" className="text-xs text-blue-600 font-normal hover:underline">View all</Link>
             </CardTitle>
@@ -405,7 +368,7 @@ function ParentDashboardHome() {
                   <p className="text-xs text-gray-400">{child.studentNumber}{child.gradeLevel ? ` · Grade ${child.gradeLevel}` : ""}</p>
                 </div>
               </div>
-              <span className="text-gray-300 group-hover:text-blue-500">→</span>
+              <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-blue-500" />
             </Link>
           ))}
         </CardContent>

@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from "recharts";
+import { GraduationCap, Users, BookOpen, CheckCircle2, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface Overview {
   totalStudents: number;
@@ -91,26 +92,28 @@ export default function AnalyticsPage() {
     .map(c => ({ name: c.name, average: Math.round(c.averageGrade!), students: c.studentCount }));
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-        <p className="text-gray-500 mt-1">School-wide performance overview</p>
+        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Analytics</h1>
+        <p className="text-sm text-gray-500 mt-1">School-wide performance overview</p>
       </div>
 
       {/* KPI Cards */}
       {overview && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: "Students", value: overview.totalStudents, icon: "🎓" },
-            { label: "Teachers", value: overview.totalTeachers, icon: "👨‍🏫" },
-            { label: "Classes", value: overview.totalClasses, icon: "🏫" },
-            { label: "Attendance Rate", value: `${overview.attendanceRateThisMonth}%`, icon: "✅" },
+            { label: "Students",        value: overview.totalStudents,                    Icon: GraduationCap, bg: "bg-indigo-50",  color: "text-indigo-600" },
+            { label: "Teachers",        value: overview.totalTeachers,                    Icon: Users,         bg: "bg-violet-50",  color: "text-violet-600" },
+            { label: "Classes",         value: overview.totalClasses,                     Icon: BookOpen,      bg: "bg-emerald-50", color: "text-emerald-600" },
+            { label: "Attendance Rate", value: `${overview.attendanceRateThisMonth}%`,    Icon: CheckCircle2,  bg: "bg-teal-50",    color: "text-teal-600" },
           ].map(stat => (
             <Card key={stat.label}>
               <CardContent className="p-4 flex items-center gap-3">
-                <span className="text-3xl">{stat.icon}</span>
+                <div className={`h-10 w-10 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}>
+                  <stat.Icon className={`h-5 w-5 ${stat.color}`} />
+                </div>
                 <div>
-                  <p className="text-xs text-gray-500">{stat.label}</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">{stat.label}</p>
                   <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                 </div>
               </CardContent>
@@ -194,7 +197,8 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span>⚠️</span> At-Risk Students
+              <AlertTriangle className="h-4 w-4 text-rose-500" />
+              At-Risk Students
               <Badge variant="destructive">{atRisk.length}</Badge>
             </CardTitle>
             <p className="text-sm text-gray-500">Students with attendance below 75% in the last 30 days</p>
@@ -232,7 +236,9 @@ export default function AnalyticsPage() {
 
       {!gradeDist && !atRisk.length && !classPerfData.length && (
         <div className="rounded-lg border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">📈</div>
+          <div className="flex justify-center mb-4">
+            <TrendingUp className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No data yet</p>
           <p className="text-sm text-gray-400 mt-1">Analytics will populate as students submit work and attend classes</p>
         </div>

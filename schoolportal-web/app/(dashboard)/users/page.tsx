@@ -55,11 +55,11 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-500 mt-1">{total} total users</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Users</h1>
+          <p className="text-sm text-gray-500 mt-1">{total} total users</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setShowImport(true)} className="flex items-center gap-2">

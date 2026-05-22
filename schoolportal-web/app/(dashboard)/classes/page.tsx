@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { getClientRole } from "@/lib/utils";
+import { GraduationCap } from "lucide-react";
 
 export default function ClassesPage() {
   const [classes,   setClasses]   = useState<Class[]>([]);
@@ -34,11 +35,11 @@ export default function ClassesPage() {
   const isAdmin = role === "Admin";
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Classes</h1>
-          <p className="text-gray-500 mt-1">{total} class{total !== 1 ? "es" : ""}</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Classes</h1>
+          <p className="text-sm text-gray-500 mt-1">{total} class{total !== 1 ? "es" : ""}</p>
         </div>
         {isAdmin && <Button onClick={() => setShowAdd(true)}>+ Add Class</Button>}
       </div>
@@ -47,7 +48,9 @@ export default function ClassesPage() {
         <SkeletonTable rows={6} cols={6} />
       ) : classes.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">🏫</div>
+          <div className="flex justify-center mb-4">
+            <GraduationCap className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No classes yet</p>
           <p className="text-sm text-gray-400 mt-1">
             {isAdmin ? "Create the first class for your school" : "Classes created by admins will appear here"}

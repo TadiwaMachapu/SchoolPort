@@ -4,14 +4,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { GraduationCap, Shield, BookOpen, User, Users } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5128";
 
 const DEMO_USERS = [
-  { role: "Admin",   email: "admin@demo.schoolportal.com",   icon: "🛡️", color: "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100" },
-  { role: "Teacher", email: "teacher@demo.schoolportal.com", icon: "👨‍🏫", color: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" },
-  { role: "Student", email: "student@demo.schoolportal.com", icon: "🎓", color: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100" },
-  { role: "Parent",  email: "parent@demo.schoolportal.com",  icon: "👨‍👩‍👧", color: "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100" },
+  { role: "Admin",   email: "admin@demo.schoolportal.com",   Icon: Shield,       color: "bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100" },
+  { role: "Teacher", email: "teacher@demo.schoolportal.com", Icon: BookOpen,     color: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" },
+  { role: "Student", email: "student@demo.schoolportal.com", Icon: GraduationCap, color: "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100" },
+  { role: "Parent",  email: "parent@demo.schoolportal.com",  Icon: Users,        color: "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" },
 ] as const;
 
 export default function LoginPage() {
@@ -67,15 +68,15 @@ export default function LoginPage() {
         <div className="rounded-2xl border border-white/10 bg-white/95 shadow-2xl backdrop-blur-sm">
 
           {/* Header */}
-          <div className="px-8 pt-8 pb-6 text-center border-b border-gray-100">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/30">
-              <span className="text-3xl">🏫</span>
+          <div className="px-8 pt-7 pb-5 text-center border-b border-gray-100">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-600/30">
+              <GraduationCap className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">School Portal</h1>
-            <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+            <h1 className="text-xl font-bold text-gray-900">School Portal</h1>
+            <p className="mt-0.5 text-sm text-gray-500">Sign in to your account</p>
           </div>
 
-          <div className="px-8 py-6 space-y-5">
+          <div className="px-8 py-5 space-y-4">
             {/* SSO buttons */}
             <div className="space-y-2">
               <a href={`${API_URL}/api/auth/sso/google`}
@@ -106,10 +107,10 @@ export default function LoginPage() {
             </div>
 
             {/* Email form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3">
               {error && (
                 <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-3">
-                  <span className="text-red-500 mt-0.5">⚠</span>
+                  <span className="text-red-500 mt-0.5 text-sm font-bold">!</span>
                   <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
@@ -129,15 +130,15 @@ export default function LoginPage() {
             </form>
 
             {/* Demo credentials */}
-            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
                 Demo accounts — click to fill
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {DEMO_USERS.map(u => (
                   <button key={u.role} onClick={() => fillDemo(u.email)} type="button"
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${u.color}`}>
-                    <span className="text-base">{u.icon}</span>
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${u.color}`}>
+                    <u.Icon className="h-3.5 w-3.5 shrink-0" />
                     <span>{u.role}</span>
                   </button>
                 ))}
@@ -148,7 +149,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-white/40">
-          © {new Date().getFullYear()} School Portal · All rights reserved
+          &copy; {new Date().getFullYear()} School Portal · All rights reserved
         </p>
       </div>
     </div>

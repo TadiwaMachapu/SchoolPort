@@ -4,6 +4,7 @@ import { api, ParentChild, ParentGrade, ParentAttendanceSummary, ParentAssignmen
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Users, BarChart2, ClipboardList } from "lucide-react";
 
 function gradeLetter(pct: number) {
   if (pct >= 90) return { letter: "A+", color: "text-green-600" };
@@ -65,11 +66,13 @@ export default function ParentPortalPage() {
   if (loading) return <div className="p-8 text-gray-400 text-center py-16">Loading…</div>;
 
   if (error || children.length === 0) return (
-    <div className="p-8 max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Parent Portal</h1>
+    <div className="p-6 lg:p-8 max-w-xl mx-auto">
+      <h1 className="text-2xl font-semibold text-gray-900 tracking-tight mb-4">Parent Portal</h1>
       <Card>
         <CardContent className="py-12 text-center text-gray-400">
-          <div className="text-4xl mb-3">👨‍👩‍👧</div>
+          <div className="flex justify-center mb-3">
+            <Users className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="font-medium text-gray-600">No children linked</p>
           <p className="text-sm mt-1">{error || "Contact the school administrator to link your children to your account."}</p>
         </CardContent>
@@ -78,10 +81,10 @@ export default function ParentPortalPage() {
   );
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Parent Portal</h1>
-        <p className="text-gray-500 mt-1">Monitor your child's academic progress</p>
+        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Parent Portal</h1>
+        <p className="text-sm text-gray-500 mt-1">Monitor your child's academic progress</p>
       </div>
 
       {/* Child selector */}
@@ -151,7 +154,9 @@ export default function ParentPortalPage() {
               <CardContent className="p-0">
                 {grades.length === 0 ? (
                   <div className="py-12 text-center text-gray-400">
-                    <div className="text-3xl mb-2">📊</div>
+                    <div className="flex justify-center mb-2">
+                      <BarChart2 className="h-10 w-10 text-gray-300" />
+                    </div>
                     <p className="text-sm">No grades recorded yet</p>
                   </div>
                 ) : (
@@ -248,7 +253,9 @@ export default function ParentPortalPage() {
               <CardContent className="p-0">
                 {assignments.length === 0 ? (
                   <div className="py-12 text-center text-gray-400">
-                    <div className="text-3xl mb-2">📝</div>
+                    <div className="flex justify-center mb-2">
+                      <ClipboardList className="h-10 w-10 text-gray-300" />
+                    </div>
                     <p className="text-sm">No assignments found</p>
                   </div>
                 ) : (

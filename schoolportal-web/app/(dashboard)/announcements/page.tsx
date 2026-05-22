@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Megaphone, Trash2 } from "lucide-react";
 
 const AUDIENCE_OPTIONS = ["All", "Teachers", "Students", "Parents", "Class"];
 
@@ -37,19 +38,19 @@ export default function AnnouncementsPage() {
   }
 
   const AUDIENCE_COLORS: Record<string, string> = {
-    All:      "bg-blue-100 text-blue-800",
-    Teachers: "bg-purple-100 text-purple-800",
-    Students: "bg-green-100 text-green-800",
-    Parents:  "bg-orange-100 text-orange-800",
-    Class:    "bg-teal-100 text-teal-800",
+    All:      "bg-blue-50 text-blue-700 ring-1 ring-blue-200/60",
+    Teachers: "bg-violet-50 text-violet-700 ring-1 ring-violet-200/60",
+    Students: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60",
+    Parents:  "bg-amber-50 text-amber-700 ring-1 ring-amber-200/60",
+    Class:    "bg-teal-50 text-teal-700 ring-1 ring-teal-200/60",
   };
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Announcements</h1>
-          <p className="text-gray-500 mt-1">{items.length} announcement{items.length !== 1 ? "s" : ""}</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Announcements</h1>
+          <p className="text-sm text-gray-500 mt-1">{items.length} announcement{items.length !== 1 ? "s" : ""}</p>
         </div>
         <Button onClick={() => setShowNew(true)}>+ New Announcement</Button>
       </div>
@@ -76,7 +77,9 @@ export default function AnnouncementsPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">📢</div>
+          <div className="flex justify-center mb-4">
+            <Megaphone className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No announcements yet</p>
           <p className="text-sm text-gray-400 mt-1">Create the first announcement for your school</p>
           <Button className="mt-4" onClick={() => setShowNew(true)}>+ New Announcement</Button>
@@ -90,11 +93,11 @@ export default function AnnouncementsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       <h3 className="font-semibold text-gray-900">{a.title}</h3>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${AUDIENCE_COLORS[a.audience] ?? "bg-gray-100 text-gray-700"}`}>
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${AUDIENCE_COLORS[a.audience] ?? "bg-gray-100 text-gray-700"}`}>
                         {a.audience}
                       </span>
                       {!a.isActive && (
-                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 ring-1 ring-gray-200">
                           Expired
                         </span>
                       )}
@@ -115,9 +118,7 @@ export default function AnnouncementsPage() {
                   <button onClick={() => remove(a.announcementId)}
                     className="shrink-0 p-1.5 rounded-md text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                     title="Delete">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </CardContent>

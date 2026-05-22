@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { User, BookOpen } from "lucide-react";
 
 export default function ClassDetailPage() {
   const { id }  = useParams<{ id: string }>();
@@ -32,7 +33,7 @@ export default function ClassDetailPage() {
   }, [id]);
 
   if (loading) return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <Skeleton className="h-4 w-20" />
       <Skeleton className="h-10 w-64" />
       <div className="grid grid-cols-4 gap-4">
@@ -41,14 +42,14 @@ export default function ClassDetailPage() {
       <Skeleton className="h-64 rounded-lg" />
     </div>
   );
-  if (error || !cls) return <div className="p-8 text-red-600">{error || "Class not found"}</div>;
+  if (error || !cls) return <div className="p-6 lg:p-8 text-red-600">{error || "Class not found"}</div>;
 
   const capacity  = cls.maxCapacity ?? 0;
   const fillPct   = capacity > 0 ? Math.round((cls.studentCount / capacity) * 100) : 0;
   const fillColor = fillPct >= 90 ? "bg-red-500" : fillPct >= 75 ? "bg-yellow-500" : "bg-blue-500";
 
   return (
-    <div className="p-8 space-y-6 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 space-y-6 max-w-5xl mx-auto">
       {/* Back */}
       <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors">
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +61,7 @@ export default function ClassDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{cls.name}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">{cls.name}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             {cls.gradeLevel && <Badge variant="outline">Grade {cls.gradeLevel}</Badge>}
             {cls.academicYear && <Badge variant="outline">{cls.academicYear}</Badge>}
@@ -120,7 +121,9 @@ export default function ClassDetailPage() {
           <CardContent className="p-0">
             {students.length === 0 ? (
               <div className="py-16 text-center text-gray-400">
-                <div className="text-4xl mb-3">👤</div>
+                <div className="flex justify-center mb-3">
+                  <User className="h-10 w-10 text-gray-300" />
+                </div>
                 <p className="text-sm font-medium text-gray-500">No students enrolled yet</p>
                 <p className="text-xs text-gray-400 mt-1">Students can be enrolled from the Users page</p>
               </div>
@@ -163,7 +166,9 @@ export default function ClassDetailPage() {
       {tab === "subjects" && (
         subjects.length === 0 ? (
           <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-            <div className="text-4xl mb-3">📚</div>
+            <div className="flex justify-center mb-3">
+              <BookOpen className="h-10 w-10 text-gray-300" />
+            </div>
             <p className="text-sm font-medium text-gray-500">No subjects assigned</p>
             <p className="text-xs text-gray-400 mt-1">Subjects can be assigned to this class by an admin</p>
           </div>

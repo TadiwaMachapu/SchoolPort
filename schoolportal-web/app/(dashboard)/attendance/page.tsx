@@ -4,6 +4,7 @@ import { api, type Class, type AttendanceRecord } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Users } from "lucide-react";
 
 const STATUS: Record<number, { label: string; active: string; dot: string }> = {
   1: { label: "Present", active: "bg-green-100 text-green-800 ring-2 ring-green-400 ring-offset-1",  dot: "bg-green-500" },
@@ -65,11 +66,11 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Attendance</h1>
-          <p className="text-gray-500 mt-1">Mark daily attendance for your classes</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Attendance</h1>
+          <p className="text-sm text-gray-500 mt-1">Mark daily attendance for your classes</p>
         </div>
       </div>
 
@@ -156,7 +157,9 @@ export default function AttendancePage() {
             </div>
           ) : records.length === 0 ? (
             <div className="py-16 text-center text-gray-400">
-              <div className="text-4xl mb-3">👥</div>
+              <div className="flex justify-center mb-3">
+                <Users className="h-10 w-10 text-gray-300" />
+              </div>
               <p className="text-sm font-medium text-gray-500">No students enrolled in this class</p>
               <p className="text-xs text-gray-400 mt-1">Enroll students from the Users page</p>
             </div>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getClientRole } from "@/lib/utils";
+import { Inbox } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   submitted: "bg-yellow-100 text-yellow-800",
@@ -79,20 +80,20 @@ export default function AssignmentDetailPage() {
   }
 
   if (loading) return (
-    <div className="p-8 max-w-4xl mx-auto space-y-6">
+    <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-10 w-80" />
       <Skeleton className="h-4 w-48" />
       <Skeleton className="h-40 rounded-xl" />
     </div>
   );
-  if (error) return <div className="p-8 text-red-600">{error}</div>;
-  if (!assignment) return <div className="p-8 text-gray-400">Assignment not found</div>;
+  if (error) return <div className="p-6 lg:p-8 text-red-600">{error}</div>;
+  if (!assignment) return <div className="p-6 lg:p-8 text-gray-400">Assignment not found</div>;
 
   const isPastDue = new Date(assignment.dueAt) < new Date();
 
   return (
-    <div className="p-8 space-y-6 max-w-4xl mx-auto">
+    <div className="p-6 lg:p-8 space-y-6 max-w-4xl mx-auto">
       {/* Back */}
       <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors">
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +109,7 @@ export default function AssignmentDetailPage() {
           {assignment.className && assignment.subjectName && <span>·</span>}
           {assignment.subjectName && <span>{assignment.subjectName}</span>}
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">{assignment.title}</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">{assignment.title}</h1>
         <div className="flex flex-wrap items-center gap-3 mt-2">
           <span className="text-sm text-gray-500">
             Due:{" "}
@@ -208,7 +209,9 @@ export default function AssignmentDetailPage() {
           <CardContent className="p-0">
             {submissions.length === 0 ? (
               <div className="py-16 text-center text-gray-400">
-                <div className="text-4xl mb-3">📬</div>
+                <div className="flex justify-center mb-3">
+                  <Inbox className="h-10 w-10 text-gray-300" />
+                </div>
                 <p className="text-sm font-medium text-gray-500">No submissions yet</p>
                 <p className="text-xs text-gray-400 mt-1">Students haven't submitted this assignment</p>
               </div>

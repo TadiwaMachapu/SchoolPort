@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { getClientRole } from "@/lib/utils";
+import { ClipboardList } from "lucide-react";
 
 function dueBadge(dueAt: string) {
   const due  = new Date(dueAt);
@@ -47,11 +48,11 @@ export default function AssignmentsPage() {
   const canCreate = role === "Admin" || role === "Teacher";
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Assignments</h1>
-          <p className="text-gray-500 mt-1">{total} assignment{total !== 1 ? "s" : ""}</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Assignments</h1>
+          <p className="text-sm text-gray-500 mt-1">{total} assignment{total !== 1 ? "s" : ""}</p>
         </div>
         {canCreate && (
           <Button onClick={() => setShowCreate(true)}>+ Create Assignment</Button>
@@ -66,7 +67,9 @@ export default function AssignmentsPage() {
         <SkeletonTable rows={6} cols={6} />
       ) : assignments.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">📝</div>
+          <div className="flex justify-center mb-4">
+            <ClipboardList className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No assignments yet</p>
           <p className="text-sm text-gray-400 mt-1">
             {canCreate ? "Create the first assignment for your class" : "Assignments from your teachers will appear here"}

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonCards } from "@/components/ui/skeleton";
 import { getClientRole } from "@/lib/utils";
+import { BookOpen, Layers, PlayCircle } from "lucide-react";
 
 interface Course {
   courseId: string;
@@ -59,11 +60,11 @@ export default function CoursesPage() {
   const canCreate = role === "Admin" || role === "Teacher";
 
   return (
-    <div className="p-8">
+    <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Courses</h1>
-          <p className="text-gray-500 mt-1">{total} course{total !== 1 ? "s" : ""}</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Courses</h1>
+          <p className="text-sm text-gray-500 mt-1">{total} course{total !== 1 ? "s" : ""}</p>
         </div>
         {canCreate && <Button onClick={() => setShowCreate(true)}>+ New Course</Button>}
       </div>
@@ -76,7 +77,9 @@ export default function CoursesPage() {
         <SkeletonCards count={6} />
       ) : courses.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="text-5xl mb-4">📚</div>
+          <div className="flex justify-center mb-4">
+            <BookOpen className="h-10 w-10 text-gray-300" />
+          </div>
           <p className="text-lg font-medium text-gray-700">No courses yet</p>
           <p className="text-sm text-gray-400 mt-1">
             {canCreate ? "Create your first course to get started" : "Published courses from your teachers will appear here"}
@@ -92,7 +95,7 @@ export default function CoursesPage() {
                   <img src={c.thumbnailUrl} alt={c.title} className="w-full h-40 object-cover" />
                 ) : (
                   <div className={`w-full h-40 bg-gradient-to-br ${GRADIENTS[i % GRADIENTS.length]} flex items-center justify-center`}>
-                    <span className="text-5xl">📚</span>
+                    <BookOpen className="h-10 w-10 text-white/80" />
                   </div>
                 )}
                 <CardContent className="p-5">
@@ -107,8 +110,14 @@ export default function CoursesPage() {
                   )}
                   <div className="flex items-center justify-between text-xs text-gray-400 mt-auto pt-2 border-t border-gray-100">
                     <div className="flex items-center gap-3">
-                      <span>📦 {c.moduleCount} modules</span>
-                      <span>▶ {c.lessonCount} lessons</span>
+                      <span className="flex items-center gap-1">
+                        <Layers className="h-3.5 w-3.5" />
+                        {c.moduleCount} modules
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <PlayCircle className="h-3.5 w-3.5" />
+                        {c.lessonCount} lessons
+                      </span>
                     </div>
                     <span>{c.createdByName}</span>
                   </div>

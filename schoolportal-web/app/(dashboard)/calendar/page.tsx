@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getClientRole } from "@/lib/utils";
+import { CalendarDays } from "lucide-react";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -101,11 +102,11 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Calendar & Timetable</h1>
-          <p className="text-gray-500 mt-1">School events, deadlines, and weekly schedule</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Calendar & Timetable</h1>
+          <p className="text-sm text-gray-500 mt-1">School events, deadlines, and weekly schedule</p>
         </div>
         {(role === "Admin" || role === "Teacher") && (
           <Button size="sm" onClick={() => setShowAdd(true)}>+ Add Event</Button>
@@ -259,7 +260,9 @@ export default function CalendarPage() {
           <CardContent className="p-0">
             {timetable.length === 0 ? (
               <div className="py-16 text-center text-gray-400">
-                <div className="text-4xl mb-3">📅</div>
+                <div className="flex justify-center mb-3">
+                  <CalendarDays className="h-10 w-10 text-gray-300" />
+                </div>
                 <p>No timetable slots configured yet</p>
               </div>
             ) : (

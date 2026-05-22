@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getClientRole } from "@/lib/utils";
+import { Layers, PlayCircle } from "lucide-react";
 
 interface Lesson {
   lessonId: string; title: string; type: string;
@@ -112,15 +113,15 @@ export default function CourseDetailPage() {
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">{course.title}</h1>
             <Badge variant={course.isPublished ? "success" : "outline"}>
               {course.isPublished ? "Published" : "Draft"}
             </Badge>
           </div>
-          {course.description && <p className="text-gray-500 mt-1">{course.description}</p>}
+          {course.description && <p className="text-sm text-gray-500 mt-1">{course.description}</p>}
           <div className="flex items-center gap-3 mt-2 text-sm text-gray-400">
-            <span>📦 {course.moduleCount} modules</span>
-            <span>▶ {course.lessonCount} lessons</span>
+            <span className="flex items-center gap-1"><Layers className="h-3.5 w-3.5" /> {course.moduleCount} modules</span>
+            <span className="flex items-center gap-1"><PlayCircle className="h-3.5 w-3.5" /> {course.lessonCount} lessons</span>
             <span>by {course.createdByName}</span>
           </div>
         </div>
@@ -240,7 +241,9 @@ export default function CourseDetailPage() {
 
         {course.modules.length === 0 && !canEdit && (
           <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-            <div className="text-5xl mb-3">📦</div>
+            <div className="flex justify-center mb-3">
+              <Layers className="h-10 w-10 text-gray-300" />
+            </div>
             <p className="text-gray-500">No modules yet</p>
           </div>
         )}

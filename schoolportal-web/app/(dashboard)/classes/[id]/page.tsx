@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, BookOpen } from "lucide-react";
+import { User as UserIcon, BookOpen } from "lucide-react";
 
 export default function ClassDetailPage() {
   const { id }  = useParams<{ id: string }>();
@@ -122,7 +122,7 @@ export default function ClassDetailPage() {
             {students.length === 0 ? (
               <div className="py-16 text-center text-gray-400">
                 <div className="flex justify-center mb-3">
-                  <User className="h-10 w-10 text-gray-300" />
+                  <UserIcon className="h-10 w-10 text-gray-300" />
                 </div>
                 <p className="text-sm font-medium text-gray-500">No students enrolled yet</p>
                 <p className="text-xs text-gray-400 mt-1">Students can be enrolled from the Users page</p>

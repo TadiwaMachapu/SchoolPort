@@ -173,8 +173,8 @@ public class AnalyticsController : ControllerBase
                     .SelectMany(cs => cs.Assignments)
                     .SelectMany(a => a.Submissions)
                     .Where(s => s.Grade != null)
-                    .Select(s => (double)s.Grade!.Score / (double)s.Assignment.MaxMarks * 100)
-                    .Average()
+                    .Select(s => (double?)((double)s.Grade!.Score / (double)s.Assignment.MaxMarks * 100))
+                    .Average()  // double? — returns null for empty sets, never throws
             })
             .ToListAsync();
 

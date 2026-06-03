@@ -1,7 +1,10 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
+import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell } from "@/components/notification-bell";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { FeaturesProvider } from "@/lib/features-context";
 import type { SchoolFeatures, SchoolTheme } from "@/lib/theme";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -95,13 +98,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
       className="flex h-screen overflow-hidden"
       style={{ "--color-primary": theme.primaryColor } as React.CSSProperties}
     >
-      <Sidebar user={me.user} school={{ ...me.school, theme, features }} />
+      {/* Sidebar — desktop only */}
+      <div className="hidden md:flex">
+        <Sidebar user={me.user} school={{ ...me.school, theme, features }} />
+      </div>
 
       {/* Right column: header + scrollable content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
 
         {/* Sticky top header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-100 bg-white px-6 gap-4">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-100 bg-white px-4 md:px-6 gap-4">
           {/* Left: breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs text-gray-400 font-medium hidden sm:block truncate">{me.school?.name ?? "School Portal"}</span>
@@ -129,8 +135,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
+        {/* Main content — extra bottom padding on mobile for the nav bar */}
+        <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 md:pb-0">
+          <FeaturesProvider features={features}>{children}</FeaturesProvider>
+        </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      <MobileNav role={me.user.role} primaryColor={theme.primaryColor} />
+      <PwaInstallPrompt />
     </div>
   );
 }

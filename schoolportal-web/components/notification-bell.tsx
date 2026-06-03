@@ -1,34 +1,45 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
+import { useNotifications, useMarkNotificationRead, useMarkAllRead } from "@/features/notifications/api/hooks";
+import { qk } from "@/shared/api/queryKeys";
 
-interface Notification {
-  type: string;
-  title: string;
-  message: string;
-  link?: string;
-  timestamp: string;
+const TYPE_ICONS: Record<string, string> = {
+  new_assignment: "📝",
+  grade_posted: "🎯",
+  attendance_absent: "⚠️",
+  announcement: "📢",
+};
+
+function typeIcon(type: string) {
+  return TYPE_ICONS[type] ?? "🔔";
 }
 
 export function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const qc = useQueryClient();
 
-  const unread = notifications.length;
+  const { data, isLoading } = useNotifications(30);
+  const markRead = useMarkNotificationRead();
+  const markAll = useMarkAllRead();
 
+  const items = data?.items ?? [];
+  const unreadCount = data?.unreadCount ?? 0;
+
+  // SignalR: invalidate query on push
   useEffect(() => {
     const token = document.cookie.match(/(?:^|; )sp_token=([^;]*)/)?.[1];
     if (!token) return;
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5128";
-    const wsUrl = apiUrl.replace("http://", "ws://").replace("https://", "wss://");
+    let stopFn: (() => void) | undefined;
 
     async function connect() {
       try {
         const { HubConnectionBuilder, LogLevel } = await import("@microsoft/signalr");
-        const connection = new HubConnectionBuilder()
+        const conn = new HubConnectionBuilder()
           .withUrl(`${apiUrl}/hubs/notifications`, {
             accessTokenFactory: () => decodeURIComponent(token!),
           })
@@ -36,79 +47,120 @@ export function NotificationBell() {
           .configureLogging(LogLevel.Warning)
           .build();
 
-        connection.on("notification", (n: Notification) => {
-          setNotifications((prev) => [n, ...prev].slice(0, 20));
+        conn.on("notification", () => {
+          qc.invalidateQueries({ queryKey: qk.notifications.all() });
         });
 
-        await connection.start();
-        setConnected(true);
+        await conn.start();
+        stopFn = () => conn.stop();
       } catch {
-        // SignalR not available or connection failed — silent fail
+        // silent — realtime unavailable
       }
     }
 
     connect();
-  }, []);
+    return () => stopFn?.();
+  }, [qc]);
 
-  // Close dropdown on outside click
+  // Close on outside click
   useEffect(() => {
-    function handle(e: MouseEvent) {
+    function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  function handleItemClick(item: { notificationId: string; isRead: boolean; link?: string }) {
+    if (!item.isRead) markRead.mutate(item.notificationId);
+    if (item.link) window.location.href = item.link;
+    setOpen(false);
+  }
 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => { setOpen((o) => !o); if (!open) setNotifications((n) => n); }}
-        className="relative p-2 rounded-full hover:bg-gray-100 transition-colors"
-        title="Notifications"
+        onClick={() => setOpen((o) => !o)}
+        className="relative p-2 rounded-full hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+        aria-label="Notifications"
       >
         <span className="text-xl">🔔</span>
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
-            {unread > 9 ? "9+" : unread}
-          </span>
-        )}
+        <AnimatePresence>
+          {unreadCount > 0 && (
+            <motion.span
+              key="badge"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold"
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </button>
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">Notifications</h3>
-            {notifications.length > 0 && (
-              <button onClick={() => setNotifications([])} className="text-xs text-gray-400 hover:text-gray-600">
-                Clear all
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
-            {notifications.length === 0 ? (
-              <div className="py-8 text-center text-gray-400 text-sm">No notifications</div>
-            ) : (
-              notifications.map((n, i) => (
-                <div key={i} className="px-4 py-3 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => { if (n.link) window.location.href = n.link; }}>
-                  <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(n.timestamp).toLocaleTimeString()}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-
-          {!connected && (
-            <div className="px-4 py-2 border-t border-gray-100 text-xs text-gray-400 text-center">
-              Real-time updates unavailable
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -8 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+              <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markAll.mutate()}
+                  className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                >
+                  Mark all read
+                </button>
+              )}
             </div>
-          )}
-        </div>
-      )}
+
+            <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-50">
+              {isLoading ? (
+                <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>
+              ) : items.length === 0 ? (
+                <div className="py-10 text-center">
+                  <p className="text-2xl mb-2">🔕</p>
+                  <p className="text-sm text-gray-400">All caught up</p>
+                </div>
+              ) : (
+                items.map((n) => (
+                  <button
+                    key={n.notificationId}
+                    onClick={() => handleItemClick(n)}
+                    className={`w-full text-left flex gap-3 px-4 py-3 transition-colors ${
+                      n.isRead ? "hover:bg-gray-50" : "bg-blue-50/60 hover:bg-blue-50"
+                    }`}
+                  >
+                    <span className="text-lg shrink-0 mt-0.5">{typeIcon(n.type)}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-medium truncate ${n.isRead ? "text-gray-600" : "text-gray-900"}`}>
+                        {n.title}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(n.createdAt).toLocaleString(undefined, {
+                          month: "short", day: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    {!n.isRead && (
+                      <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-2 self-start" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

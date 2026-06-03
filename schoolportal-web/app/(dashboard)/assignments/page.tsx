@@ -8,136 +8,179 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { getClientRole } from "@/lib/utils";
-import { ClipboardList } from "lucide-react";
+import { useAssignments } from "@/features/assignments/api/hooks";
+import { useToastStore } from "@/stores/toast.store";
+import { AnimatePresence, motion } from "framer-motion";
+import { ClipboardList, ChevronLeft, ChevronRight, X, ExternalLink, Clock } from "lucide-react";
 
 function dueBadge(dueAt: string) {
-  const due  = new Date(dueAt);
-  const now  = new Date();
-  const diff = (due.getTime() - now.getTime()) / 86400000;
+  const diff = (new Date(dueAt).getTime() - Date.now()) / 86400000;
   if (diff < 0)  return <Badge variant="destructive">Overdue</Badge>;
   if (diff < 3)  return <Badge variant="warning">Due soon</Badge>;
   return               <Badge variant="success">Upcoming</Badge>;
 }
 
+function formatDue(dueAt: string) {
+  return new Date(dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function AssignmentsPage() {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [total,       setTotal]       = useState(0);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState("");
-  const [showCreate,  setShowCreate]  = useState(false);
-  const [role,        setRole]        = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [role,       setRole]       = useState("");
+  const toast = useToastStore();
 
   useEffect(() => { setRole(getClientRole()); }, []);
 
-  async function load() {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await api.assignments.list({ pageSize: 50 });
-      setAssignments(res.items);
-      setTotal(res.total);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { load(); }, []);
-
+  const { data, isLoading, isError, refetch } = useAssignments({ pageSize: 50 });
+  const assignments = data?.items ?? [];
+  const total = data?.total ?? 0;
   const canCreate = role === "Admin" || role === "Teacher";
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Assignments</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight">Assignments</h1>
           <p className="text-sm text-gray-500 mt-1">{total} assignment{total !== 1 ? "s" : ""}</p>
         </div>
         {canCreate && (
-          <Button onClick={() => setShowCreate(true)}>+ Create Assignment</Button>
+          <Button onClick={() => setShowCreate(true)} className="shrink-0">+ Create</Button>
         )}
       </div>
 
-      {error && (
-        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+      {isError && (
+        <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700 flex items-center justify-between">
+          <span>Failed to load assignments</span>
+          <button onClick={() => refetch()} className="text-red-600 font-medium hover:underline">Retry</button>
+        </div>
       )}
 
-      {loading ? (
-        <SkeletonTable rows={6} cols={6} />
-      ) : assignments.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <div className="flex justify-center mb-4">
-            <ClipboardList className="h-10 w-10 text-gray-300" />
+      {isLoading ? (
+        <>
+          {/* Mobile skeleton */}
+          <div className="space-y-3 sm:hidden">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-gray-100" />
+            ))}
           </div>
-          <p className="text-lg font-medium text-gray-700">No assignments yet</p>
-          <p className="text-sm text-gray-400 mt-1">
+          {/* Desktop skeleton */}
+          <div className="hidden sm:block">
+            <SkeletonTable rows={6} cols={6} />
+          </div>
+        </>
+      ) : assignments.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-gray-200 py-16 text-center">
+          <ClipboardList className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-base font-medium text-gray-700">No assignments yet</p>
+          <p className="text-sm text-gray-400 mt-1 px-8">
             {canCreate ? "Create the first assignment for your class" : "Assignments from your teachers will appear here"}
           </p>
           {canCreate && (
-            <Button className="mt-4" onClick={() => setShowCreate(true)}>+ Create Assignment</Button>
+            <Button className="mt-5" onClick={() => setShowCreate(true)}>+ Create Assignment</Button>
           )}
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  {["Title", "Subject", "Class", "Due Date", "Marks", "Status"].map(h => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {assignments.map(a => (
-                  <tr key={a.assignmentId} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <Link href={`/assignments/${a.assignmentId}`}
-                        className="font-medium text-gray-900 hover:text-blue-600 hover:underline">
-                        {a.title}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500">{a.subjectName ?? "—"}</td>
-                    <td className="px-6 py-4 text-gray-500">{a.className ?? "—"}</td>
-                    <td className="px-6 py-4 text-gray-600 text-xs">
-                      {new Date(a.dueAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{a.maxMarks}</td>
-                    <td className="px-6 py-4">{dueBadge(a.dueAt)}</td>
+        <>
+          {/* Mobile: card list */}
+          <div className="space-y-3 sm:hidden">
+            {assignments.map((a) => (
+              <Link key={a.assignmentId} href={`/assignments/${a.assignmentId}`}>
+                <motion.div
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm active:shadow-none transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="font-semibold text-gray-900 text-sm leading-snug">{a.title}</p>
+                    {dueBadge(a.dueAt)}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                    {a.subjectName && <span>{a.subjectName}</span>}
+                    {a.className && <span>· {a.className}</span>}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
+                    <Clock className="h-3 w-3" />
+                    {formatDue(a.dueAt)} · {a.maxMarks} marks
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Desktop: table */}
+          <Card className="hidden sm:block">
+            <CardContent className="p-0">
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-200 bg-gray-50">
+                  <tr>
+                    {["Title", "Subject", "Class", "Due Date", "Marks", "Status"].map((h) => (
+                      <th key={h} className="px-4 md:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {assignments.map((a) => (
+                    <tr key={a.assignmentId} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 md:px-6 py-4">
+                        <Link href={`/assignments/${a.assignmentId}`}
+                          className="font-medium text-gray-900 hover:text-blue-600 hover:underline flex items-center gap-1.5">
+                          {a.title}
+                          <ExternalLink className="h-3 w-3 opacity-40" />
+                        </Link>
+                      </td>
+                      <td className="px-4 md:px-6 py-4 text-gray-500">{a.subjectName ?? "—"}</td>
+                      <td className="px-4 md:px-6 py-4 text-gray-500">{a.className ?? "—"}</td>
+                      <td className="px-4 md:px-6 py-4 text-gray-600 text-xs">{formatDue(a.dueAt)}</td>
+                      <td className="px-4 md:px-6 py-4 text-gray-600">{a.maxMarks}</td>
+                      <td className="px-4 md:px-6 py-4">{dueBadge(a.dueAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </>
       )}
 
-      {showCreate && (
-        <CreateAssignmentModal onClose={() => { setShowCreate(false); load(); }} />
-      )}
+      <AnimatePresence>
+        {showCreate && (
+          <CreateAssignmentSheet
+            onClose={() => setShowCreate(false)}
+            onCreated={() => {
+              setShowCreate(false);
+              refetch();
+              toast.success("Assignment created", "Students will be notified.");
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function CreateAssignmentModal({ onClose }: { onClose: () => void }) {
-  const [classes,      setClasses]      = useState<Class[]>([]);
-  const [subjects,     setSubjects]     = useState<ClassSubject[]>([]);
-  const [classId,      setClassId]      = useState("");
+/* ── Mobile-first step-by-step creation sheet ─────────────────── */
+type Step = 1 | 2 | 3;
+
+function CreateAssignmentSheet({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [step,     setStep]     = useState<Step>(1);
+  const [classes,  setClasses]  = useState<Class[]>([]);
+  const [subjects, setSubjects] = useState<ClassSubject[]>([]);
+  const [classId,  setClassId]  = useState("");
   const [form, setForm] = useState({
     classSubjectId: "",
     title:          "",
     description:    "",
-    dueAt:          "",
+    dueAt:          new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16),
     maxMarks:       "100",
   });
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState("");
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState("");
   const [loadingClasses, setLoadingClasses] = useState(true);
 
   useEffect(() => {
     api.classes.list({ pageSize: 100 })
-      .then(r => { setClasses(r.items); if (r.items.length > 0) setClassId(r.items[0].classId); })
+      .then((r) => { setClasses(r.items); if (r.items.length > 0) setClassId(r.items[0].classId); })
       .catch(() => {})
       .finally(() => setLoadingClasses(false));
   }, []);
@@ -145,15 +188,15 @@ function CreateAssignmentModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (!classId) return;
     setSubjects([]);
-    setForm(f => ({ ...f, classSubjectId: "" }));
+    setForm((f) => ({ ...f, classSubjectId: "" }));
     api.classes.subjects(classId)
-      .then(s => { setSubjects(s); if (s.length > 0) setForm(f => ({ ...f, classSubjectId: s[0].classSubjectId })); })
+      .then((s) => { setSubjects(s); if (s.length > 0) setForm((f) => ({ ...f, classSubjectId: s[0].classSubjectId })); })
       .catch(() => {});
   }, [classId]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.classSubjectId) { setError("Please select a class and subject"); return; }
+  async function submit() {
+    if (!form.classSubjectId) { setError("Select a class and subject"); return; }
+    if (!form.title.trim())   { setError("Title is required"); return; }
     setSaving(true);
     setError("");
     try {
@@ -164,7 +207,7 @@ function CreateAssignmentModal({ onClose }: { onClose: () => void }) {
         dueAt:          new Date(form.dueAt).toISOString(),
         maxMarks:       Number(form.maxMarks),
       });
-      onClose();
+      onCreated();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create");
     } finally {
@@ -172,86 +215,176 @@ function CreateAssignmentModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // Default due date to one week from now
-  const defaultDue = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16);
+  function canAdvance() {
+    if (step === 1) return !!form.classSubjectId;
+    if (step === 2) return !!form.title.trim();
+    return true;
+  }
+
+  const stepLabels = ["Class & Subject", "Details", "Schedule"];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">Create Assignment</h2>
-          <button onClick={onClose} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center bg-black/40 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ y: "100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: "100%", opacity: 0 }}
+        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl flex flex-col max-h-[92vh]"
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
+          <div className="h-1 w-10 rounded-full bg-gray-200" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">New Assignment</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{stepLabels[step - 1]}</p>
+          </div>
+          <button onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={submit} className="p-6 space-y-4">
+        {/* Step dots */}
+        <div className="flex items-center justify-center gap-2 py-3 shrink-0">
+          {([1, 2, 3] as Step[]).map((s) => (
+            <button key={s} onClick={() => s < step && setStep(s)}
+              className={`h-2 rounded-full transition-all ${s === step ? "w-6 bg-blue-600" : s < step ? "w-2 bg-blue-300" : "w-2 bg-gray-200"}`}
+            />
+          ))}
+        </div>
+
+        {/* Step content */}
+        <div className="flex-1 overflow-y-auto px-6 pb-4">
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+            <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
           )}
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Title</label>
-            <Input placeholder="e.g. Chapter 3 Quiz" value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required autoFocus />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Description <span className="text-gray-400 font-normal">(optional)</span></label>
-            <textarea rows={2} placeholder="Instructions for students…" value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Class</label>
-              {loadingClasses ? (
-                <div className="h-10 animate-pulse rounded-md bg-gray-200" />
-              ) : (
-                <select value={classId} onChange={e => setClassId(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
-                </select>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Subject</label>
-              {subjects.length === 0 ? (
-                <div className="h-10 flex items-center px-3 text-sm text-gray-400 border border-gray-200 rounded-md bg-gray-50">
-                  {classId ? "No subjects" : "Select class first"}
+          {step === 1 && (
+            <div className="space-y-4 pt-2">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Class</label>
+                {loadingClasses ? (
+                  <div className="h-14 animate-pulse rounded-xl bg-gray-100" />
+                ) : (
+                  <div className="grid grid-cols-1 gap-2">
+                    {classes.map((c) => (
+                      <button key={c.classId} onClick={() => setClassId(c.classId)}
+                        className={`flex items-center justify-between rounded-2xl border-2 px-4 py-3 text-left transition-all min-h-[56px] ${
+                          classId === c.classId ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"
+                        }`}>
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">{c.name}</p>
+                          <p className="text-xs text-gray-400">{c.studentCount} students{c.gradeLevel ? ` · Grade ${c.gradeLevel}` : ""}</p>
+                        </div>
+                        {classId === c.classId && <div className="h-5 w-5 rounded-full bg-blue-500 shrink-0 flex items-center justify-center text-white text-xs">✓</div>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {classId && (
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Subject</label>
+                  {subjects.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-2">No subjects assigned to this class</p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {subjects.map((s) => (
+                        <button key={s.classSubjectId} onClick={() => setForm((f) => ({ ...f, classSubjectId: s.classSubjectId }))}
+                          className={`rounded-2xl border-2 px-4 py-3 text-left transition-all min-h-[56px] ${
+                            form.classSubjectId === s.classSubjectId ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-blue-300"
+                          }`}>
+                          <p className="font-semibold text-gray-900 text-sm">{s.subjectName}</p>
+                          {s.teacherName && <p className="text-xs text-gray-400 mt-0.5">{s.teacherName}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <select value={form.classSubjectId} onChange={e => setForm(f => ({ ...f, classSubjectId: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  {subjects.map(s => <option key={s.classSubjectId} value={s.classSubjectId}>{s.subjectName}</option>)}
-                </select>
               )}
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Due date & time</label>
-              <input type="datetime-local" required defaultValue={defaultDue}
-                onChange={e => setForm(f => ({ ...f, dueAt: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          {step === 2 && (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Title</label>
+                <Input placeholder="e.g. Chapter 3 Quiz" value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  autoFocus className="text-base py-3 min-h-[48px]" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">
+                  Instructions <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <textarea rows={5} placeholder="Write instructions for students…" value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full rounded-xl border border-gray-300 px-3 py-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Max marks</label>
-              <Input type="number" min={1} max={1000} value={form.maxMarks}
-                onChange={e => setForm(f => ({ ...f, maxMarks: e.target.value }))} required />
-            </div>
-          </div>
+          )}
 
-          <div className="flex gap-3 pt-2">
-            <Button type="submit" className="flex-1" loading={saving}>Create Assignment</Button>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          </div>
-        </form>
-      </div>
-    </div>
+          {step === 3 && (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Due date & time</label>
+                <input type="datetime-local" value={form.dueAt}
+                  onChange={(e) => setForm((f) => ({ ...f, dueAt: e.target.value }))}
+                  className="w-full rounded-xl border border-gray-300 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[48px]" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Max marks</label>
+                <Input type="number" min={1} max={1000} value={form.maxMarks}
+                  onChange={(e) => setForm((f) => ({ ...f, maxMarks: e.target.value }))}
+                  className="text-base py-3 min-h-[48px]" />
+              </div>
+              <div className="rounded-2xl bg-gray-50 border border-gray-200 p-4 space-y-1.5 text-sm">
+                <p className="font-semibold text-gray-700 mb-2">Review</p>
+                <p className="text-gray-600"><span className="text-gray-400">Class:</span> {classes.find((c) => c.classId === classId)?.name}</p>
+                <p className="text-gray-600"><span className="text-gray-400">Subject:</span> {subjects.find((s) => s.classSubjectId === form.classSubjectId)?.subjectName}</p>
+                <p className="text-gray-600"><span className="text-gray-400">Title:</span> {form.title}</p>
+                <p className="text-gray-600"><span className="text-gray-400">Due:</span> {new Date(form.dueAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                <p className="text-gray-600"><span className="text-gray-400">Marks:</span> {form.maxMarks}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-100 px-6 py-4 flex gap-3 shrink-0">
+          {step > 1 ? (
+            <button onClick={() => setStep((s) => (s - 1) as Step)}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors min-h-[48px]">
+              <ChevronLeft className="h-4 w-4" /> Back
+            </button>
+          ) : (
+            <button onClick={onClose}
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors min-h-[48px]">
+              Cancel
+            </button>
+          )}
+          <div className="flex-1" />
+          {step < 3 ? (
+            <Button onClick={() => setStep((s) => (s + 1) as Step)} disabled={!canAdvance()} className="gap-1.5 min-h-[48px] px-6">
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={submit} loading={saving} className="gap-2 px-8 min-h-[48px]">
+              Create Assignment
+            </Button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -20,6 +20,9 @@ public class School
     // Per-school branding / white-label theme
     public SchoolTheme Theme { get; set; } = new();
 
+    // Per-school configuration settings
+    public SchoolSettings Settings { get; set; } = new();
+
     // Navigation properties
     public virtual ICollection<User> Users { get; set; } = new List<User>();
     public virtual ICollection<Class> Classes { get; set; } = new List<Class>();

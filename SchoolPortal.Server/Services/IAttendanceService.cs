@@ -6,4 +6,5 @@ public interface IAttendanceService
 {
     Task<List<AttendanceDto>> GetAttendanceAsync(Guid classId, DateTime date);
     Task BulkUpsertAttendanceAsync(BulkAttendanceRequest request);
+    Task<List<MyAttendanceSummaryDto>> GetMyAttendanceAsync(int? month, int? year);
 }

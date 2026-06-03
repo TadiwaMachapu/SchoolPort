@@ -1,13 +1,16 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import { api, type MessageThread, type ChatMessage, type DirectoryUser } from "@/lib/api";
-import { Card, CardContent } from "@/components/ui/card";
+import { useFeature } from "@/lib/use-feature";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getClientUserId } from "@/lib/utils";
+
+const POLL_MS = 5000;
 
 function initials(name: string) {
   return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -22,17 +25,26 @@ function formatTime(iso: string) {
 }
 
 export default function MessagesPage() {
-  const [threads,    setThreads]    = useState<MessageThread[]>([]);
-  const [active,     setActive]     = useState<MessageThread | null>(null);
-  const [messages,   setMessages]   = useState<ChatMessage[]>([]);
-  const [input,      setInput]      = useState("");
-  const [sending,    setSending]    = useState(false);
-  const [loading,    setLoading]    = useState(true);
-  const [showNewDM,  setShowNewDM]  = useState(false);
-  const [myUserId,   setMyUserId]   = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const hasSchoolChat = useFeature("schoolChat");
+  const [threads,   setThreads]   = useState<MessageThread[]>([]);
+  const [active,    setActive]    = useState<MessageThread | null>(null);
+  const [messages,  setMessages]  = useState<ChatMessage[]>([]);
+  const [input,     setInput]     = useState("");
+  const [sending,   setSending]   = useState(false);
+  const [loading,   setLoading]   = useState(true);
+  const [showNewDM, setShowNewDM] = useState(false);
+  const [myUserId,  setMyUserId]  = useState("");
+  const bottomRef    = useRef<HTMLDivElement>(null);
+  const activeRef    = useRef<MessageThread | null>(null);
+  const messagesRef  = useRef<ChatMessage[]>([]);
+  const pollTimer    = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { setMyUserId(getClientUserId()); }, []);
+
+  // Keep refs in sync so the poll closure sees fresh values
+  useEffect(() => { activeRef.current = active; }, [active]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   useEffect(() => {
     api.messages.threads()
@@ -40,6 +52,37 @@ export default function MessagesPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Poll for new messages in active thread every 5 s
+  const pollMessages = useCallback(async () => {
+    const thread = activeRef.current;
+    if (!thread) return;
+    try {
+      const fresh = await api.messages.getMessages(thread.threadId) as ChatMessage[];
+      const current = messagesRef.current;
+      if (fresh.length > current.length) {
+        setMessages(fresh);
+        // Only scroll if the user is near the bottom
+        const el = bottomRef.current?.parentElement;
+        const nearBottom = el ? el.scrollHeight - el.scrollTop - el.clientHeight < 120 : true;
+        if (nearBottom) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+        // Refresh thread list unread counts
+        setThreads(prev => prev.map(t =>
+          t.threadId === thread.threadId
+            ? { ...t, lastMessageAt: fresh.at(-1)?.sentAt ?? t.lastMessageAt }
+            : t
+        ));
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  // Start/stop poll when active thread changes
+  useEffect(() => {
+    if (pollTimer.current) clearInterval(pollTimer.current);
+    if (!active) return;
+    pollTimer.current = setInterval(pollMessages, POLL_MS);
+    return () => { if (pollTimer.current) clearInterval(pollTimer.current); };
+  }, [active, pollMessages]);
 
   async function openThread(thread: MessageThread) {
     setActive(thread);
@@ -63,6 +106,17 @@ export default function MessagesPage() {
       ));
     } catch { /* ignore */ }
     finally { setSending(false); }
+  }
+
+  if (!hasSchoolChat) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center px-4">
+        <MessageSquare className="h-12 w-12 text-gray-200 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-700">SchoolChat not enabled</h2>
+        <p className="text-sm text-gray-400 mt-1">Enable SchoolChat in Settings to send and receive messages.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+      </div>
+    );
   }
 
   return (
@@ -150,16 +204,20 @@ export default function MessagesPage() {
             <>
               {/* Chat header */}
               <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3 shrink-0">
-                <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
+                <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center shrink-0">
                   {active.type === "class" ? "C" : initials(active.participants?.[0]?.name ?? "?")}
                 </div>
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 text-sm truncate">
                     {active.subject ?? active.className ?? "Direct Message"}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 truncate">
                     {active.participants?.map(p => p.name).join(", ")}
                   </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 text-xs text-emerald-600">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live
                 </div>
               </div>
 

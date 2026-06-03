@@ -113,3 +113,10 @@ Thumbs.db
 appsettings.Production.json
 *.pfx
 *.p12
+
+# Node
+node_modules/
+.next/
+out/
+.env.local
+.env*.local

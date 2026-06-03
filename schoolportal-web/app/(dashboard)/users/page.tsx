@@ -1,19 +1,12 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Upload, Users as UsersIcon } from "lucide-react";
 import { api, type User, type ImportCsvResult } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SkeletonTable } from "@/components/ui/skeleton";
-
-const ROLE_BADGE: Record<string, "default" | "success" | "warning" | "outline"> = {
-  Admin:   "outline",
-  Teacher: "default",
-  Student: "success",
-  Parent:  "warning",
-};
+import { Card, CardContent } from "@/components/ui/card";
+import { useUsersList, useCreateUser, useUpdateUser } from "@/features/users/api/hooks";
+import { useToastStore } from "@/stores/toast.store";
 
 const ROLE_COLORS: Record<string, string> = {
   Admin:   "bg-purple-100 text-purple-800",
@@ -22,47 +15,57 @@ const ROLE_COLORS: Record<string, string> = {
   Parent:  "bg-orange-100 text-orange-800",
 };
 
+const ROLE_DOT: Record<string, string> = {
+  Admin:   "bg-purple-500",
+  Teacher: "bg-blue-500",
+  Student: "bg-green-500",
+  Parent:  "bg-orange-500",
+};
+
+const AVATAR_BG: Record<string, string> = {
+  Admin:   "#7c3aed",
+  Teacher: "#2563eb",
+  Student: "#16a34a",
+  Parent:  "#ea580c",
+};
+
 export default function UsersPage() {
-  const [users,   setUsers]   = useState<User[]>([]);
-  const [total,   setTotal]   = useState(0);
-  const [q,       setQ]       = useState("");
-  const [role,    setRole]    = useState("");
-  const [page,    setPage]    = useState(1);
-  const [loading, setLoading] = useState(true);
+  const toast = useToastStore();
+
+  const [q,          setQ]          = useState("");
+  const [role,       setRole]       = useState("");
+  const [page,       setPage]       = useState(1);
   const [showAdd,    setShowAdd]    = useState(false);
   const [editUser,   setEditUser]   = useState<User | null>(null);
   const [showImport, setShowImport] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  const { data, isLoading, isFetching } = useUsersList({ q: q || undefined, role: role || undefined, page, pageSize: 20 });
+  const updateMut = useUpdateUser();
+
+  const users = data?.items ?? [];
+  const total = data?.total ?? 0;
+
+  async function toggleActive(user: User) {
     try {
-      const res = await api.users.list({ q: q || undefined, role: role || undefined, page, pageSize: 20 });
-      setUsers(res.items);
-      setTotal(res.total);
-    } finally {
-      setLoading(false);
+      await updateMut.mutateAsync({
+        id: user.userId,
+        body: { firstName: user.firstName, lastName: user.lastName, role: user.role, isActive: !user.isActive },
+      });
+      toast.success(user.isActive ? "User deactivated" : "User activated", "");
+    } catch (err: unknown) {
+      toast.error("Failed", err instanceof Error ? err.message : "Please try again");
     }
   }
 
-  useEffect(() => { load(); }, [q, role, page]);
-
-  async function toggleActive(user: User) {
-    await api.users.update(user.userId, {
-      firstName: user.firstName, lastName: user.lastName,
-      role: user.role, isActive: !user.isActive,
-    });
-    load();
-  }
-
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 md:p-6 lg:p-8">
+      <div className="mb-5 md:mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Users</h1>
-          <p className="text-sm text-gray-500 mt-1">{total} total users</p>
+          <h1 className="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight">Users</h1>
+          <p className="text-xs md:text-sm text-gray-500 mt-0.5">{total} total users</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowImport(true)} className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)} className="hidden sm:flex items-center gap-2">
             <Upload className="h-4 w-4" />
             Import CSV
           </Button>
@@ -70,87 +73,137 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <Card className="mb-6">
-        <CardContent className="flex flex-wrap gap-3 p-4">
-          <Input placeholder="Search name or email…" value={q}
-            onChange={e => { setQ(e.target.value); setPage(1); }}
-            className="max-w-xs" />
-          <select value={role} onChange={e => { setRole(e.target.value); setPage(1); }}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">All roles</option>
-            {["Admin", "Teacher", "Student", "Parent"].map(r => <option key={r}>{r}</option>)}
-          </select>
-        </CardContent>
-      </Card>
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap gap-3">
+        <Input placeholder="Search name or email…" value={q}
+          onChange={e => { setQ(e.target.value); setPage(1); }}
+          className="w-full sm:max-w-xs" />
+        <select value={role} onChange={e => { setRole(e.target.value); setPage(1); }}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[44px]">
+          <option value="">All roles</option>
+          {["Admin", "Teacher", "Student", "Parent"].map(r => <option key={r}>{r}</option>)}
+        </select>
+      </div>
 
-      {loading ? (
-        <SkeletonTable rows={8} cols={6} />
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-gray-100" />
+          ))}
+        </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  {["Name", "Email", "Role", "Status", "Last Login", "Actions"].map(h => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {users.length === 0 ? (
+        <>
+          {/* Mobile card list */}
+          <div className={`md:hidden space-y-2 ${isFetching && !isLoading ? "opacity-60" : ""} transition-opacity`}>
+            {users.length === 0 ? (
+              <div className="flex flex-col items-center py-16 text-gray-400">
+                <UsersIcon className="h-10 w-10 text-gray-300 mb-3" />
+                <p className="text-sm">No users found</p>
+              </div>
+            ) : users.map(u => (
+              <div key={u.userId}
+                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                  style={{ backgroundColor: AVATAR_BG[u.role] ?? "#6b7280" }}>
+                  {u.firstName[0]}{u.lastName[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900 truncate text-sm">{u.firstName} {u.lastName}</span>
+                    <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${ROLE_COLORS[u.role] ?? "bg-gray-100 text-gray-700"}`}>
+                      {u.role}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                  <div className="flex items-center gap-1 text-xs mt-0.5">
+                    <span className={`h-1.5 w-1.5 rounded-full ${u.isActive ? "bg-green-500" : "bg-gray-400"}`} />
+                    <span className={u.isActive ? "text-green-700" : "text-gray-400"}>
+                      {u.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => setEditUser(u)}
+                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition-colors min-h-[36px]">
+                    Edit
+                  </button>
+                  <button onClick={() => toggleActive(u)}
+                    className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors min-h-[36px] ${u.isActive ? "border-red-200 text-red-500 hover:bg-red-50" : "border-green-200 text-green-600 hover:bg-green-50"}`}>
+                    {u.isActive ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <Card className={`hidden md:block ${isFetching && !isLoading ? "opacity-60" : ""} transition-opacity`}>
+            <CardContent className="p-0">
+              <table className="w-full text-sm">
+                <thead className="border-b border-gray-200 bg-gray-50">
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center text-gray-400">
-                      <div className="flex justify-center mb-3">
-                        <UsersIcon className="h-10 w-10 text-gray-300" />
-                      </div>
-                      <p>No users found</p>
-                    </td>
+                    {["Name", "Email", "Role", "Status", "Last Login", "Actions"].map(h => (
+                      <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                    ))}
                   </tr>
-                ) : users.map(u => (
-                  <tr key={u.userId} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                          style={{ backgroundColor: u.role === "Admin" ? "#7c3aed" : u.role === "Teacher" ? "#2563eb" : u.role === "Student" ? "#16a34a" : "#ea580c" }}>
-                          {u.firstName[0]}{u.lastName[0]}
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-16 text-center text-gray-400">
+                        <div className="flex justify-center mb-3">
+                          <UsersIcon className="h-10 w-10 text-gray-300" />
                         </div>
-                        <span className="font-medium text-gray-900">{u.firstName} {u.lastName}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500">{u.email}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[u.role] ?? "bg-gray-100 text-gray-700"}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium ${u.isActive ? "text-green-700" : "text-gray-400"}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${u.isActive ? "bg-green-500" : "bg-gray-400"}`} />
-                        {u.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-400 text-xs">
-                      {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Never"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setEditUser(u)}
-                          className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline">
-                          Edit
-                        </button>
-                        <span className="text-gray-300">·</span>
-                        <button onClick={() => toggleActive(u)}
-                          className={`text-xs font-medium hover:underline ${u.isActive ? "text-red-500 hover:text-red-700" : "text-green-600 hover:text-green-800"}`}>
-                          {u.isActive ? "Deactivate" : "Activate"}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+                        <p>No users found</p>
+                      </td>
+                    </tr>
+                  ) : users.map(u => (
+                    <tr key={u.userId} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                            style={{ backgroundColor: AVATAR_BG[u.role] ?? "#6b7280" }}>
+                            {u.firstName[0]}{u.lastName[0]}
+                          </div>
+                          <span className="font-medium text-gray-900">{u.firstName} {u.lastName}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-gray-500">{u.email}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${ROLE_COLORS[u.role] ?? "bg-gray-100 text-gray-700"}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${ROLE_DOT[u.role] ?? "bg-gray-400"}`} />
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium ${u.isActive ? "text-green-700" : "text-gray-400"}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${u.isActive ? "bg-green-500" : "bg-gray-400"}`} />
+                          {u.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-400 text-xs">
+                        {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Never"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setEditUser(u)}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                            Edit
+                          </button>
+                          <span className="text-gray-300">·</span>
+                          <button onClick={() => toggleActive(u)}
+                            className={`text-xs font-medium hover:underline ${u.isActive ? "text-red-500 hover:text-red-700" : "text-green-600 hover:text-green-800"}`}>
+                            {u.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {total > 20 && (
@@ -165,15 +218,19 @@ export default function UsersPage() {
         </div>
       )}
 
-      {showAdd    && <UserModal onClose={() => { setShowAdd(false); load(); }} />}
-      {editUser   && <UserModal user={editUser} onClose={() => { setEditUser(null); load(); }} />}
-      {showImport && <ImportCsvModal onClose={() => { setShowImport(false); load(); }} />}
+      {showAdd    && <UserModal onClose={() => setShowAdd(false)} onSaved={() => toast.success("User created", "")} />}
+      {editUser   && <UserModal user={editUser} onClose={() => setEditUser(null)} onSaved={() => toast.success("User updated", "")} />}
+      {showImport && <ImportCsvModal onClose={() => setShowImport(false)} />}
     </div>
   );
 }
 
-function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
-  const isEdit = !!user;
+function UserModal({ user, onClose, onSaved }: { user?: User; onClose: () => void; onSaved: () => void }) {
+  const isEdit    = !!user;
+  const createMut = useCreateUser();
+  const updateMut = useUpdateUser();
+  const isSaving  = createMut.isPending || updateMut.isPending;
+
   const [form, setForm] = useState({
     firstName: user?.firstName ?? "",
     lastName:  user?.lastName  ?? "",
@@ -182,30 +239,21 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
     role:      user?.role      ?? "Student",
     isActive:  user?.isActive  ?? true,
   });
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState("");
+  const [error, setError] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setError("");
     try {
       if (isEdit) {
-        await api.users.update(user!.userId, {
-          firstName: form.firstName, lastName: form.lastName,
-          role: form.role, isActive: form.isActive,
-        });
+        await updateMut.mutateAsync({ id: user!.userId, body: { firstName: form.firstName, lastName: form.lastName, role: form.role, isActive: form.isActive } });
       } else {
-        await api.users.create({
-          email: form.email, password: form.password,
-          firstName: form.firstName, lastName: form.lastName, role: form.role,
-        });
+        await createMut.mutateAsync({ email: form.email, password: form.password, firstName: form.firstName, lastName: form.lastName, role: form.role });
       }
+      onSaved();
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Save failed");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -221,9 +269,7 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
           </button>
         </div>
         <form onSubmit={submit} className="p-6 space-y-4">
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
-          )}
+          {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700">First name</label>
@@ -264,7 +310,7 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
             </label>
           )}
           <div className="flex gap-3 pt-2">
-            <Button type="submit" className="flex-1" loading={saving}>
+            <Button type="submit" className="flex-1" loading={isSaving}>
               {isEdit ? "Save changes" : "Create user"}
             </Button>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -276,13 +322,11 @@ function UserModal({ user, onClose }: { user?: User; onClose: () => void }) {
 }
 
 function ImportCsvModal({ onClose }: { onClose: () => void }) {
-  const fileRef   = useRef<HTMLInputElement>(null);
-  const [file,     setFile]     = useState<File | null>(null);
+  const fileRef     = useRef<HTMLInputElement>(null);
+  const [file,      setFile]      = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [result,   setResult]   = useState<ImportCsvResult | null>(null);
-  const [error,    setError]    = useState("");
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5128";
+  const [result,    setResult]    = useState<ImportCsvResult | null>(null);
+  const [error,     setError]     = useState("");
 
   async function handleUpload() {
     if (!file) return;
@@ -310,30 +354,22 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
             </svg>
           </button>
         </div>
-
         <div className="p-6 space-y-5">
-          {/* Template download */}
           <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-blue-900">Download template</p>
               <p className="text-xs text-blue-600 mt-0.5">CSV with columns: FirstName, LastName, Email, Role</p>
             </div>
-            <a
-              href={`${API_URL}/api/users/import-csv`}
+            <a href={`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5128"}/api/users/import-csv`}
               download="users_import_template.csv"
-              className="shrink-0 text-sm font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2"
-            >
+              className="shrink-0 text-sm font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2">
               Download
             </a>
           </div>
-
-          {/* File picker */}
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1.5">Upload CSV file</label>
-            <div
-              className="relative flex items-center gap-3 rounded-lg border-2 border-dashed border-gray-200 px-4 py-5 hover:border-blue-300 transition-colors cursor-pointer"
-              onClick={() => fileRef.current?.click()}
-            >
+            <div className="relative flex items-center gap-3 rounded-lg border-2 border-dashed border-gray-200 px-4 py-5 hover:border-blue-300 transition-colors cursor-pointer"
+              onClick={() => fileRef.current?.click()}>
               <Upload className="h-5 w-5 text-gray-400 shrink-0" />
               <div className="min-w-0 flex-1">
                 {file ? (
@@ -342,21 +378,11 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
                   <p className="text-sm text-gray-400">Click to choose a .csv file</p>
                 )}
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".csv,text/csv"
-                className="sr-only"
-                onChange={e => setFile(e.target.files?.[0] ?? null)}
-              />
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="sr-only"
+                onChange={e => setFile(e.target.files?.[0] ?? null)} />
             </div>
           </div>
-
-          {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
-          )}
-
-          {/* Results */}
+          {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
           {result && (
             <div className="rounded-lg border border-gray-200 overflow-hidden">
               <div className={`px-4 py-3 flex items-center gap-2 ${result.failed.length === 0 ? "bg-green-50 border-b border-green-100" : "bg-amber-50 border-b border-amber-100"}`}>
@@ -377,7 +403,6 @@ function ImportCsvModal({ onClose }: { onClose: () => void }) {
               )}
             </div>
           )}
-
           <div className="flex gap-3 pt-1">
             {result ? (
               <Button className="flex-1" onClick={onClose}>Done</Button>

@@ -1,0 +1,581 @@
+using Microsoft.EntityFrameworkCore;
+using SchoolPortal.Data;
+using SchoolPortal.Data.Entities;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
+namespace SchoolPortal.Server.Services;
+
+public interface ISmartReportsService
+{
+    Task<List<AtRiskStudentDto>> GetAtRiskStudentsAsync(Guid classId, Guid termId, Guid schoolId);
+    Task<ReportCommentDto?> GetReportCommentAsync(
+        Guid studentId, Guid termId, Guid schoolId, bool forceRefresh = false);
+    Task<PrincipalSummaryDto?> GetPrincipalSummaryAsync(
+        Guid classId, Guid termId, Guid schoolId, bool forceRefresh = false);
+}
+
+public record SmartSubjectResultDto(string SubjectName, double Average);
+
+public record AtRiskStudentDto(
+    Guid StudentId,
+    string Name,
+    string StudentNumber,
+    double? OverallAverage,
+    double? AttendancePercent,
+    List<string> RiskFlags,
+    List<SmartSubjectResultDto> SubjectResults
+);
+
+public record ReportCommentDto(string CommentText, bool FromCache);
+public record PrincipalSummaryDto(string SummaryMarkdown, bool FromCache);
+
+public class SmartReportsService : ISmartReportsService
+{
+    private const string AnthropicApiUrl = "https://api.anthropic.com/v1/messages";
+    private const string Model = "claude-sonnet-4-6";
+    private const decimal InputCostPerToken = 3m / 1_000_000m;
+    private const decimal OutputCostPerToken = 15m / 1_000_000m;
+    private const decimal UsdToZarRate = 18.5m;
+    private const int CacheTtlDays = 7;
+
+    private readonly SchoolPortalDbContext _context;
+    private readonly IConfiguration _config;
+    private readonly ILogger<SmartReportsService> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
+
+    public SmartReportsService(
+        SchoolPortalDbContext context,
+        IConfiguration config,
+        ILogger<SmartReportsService> logger,
+        IHttpClientFactory httpClientFactory)
+    {
+        _context = context;
+        _config = config;
+        _logger = logger;
+        _httpClientFactory = httpClientFactory;
+    }
+
+    // ── At-Risk ────────────────────────────────────────────────────────────────
+
+    public async Task<List<AtRiskStudentDto>> GetAtRiskStudentsAsync(
+        Guid classId, Guid termId, Guid schoolId)
+    {
+        var term = await _context.Terms
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.TermId == termId && t.SchoolId == schoolId);
+
+        if (term == null) return [];
+
+        var students = await _context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.ClassId == classId && e.IsActive && e.SchoolId == schoolId)
+            .Include(e => e.Student).ThenInclude(s => s.User)
+            .Select(e => new
+            {
+                e.Student.StudentId,
+                Name = $"{e.Student.User.FirstName} {e.Student.User.LastName}",
+                e.Student.StudentNumber,
+                FirstName = e.Student.User.FirstName
+            })
+            .ToListAsync();
+
+        if (students.Count == 0) return [];
+
+        var studentIds = students.Select(s => s.StudentId).ToList();
+
+        var grades = await _context.Grades
+            .AsNoTracking()
+            .Where(g =>
+                g.SchoolId == schoolId &&
+                g.Submission.Assignment.ClassSubject.ClassId == classId &&
+                g.Submission.Assignment.DueAt >= term.StartDate &&
+                g.Submission.Assignment.DueAt <= term.EndDate)
+            .Select(g => new
+            {
+                g.Submission.StudentId,
+                SubjectName = g.Submission.Assignment.ClassSubject.Subject.Name,
+                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1)
+            })
+            .ToListAsync();
+
+        var attendance = await _context.Attendances
+            .AsNoTracking()
+            .Where(a =>
+                a.SchoolId == schoolId &&
+                a.ClassId == classId &&
+                a.Date >= term.StartDate &&
+                a.Date <= term.EndDate)
+            .GroupBy(a => a.StudentId)
+            .Select(g => new
+            {
+                StudentId = g.Key,
+                Total = g.Count(),
+                Present = g.Count(a => a.Status == 1)
+            })
+            .ToListAsync();
+
+        var attendanceLookup = attendance.ToDictionary(a => a.StudentId);
+
+        var result = new List<AtRiskStudentDto>();
+
+        foreach (var s in students)
+        {
+            var sGrades = grades.Where(g => g.StudentId == s.StudentId).ToList();
+            var bySubject = sGrades
+                .GroupBy(g => g.SubjectName)
+                .Select(g => new SmartSubjectResultDto(g.Key, Math.Round(g.Average(x => x.Percentage), 1)))
+                .OrderBy(x => x.SubjectName)
+                .ToList();
+
+            var overallAvg = bySubject.Count > 0
+                ? Math.Round(bySubject.Average(x => x.Average), 1)
+                : (double?)null;
+
+            attendanceLookup.TryGetValue(s.StudentId, out var att);
+            var attPct = att is { Total: > 0 }
+                ? Math.Round((double)att.Present / att.Total * 100, 1)
+                : (double?)null;
+
+            var flags = new List<string>();
+
+            if (attPct.HasValue && attPct < 80)
+                flags.Add("LowAttendance");
+
+            var failingSubjects = bySubject.Count(x => x.Average < 40);
+            if (failingSubjects >= 2)
+                flags.Add("MultipleFailures");
+            else if (failingSubjects == 1)
+                flags.Add("SubjectFailing");
+
+            if (overallAvg.HasValue && overallAvg < 50)
+                flags.Add("LowOverallAverage");
+
+            if (flags.Count > 0)
+            {
+                result.Add(new AtRiskStudentDto(
+                    s.StudentId, s.Name, s.StudentNumber,
+                    overallAvg, attPct, flags, bySubject));
+            }
+        }
+
+        return result.OrderBy(s => s.Name).ToList();
+    }
+
+    // ── AI Report Comment ──────────────────────────────────────────────────────
+
+    public async Task<ReportCommentDto?> GetReportCommentAsync(
+        Guid studentId, Guid termId, Guid schoolId, bool forceRefresh = false)
+    {
+        var term = await _context.Terms
+            .AsNoTracking()
+            .Include(t => t.AcademicYear)
+            .FirstOrDefaultAsync(t => t.TermId == termId && t.SchoolId == schoolId);
+
+        if (term == null) return null;
+
+        var student = await _context.Students
+            .AsNoTracking()
+            .Include(s => s.User)
+            .FirstOrDefaultAsync(s => s.StudentId == studentId && s.SchoolId == schoolId);
+
+        if (student == null) return null;
+
+        // Fetch grades within the term
+        var grades = await _context.Grades
+            .AsNoTracking()
+            .Where(g =>
+                g.SchoolId == schoolId &&
+                g.Submission.StudentId == studentId &&
+                g.Submission.Assignment.DueAt >= term.StartDate &&
+                g.Submission.Assignment.DueAt <= term.EndDate)
+            .Select(g => new
+            {
+                SubjectName = g.Submission.Assignment.ClassSubject.Subject.Name,
+                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1)
+            })
+            .ToListAsync();
+
+        var bySubject = grades
+            .GroupBy(g => g.SubjectName)
+            .Select(g => new { Subject = g.Key, Avg = Math.Round(g.Average(x => x.Percentage), 1) })
+            .OrderBy(x => x.Subject)
+            .ToList();
+
+        var overallAvg = bySubject.Count > 0 ? bySubject.Average(x => x.Avg) : (double?)null;
+
+        // Fetch attendance within term
+        var att = await _context.Attendances
+            .AsNoTracking()
+            .Where(a =>
+                a.SchoolId == schoolId &&
+                a.StudentId == studentId &&
+                a.Date >= term.StartDate &&
+                a.Date <= term.EndDate)
+            .GroupBy(a => a.StudentId)
+            .Select(g => new { Total = g.Count(), Present = g.Count(a => a.Status == 1) })
+            .FirstOrDefaultAsync();
+
+        var attPct = att is { Total: > 0 }
+            ? Math.Round((double)att.Present / att.Total * 100, 1)
+            : (double?)null;
+
+        var subjectCsv = string.Join(",", bySubject.Select(x => $"{x.Subject}:{x.Avg}"));
+        var fingerprint = BuildFingerprint($"{studentId}:{termId}:{subjectCsv}");
+
+        if (!forceRefresh)
+        {
+            var cached = await _context.ReportCommentCaches
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c =>
+                    c.StudentId == studentId &&
+                    c.TermId == termId &&
+                    c.InputFingerprint == fingerprint &&
+                    c.ExpiresAt > DateTime.UtcNow);
+
+            if (cached != null)
+                return new ReportCommentDto(cached.CommentText, FromCache: true);
+        }
+
+        var apiKey = _config["Anthropic:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            _logger.LogWarning("Anthropic:ApiKey not configured — report comment unavailable");
+            return null;
+        }
+
+        if (!await CheckCostCapAsync(schoolId)) return null;
+
+        var prompt = BuildCommentPrompt(
+            student.User.FirstName, term.TermNumber, term.AcademicYear.Year,
+            bySubject.Select(x => (x.Subject, x.Avg)).ToList(),
+            overallAvg, attPct);
+
+        var (commentText, inputTokens, outputTokens) = await CallClaudeForCommentAsync(apiKey, prompt);
+        var costZar = (inputTokens * InputCostPerToken + outputTokens * OutputCostPerToken) * UsdToZarRate;
+
+        if (commentText == null)
+        {
+            await LogUsageAsync(schoolId, studentId, "ReportComment", inputTokens, outputTokens, costZar, false, "Claude API call failed");
+            return null;
+        }
+
+        await LogUsageAsync(schoolId, studentId, "ReportComment", inputTokens, outputTokens, costZar, true, null);
+
+        var stale = await _context.ReportCommentCaches
+            .Where(c => c.StudentId == studentId && c.TermId == termId)
+            .ToListAsync();
+        if (stale.Count > 0) _context.ReportCommentCaches.RemoveRange(stale);
+
+        _context.ReportCommentCaches.Add(new ReportCommentCache
+        {
+            ReportCommentCacheId = Guid.NewGuid(),
+            StudentId = studentId,
+            TermId = termId,
+            InputFingerprint = fingerprint,
+            CommentText = commentText,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(CacheTtlDays),
+            InputTokens = inputTokens,
+            OutputTokens = outputTokens
+        });
+
+        await _context.SaveChangesAsync();
+
+        return new ReportCommentDto(commentText, FromCache: false);
+    }
+
+    // ── AI Principal Summary ───────────────────────────────────────────────────
+
+    public async Task<PrincipalSummaryDto?> GetPrincipalSummaryAsync(
+        Guid classId, Guid termId, Guid schoolId, bool forceRefresh = false)
+    {
+        var term = await _context.Terms
+            .AsNoTracking()
+            .Include(t => t.AcademicYear)
+            .FirstOrDefaultAsync(t => t.TermId == termId && t.SchoolId == schoolId);
+
+        if (term == null) return null;
+
+        var cls = await _context.Classes
+            .AsNoTracking()
+            .Where(c => c.ClassId == classId && c.SchoolId == schoolId)
+            .Select(c => new { c.ClassId, c.Name })
+            .FirstOrDefaultAsync();
+
+        if (cls == null) return null;
+
+        var atRisk = await GetAtRiskStudentsAsync(classId, termId, schoolId);
+
+        var totalStudents = await _context.Enrollments
+            .Where(e => e.ClassId == classId && e.IsActive && e.SchoolId == schoolId)
+            .CountAsync();
+
+        var grades = await _context.Grades
+            .AsNoTracking()
+            .Where(g =>
+                g.SchoolId == schoolId &&
+                g.Submission.Assignment.ClassSubject.ClassId == classId &&
+                g.Submission.Assignment.DueAt >= term.StartDate &&
+                g.Submission.Assignment.DueAt <= term.EndDate)
+            .Select(g => new
+            {
+                SubjectName = g.Submission.Assignment.ClassSubject.Subject.Name,
+                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1)
+            })
+            .ToListAsync();
+
+        var subjectAvgs = grades
+            .GroupBy(g => g.SubjectName)
+            .Select(g => new { Subject = g.Key, Avg = Math.Round(g.Average(x => x.Percentage), 1) })
+            .OrderBy(x => x.Subject)
+            .ToList();
+
+        var classAvg = subjectAvgs.Count > 0 ? Math.Round(subjectAvgs.Average(x => x.Avg), 1) : (double?)null;
+
+        var attData = await _context.Attendances
+            .AsNoTracking()
+            .Where(a =>
+                a.SchoolId == schoolId &&
+                a.ClassId == classId &&
+                a.Date >= term.StartDate &&
+                a.Date <= term.EndDate)
+            .GroupBy(a => a.StudentId)
+            .Select(g => new { Total = g.Count(), Present = g.Count(a => a.Status == 1) })
+            .ToListAsync();
+
+        var avgAttPct = attData.Count > 0
+            ? Math.Round(attData.Average(a => a.Total > 0 ? (double)a.Present / a.Total * 100 : 0), 1)
+            : (double?)null;
+
+        var subjectCsv = string.Join(",", subjectAvgs.Select(x => $"{x.Subject}:{x.Avg}"));
+        var fingerprintKey = $"{classId}:{termId}:{totalStudents}:{classAvg:F1}:{atRisk.Count}:{subjectCsv}";
+        var fingerprint = BuildFingerprint(fingerprintKey);
+
+        if (!forceRefresh)
+        {
+            var cached = await _context.PrincipalSummaryCaches
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c =>
+                    c.ClassId == classId &&
+                    c.TermId == termId &&
+                    c.InputFingerprint == fingerprint &&
+                    c.ExpiresAt > DateTime.UtcNow);
+
+            if (cached != null)
+                return new PrincipalSummaryDto(cached.SummaryMarkdown, FromCache: true);
+        }
+
+        var apiKey = _config["Anthropic:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            _logger.LogWarning("Anthropic:ApiKey not configured — principal summary unavailable");
+            return null;
+        }
+
+        if (!await CheckCostCapAsync(schoolId)) return null;
+
+        var prompt = BuildSummaryPrompt(
+            cls.Name, term.TermNumber, term.AcademicYear.Year,
+            totalStudents, atRisk.Count,
+            subjectAvgs.Select(x => (x.Subject, x.Avg)).ToList(),
+            classAvg, avgAttPct);
+
+        var (summaryMarkdown, inputTokens, outputTokens) = await CallClaudeForSummaryAsync(apiKey, prompt);
+        var costZar = (inputTokens * InputCostPerToken + outputTokens * OutputCostPerToken) * UsdToZarRate;
+
+        if (summaryMarkdown == null)
+        {
+            await LogUsageAsync(schoolId, null, "PrincipalSummary", inputTokens, outputTokens, costZar, false, "Claude API call failed");
+            return null;
+        }
+
+        await LogUsageAsync(schoolId, null, "PrincipalSummary", inputTokens, outputTokens, costZar, true, null);
+
+        var stale = await _context.PrincipalSummaryCaches
+            .Where(c => c.ClassId == classId && c.TermId == termId)
+            .ToListAsync();
+        if (stale.Count > 0) _context.PrincipalSummaryCaches.RemoveRange(stale);
+
+        _context.PrincipalSummaryCaches.Add(new PrincipalSummaryCache
+        {
+            PrincipalSummaryCacheId = Guid.NewGuid(),
+            ClassId = classId,
+            TermId = termId,
+            InputFingerprint = fingerprint,
+            SummaryMarkdown = summaryMarkdown,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(CacheTtlDays),
+            InputTokens = inputTokens,
+            OutputTokens = outputTokens
+        });
+
+        await _context.SaveChangesAsync();
+
+        return new PrincipalSummaryDto(summaryMarkdown, FromCache: false);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    private static string BuildFingerprint(string key)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(key));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    private static string BuildCommentPrompt(
+        string firstName, int termNumber, int year,
+        List<(string Subject, double Avg)> subjects,
+        double? overallAvg, double? attPct)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("You are a South African school teacher writing a professional term report comment.");
+        sb.AppendLine("Write a concise, encouraging comment (2–3 sentences) for this learner's report card.");
+        sb.AppendLine("Use South African English. Mention specific strengths and one area to improve.");
+        sb.AppendLine("Use the learner's first name only. Be warm but professional.");
+        sb.AppendLine();
+        sb.AppendLine($"LEARNER FIRST NAME: {firstName}");
+        sb.AppendLine($"TERM: Term {termNumber} {year}");
+        if (overallAvg.HasValue) sb.AppendLine($"OVERALL AVERAGE: {overallAvg:F1}%");
+        if (attPct.HasValue) sb.AppendLine($"ATTENDANCE: {attPct:F1}%");
+        sb.AppendLine("SUBJECT AVERAGES:");
+        foreach (var (subject, avg) in subjects)
+            sb.AppendLine($"  - {subject}: {avg:F1}%");
+        sb.AppendLine();
+        sb.AppendLine("""Respond with ONLY a JSON object: {"comment": "your comment text here"}""");
+        return sb.ToString();
+    }
+
+    private static string BuildSummaryPrompt(
+        string className, int termNumber, int year,
+        int totalStudents, int atRiskCount,
+        List<(string Subject, double Avg)> subjectAvgs,
+        double? classAvg, double? avgAttPct)
+    {
+        var atRiskPct = totalStudents > 0 ? Math.Round((double)atRiskCount / totalStudents * 100, 0) : 0;
+        var sb = new StringBuilder();
+        sb.AppendLine("You are writing an executive academic summary for a South African school principal.");
+        sb.AppendLine("Provide a concise summary (3–4 sentences) of the class performance for the term.");
+        sb.AppendLine("Use South African English. Highlight key achievements and areas of concern.");
+        sb.AppendLine("Use markdown formatting where helpful (**bold** for key metrics).");
+        sb.AppendLine();
+        sb.AppendLine($"CLASS: {className}");
+        sb.AppendLine($"TERM: Term {termNumber} {year}");
+        sb.AppendLine($"TOTAL LEARNERS: {totalStudents}");
+        sb.AppendLine($"AT-RISK LEARNERS: {atRiskCount} ({atRiskPct}%)");
+        if (classAvg.HasValue) sb.AppendLine($"CLASS AVERAGE: {classAvg:F1}%");
+        if (avgAttPct.HasValue) sb.AppendLine($"AVERAGE ATTENDANCE: {avgAttPct:F1}%");
+        sb.AppendLine("SUBJECT CLASS AVERAGES:");
+        foreach (var (subject, avg) in subjectAvgs)
+            sb.AppendLine($"  - {subject}: {avg:F1}%");
+        sb.AppendLine();
+        sb.AppendLine("""Respond with ONLY a JSON object: {"summary": "your markdown summary here"}""");
+        return sb.ToString();
+    }
+
+    private async Task<(string? text, int inputTokens, int outputTokens)> CallClaudeForCommentAsync(
+        string apiKey, string prompt)
+    {
+        return await CallClaudeAsync(apiKey, prompt, "comment", 512);
+    }
+
+    private async Task<(string? text, int inputTokens, int outputTokens)> CallClaudeForSummaryAsync(
+        string apiKey, string prompt)
+    {
+        return await CallClaudeAsync(apiKey, prompt, "summary", 1024);
+    }
+
+    private async Task<(string? text, int inputTokens, int outputTokens)> CallClaudeAsync(
+        string apiKey, string prompt, string jsonKey, int maxTokens)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("anthropic");
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
+            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+
+            var body = new
+            {
+                model = Model,
+                max_tokens = maxTokens,
+                messages = new[] { new { role = "user", content = prompt } }
+            };
+
+            var response = await client.PostAsync(AnthropicApiUrl,
+                new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Anthropic API returned {Status}", response.StatusCode);
+                return (null, 0, 0);
+            }
+
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var doc = JsonDocument.Parse(responseJson);
+            var text = doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
+
+            var usage = doc.RootElement.GetProperty("usage");
+            var inputTokens = usage.GetProperty("input_tokens").GetInt32();
+            var outputTokens = usage.GetProperty("output_tokens").GetInt32();
+
+            var start = text.IndexOf('{');
+            var end = text.LastIndexOf('}');
+            if (start < 0 || end <= start) return (null, inputTokens, outputTokens);
+
+            using var parsed = JsonDocument.Parse(text[start..(end + 1)]);
+            var result = parsed.RootElement.GetProperty(jsonKey).GetString();
+            return (result, inputTokens, outputTokens);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Anthropic API call failed for smart reports");
+            return (null, 0, 0);
+        }
+    }
+
+    private async Task<bool> CheckCostCapAsync(Guid schoolId)
+    {
+        var school = await _context.Schools.AsNoTracking().FirstOrDefaultAsync(s => s.SchoolId == schoolId);
+        if (school == null) return true;
+
+        var cap = school.Settings.AiMonthlyCostCapZar;
+        if (cap <= 0) return true;
+
+        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var spent = await _context.AiUsageLogs
+            .Where(l => l.SchoolId == schoolId && l.CreatedAt >= monthStart && l.Success)
+            .SumAsync(l => (decimal?)l.EstimatedCostZar) ?? 0m;
+
+        if (spent >= cap)
+        {
+            _logger.LogInformation("AI cost cap reached for school {SchoolId}: R{Spent} >= R{Cap}", schoolId, spent, cap);
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task LogUsageAsync(
+        Guid schoolId, Guid? studentId, string feature,
+        int inputTokens, int outputTokens, decimal costZar,
+        bool success, string? error)
+    {
+        _context.AiUsageLogs.Add(new AiUsageLog
+        {
+            AiUsageLogId = Guid.NewGuid(),
+            SchoolId = schoolId,
+            Feature = feature,
+            StudentId = studentId,
+            InputTokens = inputTokens,
+            OutputTokens = outputTokens,
+            EstimatedCostZar = costZar,
+            CreatedAt = DateTime.UtcNow,
+            Success = success,
+            ErrorMessage = error
+        });
+
+        await _context.SaveChangesAsync();
+    }
+}

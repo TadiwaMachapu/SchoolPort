@@ -13,8 +13,10 @@ public class TenantMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Skip for auth endpoints, health checks, and swagger
+        // Skip for auth endpoints, super-admin endpoints, health checks, and swagger
         if (context.Request.Path.StartsWithSegments("/api/auth") ||
+            context.Request.Path.StartsWithSegments("/api/super") ||
+            context.Request.Path.StartsWithSegments("/api/dev") ||
             context.Request.Path.StartsWithSegments("/health") ||
             context.Request.Path.StartsWithSegments("/swagger"))
         {

@@ -11,6 +11,8 @@ public class SchoolPortalDbContext : DbContext
     }
 
     public DbSet<School> Schools { get; set; }
+    public DbSet<AcademicYear> AcademicYears { get; set; }
+    public DbSet<Term> Terms { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<Student> Students { get; set; }
     public DbSet<Teacher> Teachers { get; set; }
@@ -42,6 +44,49 @@ public class SchoolPortalDbContext : DbContext
     public DbSet<LearningPath> LearningPaths { get; set; }
     public DbSet<LearningPathCourse> LearningPathCourses { get; set; }
 
+    // SchoolPay
+    public DbSet<Fee> Fees { get; set; }
+    public DbSet<FeePayment> FeePayments { get; set; }
+
+    // Pathways
+    public DbSet<LearnerSubject> LearnerSubjects { get; set; }
+
+    // Pathways v1 — university/career graph
+    public DbSet<University> Universities { get; set; }
+    public DbSet<Career> Careers { get; set; }
+    public DbSet<UniversityCourse> UniversityCourses { get; set; }
+    public DbSet<CourseSubjectRequirement> CourseSubjectRequirements { get; set; }
+    public DbSet<SeniorPhaseRequirement> SeniorPhaseRequirements { get; set; }
+    public DbSet<LearnerCareerGoal> LearnerCareerGoals { get; set; }
+    public DbSet<AiGapAnalysisCache> AiGapAnalysisCaches { get; set; }
+    public DbSet<AiUsageLog> AiUsageLogs { get; set; }
+
+    // Matric Hub v1
+    public DbSet<MatricPastPaper> MatricPastPapers { get; set; }
+    public DbSet<MatricQuizQuestion> MatricQuizQuestions { get; set; }
+    public DbSet<MatricTutorCache> MatricTutorCaches { get; set; }
+
+    // Grade 9 Subject Advisor
+    public DbSet<Gr9SubjectAdviceCache> Gr9SubjectAdviceCaches { get; set; }
+
+    // Smart Reports v1
+    public DbSet<ReportCommentCache> ReportCommentCaches { get; set; }
+    public DbSet<PrincipalSummaryCache> PrincipalSummaryCaches { get; set; }
+
+    // Skills Profile
+    public DbSet<SkillEntry> SkillEntries { get; set; }
+
+    // Sports & Culture
+    public DbSet<Activity> Activities { get; set; }
+    public DbSet<ActivityParticipant> ActivityParticipants { get; set; }
+
+    // WhatsApp
+    public DbSet<WhatsAppLog> WhatsAppLogs { get; set; }
+
+    // POPIA
+    public DbSet<ConsentRecord> ConsentRecords { get; set; }
+    public DbSet<DataSubjectRequest> DataSubjectRequests { get; set; }
+
     // Billing
     public DbSet<Subscription> Subscriptions { get; set; }
 
@@ -60,6 +105,10 @@ public class SchoolPortalDbContext : DbContext
     public DbSet<QuizOption> QuizOptions { get; set; }
     public DbSet<QuizAttempt> QuizAttempts { get; set; }
     public DbSet<QuizAnswer> QuizAnswers { get; set; }
+
+    // Notifications
+    public DbSet<PersistedNotification> Notifications { get; set; }
+    public DbSet<SuperAdmin> SuperAdmins { get; set; }
 
     // View entities
     public DbSet<AttendanceSummaryView> AttendanceSummaryView { get; set; }
@@ -114,6 +163,38 @@ public class SchoolPortalDbContext : DbContext
                   .HasColumnType("jsonb")
                   .HasColumnName("theme")
                   .HasDefaultValueSql("'{}'::jsonb");
+            entity.Property(e => e.Settings)
+                  .HasColumnType("jsonb")
+                  .HasColumnName("settings")
+                  .HasDefaultValueSql("'{}'::jsonb");
+        });
+
+        // AcademicYear
+        modelBuilder.Entity<AcademicYear>(entity =>
+        {
+            entity.ToTable("academic_years");
+            entity.HasKey(e => e.AcademicYearId);
+            entity.Property(e => e.AcademicYearId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Year).IsRequired();
+            entity.HasIndex(e => new { e.SchoolId, e.Year }).IsUnique();
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Term
+        modelBuilder.Entity<Term>(entity =>
+        {
+            entity.ToTable("terms");
+            entity.HasKey(e => e.TermId);
+            entity.Property(e => e.TermId).HasDefaultValueSql("gen_random_uuid()");
+            entity.HasIndex(e => new { e.AcademicYearId, e.TermNumber }).IsUnique();
+            entity.HasIndex(e => e.SchoolId);
+            // Partial index: enforces at most one current term per school at the DB level
+            entity.HasIndex(e => new { e.SchoolId, e.IsCurrent })
+                  .HasFilter("is_current = true")
+                  .IsUnique();
+            entity.HasOne(e => e.AcademicYear).WithMany(a => a.Terms).HasForeignKey(e => e.AcademicYearId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // User
@@ -188,6 +269,7 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.SubjectId).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Code).HasMaxLength(20);
+            entity.Property(e => e.CapsPhase).HasMaxLength(20);
             entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
             entity.HasIndex(e => new { e.SchoolId, e.Code }).IsUnique().HasFilter("code IS NOT NULL");
             entity.HasIndex(e => e.SchoolId);
@@ -556,6 +638,340 @@ public class SchoolPortalDbContext : DbContext
             entity.HasOne(e => e.Attempt).WithMany(a => a.Answers).HasForeignKey(e => e.AttemptId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.Question).WithMany(q => q.Answers).HasForeignKey(e => e.QuestionId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.SelectedOption).WithMany().HasForeignKey(e => e.SelectedOptionId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // PersistedNotification
+        modelBuilder.Entity<PersistedNotification>(entity =>
+        {
+            entity.ToTable("notifications");
+            entity.HasKey(e => e.NotificationId);
+            entity.Property(e => e.NotificationId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Message).IsRequired();
+            entity.Property(e => e.Link).HasMaxLength(500);
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+            entity.HasIndex(e => new { e.UserId, e.IsRead });
+        });
+
+        // Fee
+        modelBuilder.Entity<Fee>(entity =>
+        {
+            entity.ToTable("fees");
+            entity.HasKey(e => e.FeeId);
+            entity.Property(e => e.FeeId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.AmountZar).HasPrecision(12, 2);
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.TermId);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Term).WithMany().HasForeignKey(e => e.TermId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // FeePayment
+        modelBuilder.Entity<FeePayment>(entity =>
+        {
+            entity.ToTable("fee_payments");
+            entity.HasKey(e => e.FeePaymentId);
+            entity.Property(e => e.FeePaymentId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.AmountPaidZar).HasPrecision(12, 2);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.FeeId);
+            entity.HasIndex(e => e.StudentId);
+            entity.HasOne(e => e.Fee).WithMany(f => f.Payments).HasForeignKey(e => e.FeeId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Student).WithMany().HasForeignKey(e => e.StudentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.RecordedByUser).WithMany().HasForeignKey(e => e.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // LearnerSubject
+        modelBuilder.Entity<LearnerSubject>(entity =>
+        {
+            entity.ToTable("learner_subjects");
+            entity.HasKey(e => e.LearnerSubjectId);
+            entity.Property(e => e.LearnerSubjectId).HasDefaultValueSql("gen_random_uuid()");
+            entity.HasIndex(e => new { e.StudentId, e.SubjectId, e.AcademicYearId }).IsUnique();
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.StudentId);
+            entity.HasOne(e => e.Student).WithMany().HasForeignKey(e => e.StudentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Subject).WithMany().HasForeignKey(e => e.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.AcademicYear).WithMany().HasForeignKey(e => e.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Skills Profile
+        modelBuilder.Entity<SkillEntry>(entity =>
+        {
+            entity.ToTable("skill_entries");
+            entity.HasKey(e => e.SkillEntryId);
+            entity.Property(e => e.SkillEntryId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.StudentId);
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.Student).WithMany().HasForeignKey(e => e.StudentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.EndorsedByUser).WithMany().HasForeignKey(e => e.EndorsedByUserId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Sports & Culture
+        modelBuilder.Entity<Activity>(entity =>
+        {
+            entity.ToTable("activities");
+            entity.HasKey(e => e.ActivityId);
+            entity.Property(e => e.ActivityId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.ActivityType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ActivityParticipant>(entity =>
+        {
+            entity.ToTable("activity_participants");
+            entity.HasKey(e => e.ActivityParticipantId);
+            entity.Property(e => e.ActivityParticipantId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => new { e.ActivityId, e.StudentId }).IsUnique();
+            entity.HasOne(e => e.Activity).WithMany(a => a.Participants).HasForeignKey(e => e.ActivityId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Student).WithMany().HasForeignKey(e => e.StudentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // WhatsApp log
+        modelBuilder.Entity<WhatsAppLog>(entity =>
+        {
+            entity.ToTable("whatsapp_logs");
+            entity.HasKey(e => e.WhatsAppLogId);
+            entity.Property(e => e.WhatsAppLogId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.RecipientName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.RecipientPhone).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.TriggerType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.MessageBody).IsRequired().HasMaxLength(4000);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // POPIA — consent records
+        modelBuilder.Entity<ConsentRecord>(entity =>
+        {
+            entity.ToTable("consent_records");
+            entity.HasKey(e => e.ConsentRecordId);
+            entity.Property(e => e.ConsentRecordId).HasDefaultValueSql("gen_random_uuid()");
+            entity.HasIndex(e => new { e.SchoolId, e.UserId }).IsUnique();
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // POPIA — data subject requests
+        modelBuilder.Entity<DataSubjectRequest>(entity =>
+        {
+            entity.ToTable("data_subject_requests");
+            entity.HasKey(e => e.RequestId);
+            entity.Property(e => e.RequestId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.RequestType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.AdminNotes).HasMaxLength(2000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // SuperAdmin
+        modelBuilder.Entity<SuperAdmin>(entity =>
+        {
+            entity.ToTable("super_admins");
+            entity.HasKey(e => e.SuperAdminId);
+            entity.Property(e => e.SuperAdminId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(255);
+            entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        // University / Career graph (global reference data — no SchoolId)
+        modelBuilder.Entity<University>(entity =>
+        {
+            entity.ToTable("universities");
+            entity.HasKey(e => e.UniversityId);
+            entity.Property(e => e.UniversityId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Abbreviation).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Province).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Website).HasMaxLength(300);
+        });
+
+        modelBuilder.Entity<Career>(entity =>
+        {
+            entity.ToTable("careers");
+            entity.HasKey(e => e.CareerId);
+            entity.Property(e => e.CareerId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Category).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<UniversityCourse>(entity =>
+        {
+            entity.ToTable("university_courses");
+            entity.HasKey(e => e.UniversityCourseId);
+            entity.Property(e => e.UniversityCourseId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.Faculty).HasMaxLength(200);
+            entity.Property(e => e.ApsNotes).HasMaxLength(500);
+            entity.HasIndex(e => e.UniversityId);
+            entity.HasIndex(e => e.CareerId);
+            entity.HasOne(e => e.University).WithMany(u => u.Courses).HasForeignKey(e => e.UniversityId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Career).WithMany(c => c.Courses).HasForeignKey(e => e.CareerId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<CourseSubjectRequirement>(entity =>
+        {
+            entity.ToTable("course_subject_requirements");
+            entity.HasKey(e => e.CourseSubjectRequirementId);
+            entity.Property(e => e.CourseSubjectRequirementId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.SubjectName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasIndex(e => e.UniversityCourseId);
+            entity.HasOne(e => e.UniversityCourse).WithMany(c => c.SubjectRequirements).HasForeignKey(e => e.UniversityCourseId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SeniorPhaseRequirement>(entity =>
+        {
+            entity.ToTable("senior_phase_requirements");
+            entity.HasKey(e => e.SeniorPhaseRequirementId);
+            entity.Property(e => e.SeniorPhaseRequirementId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.FetSubjectName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.RequiredSeniorPhaseSubjectName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<LearnerCareerGoal>(entity =>
+        {
+            entity.ToTable("learner_career_goals");
+            entity.HasKey(e => e.LearnerCareerGoalId);
+            entity.Property(e => e.LearnerCareerGoalId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => new { e.StudentId, e.UniversityCourseId }).IsUnique();
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.StudentId);
+            entity.HasOne(e => e.Student).WithMany().HasForeignKey(e => e.StudentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.UniversityCourse).WithMany(c => c.LearnerGoals).HasForeignKey(e => e.UniversityCourseId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiGapAnalysisCache>(entity =>
+        {
+            entity.ToTable("ai_gap_analysis_cache");
+            entity.HasKey(e => e.AiGapAnalysisCacheId);
+            entity.Property(e => e.AiGapAnalysisCacheId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.InputFingerprint).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.ResultJson).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => new { e.StudentId, e.UniversityCourseId, e.InputFingerprint });
+            entity.HasOne(e => e.Student).WithMany().HasForeignKey(e => e.StudentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.UniversityCourse).WithMany(c => c.GapAnalysisCaches).HasForeignKey(e => e.UniversityCourseId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AiUsageLog>(entity =>
+        {
+            entity.ToTable("ai_usage_logs");
+            entity.HasKey(e => e.AiUsageLogId);
+            entity.Property(e => e.AiUsageLogId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Feature).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.EstimatedCostZar).HasPrecision(10, 4);
+            entity.Property(e => e.ErrorMessage).HasMaxLength(1000);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => new { e.SchoolId, e.CreatedAt });
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Matric Hub v1
+        modelBuilder.Entity<MatricPastPaper>(entity =>
+        {
+            entity.ToTable("matric_past_papers");
+            entity.HasKey(e => e.MatricPastPaperId);
+            entity.Property(e => e.MatricPastPaperId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(150);
+            entity.Property(e => e.Language).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.MemoUrl).HasMaxLength(500);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasIndex(e => new { e.Subject, e.Year, e.PaperNumber, e.Language }).IsUnique();
+        });
+
+        modelBuilder.Entity<MatricQuizQuestion>(entity =>
+        {
+            entity.ToTable("matric_quiz_questions");
+            entity.HasKey(e => e.MatricQuizQuestionId);
+            entity.Property(e => e.MatricQuizQuestionId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(150);
+            entity.Property(e => e.Difficulty).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.QuestionText).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.OptionA).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.OptionB).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.OptionC).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.OptionD).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.CorrectOption).IsRequired().HasMaxLength(1);
+            entity.Property(e => e.Explanation).HasMaxLength(2000);
+            entity.HasIndex(e => e.Subject);
+        });
+
+        modelBuilder.Entity<MatricTutorCache>(entity =>
+        {
+            entity.ToTable("matric_tutor_cache");
+            entity.HasKey(e => e.MatricTutorCacheId);
+            entity.Property(e => e.MatricTutorCacheId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(150);
+            entity.Property(e => e.InputFingerprint).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.Question).IsRequired().HasMaxLength(2000);
+            entity.Property(e => e.AnswerMarkdown).IsRequired();
+            entity.HasIndex(e => e.InputFingerprint).IsUnique();
+        });
+
+        modelBuilder.Entity<Gr9SubjectAdviceCache>(entity =>
+        {
+            entity.ToTable("gr9_subject_advice_cache");
+            entity.HasKey(e => e.Gr9SubjectAdviceCacheId);
+            entity.Property(e => e.Gr9SubjectAdviceCacheId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.InputFingerprint).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.AdviceJson).IsRequired();
+            entity.HasIndex(e => new { e.StudentId, e.InputFingerprint });
+        });
+
+        // Smart Reports v1
+        modelBuilder.Entity<ReportCommentCache>(entity =>
+        {
+            entity.ToTable("report_comment_cache");
+            entity.HasKey(e => e.ReportCommentCacheId);
+            entity.Property(e => e.ReportCommentCacheId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.InputFingerprint).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.CommentText).IsRequired();
+            entity.HasIndex(e => new { e.StudentId, e.TermId, e.InputFingerprint });
+        });
+
+        modelBuilder.Entity<PrincipalSummaryCache>(entity =>
+        {
+            entity.ToTable("principal_summary_cache");
+            entity.HasKey(e => e.PrincipalSummaryCacheId);
+            entity.Property(e => e.PrincipalSummaryCacheId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.InputFingerprint).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.SummaryMarkdown).IsRequired();
+            entity.HasIndex(e => new { e.ClassId, e.TermId, e.InputFingerprint });
         });
 
         // Configure views (read-only)

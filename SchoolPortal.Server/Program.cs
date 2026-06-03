@@ -1,4 +1,5 @@
 using FluentValidation;
+using SchoolPortal.Server.Seeds;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -121,9 +122,18 @@ builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IAiService, AiService>();
+builder.Services.AddScoped<IPathwaysService, PathwaysService>();
+builder.Services.AddScoped<IAiGapAnalysisService, AiGapAnalysisService>();
+builder.Services.AddScoped<IMatricHubService, MatricHubService>();
+builder.Services.AddScoped<IMatricTutorService, MatricTutorService>();
+builder.Services.AddScoped<IGr9AdvisorService, Gr9AdvisorService>();
+builder.Services.AddScoped<ISmartReportsService, SmartReportsService>();
 
 // Add SignalR
 builder.Services.AddSignalR();
+
+// Add SuperAdmin Service
+builder.Services.AddScoped<ISuperAdminService, SuperAdminService>();
 
 // Add Notification Service
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -221,6 +231,41 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 
 // Map Health Checks
 app.MapHealthChecks("/health");
+
+// Seed SuperAdmin on first startup if none exists
+using (var scope = app.Services.CreateScope())
+{
+    var db     = scope.ServiceProvider.GetRequiredService<SchoolPortalDbContext>();
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    await db.Database.MigrateAsync();
+    await PathwaysSeedData.SeedAsync(db, logger);
+    await MatricHubSeedData.SeedAsync(db, logger);
+
+    if (!await db.SuperAdmins.AnyAsync())
+    {
+        var seed = config.GetSection("SuperAdminSeed");
+        var email     = seed["Email"]     ?? "admin@schoolportal.dev";
+        var password  = seed["Password"]  ?? "Admin@1234!";
+        var firstName = seed["FirstName"] ?? "Super";
+        var lastName  = seed["LastName"]  ?? "Admin";
+
+        db.SuperAdmins.Add(new SchoolPortal.Data.Entities.SuperAdmin
+        {
+            SuperAdminId = Guid.NewGuid(),
+            Email        = email.ToLower(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            FirstName    = firstName,
+            LastName     = lastName,
+            IsActive     = true,
+            CreatedAt    = DateTime.UtcNow,
+        });
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("SuperAdmin seeded: {Email}", email);
+    }
+}
 
 Log.Information("School Portal API starting up...");
 

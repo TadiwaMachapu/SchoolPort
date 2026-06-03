@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,14 @@ const DEMO_USERS = [
 ] as const;
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-900 flex items-center justify-center"><div className="text-white text-lg">Loading…</div></div>}>
+      <LoginView />
+    </Suspense>
+  );
+}
+
+function LoginView() {
   const router = useRouter();
   const params = useSearchParams();
   const ssoError = params.get("error");
@@ -34,10 +42,15 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.auth.login(email, password);
-      const maxAge = 8 * 3600;
-      document.cookie = `sp_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=${maxAge}; SameSite=Lax`;
-      document.cookie = `sp_role=${res.user.role}; path=/; max-age=${maxAge}; SameSite=Lax`;
-      document.cookie = `sp_userid=${res.user.userId}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      const tokenMaxAge = res.expiresAt
+        ? Math.floor((new Date(res.expiresAt).getTime() - Date.now()) / 1000)
+        : 8 * 3600;
+      document.cookie = `sp_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
+      document.cookie = `sp_role=${res.user.role}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
+      document.cookie = `sp_userid=${res.user.userId}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
+      if (res.refreshToken) {
+        document.cookie = `sp_refresh_token=${encodeURIComponent(res.refreshToken)}; path=/; max-age=${3600 * 24 * 30}; SameSite=Lax`;
+      }
       router.push("/dashboard");
       router.refresh();
     } catch (err: unknown) {

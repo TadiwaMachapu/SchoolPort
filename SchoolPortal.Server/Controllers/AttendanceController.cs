@@ -25,6 +25,15 @@ public class AttendanceController : ControllerBase
         return Ok(attendance);
     }
 
+    [HttpGet("mine")]
+    [Authorize(Roles = "Student")]
+    [ProducesResponseType(typeof(List<MyAttendanceSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyAttendance([FromQuery] int? month, [FromQuery] int? year)
+    {
+        var result = await _attendanceService.GetMyAttendanceAsync(month, year);
+        return Ok(result);
+    }
+
     [HttpPost("bulk")]
     [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

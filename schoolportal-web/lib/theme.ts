@@ -9,18 +9,23 @@ export interface SchoolTheme {
 }
 
 export interface SchoolFeatures {
-  quizzes: boolean;
-  attendance: boolean;
-  parentPortal: boolean;
-  messaging: boolean;
-  courses: boolean;
-  analytics: boolean;
-  aiGrading: boolean;
-  plagiarismDetection: boolean;
-  sso: boolean;
-  customReports: boolean;
-  whiteLabel: boolean;
-  pluginApi: boolean;
+  // Classroom pillar
+  gradebook: boolean;
+  virtualClassroom: boolean;
+  // Reports & Insights pillar
+  smartReports: boolean;
+  saSamsExport: boolean;
+  // Pathways pillar
+  skillsProfile: boolean;
+  pathways: boolean;
+  matricHub: boolean;
+  // Life at School pillar
+  sportsCulture: boolean;
+  schoolPay: boolean;
+  // Connect pillar
+  schoolChat: boolean;
+  whatsApp: boolean;
+  popiaCentre: boolean;
 }
 
 export function applyTheme(theme: SchoolTheme) {

@@ -19,6 +19,7 @@ public class AttendanceServiceTests
     private readonly SchoolPortalDbContext _context;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
+    private readonly Mock<INotificationService> _mockNotifications;
     private readonly AttendanceService _service;
 
     public AttendanceServiceTests()
@@ -30,6 +31,7 @@ public class AttendanceServiceTests
         _context = new SchoolPortalDbContext(options);
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
+        _mockNotifications = new Mock<INotificationService>();
 
         _mockCurrentUser.Setup(x => x.SchoolId).Returns(TestSchoolId);
         _mockCurrentUser.Setup(x => x.UserId).Returns(TestUserId);
@@ -37,7 +39,8 @@ public class AttendanceServiceTests
         _service = new AttendanceService(
             _context,
             _mockCurrentUser.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            _mockNotifications.Object);
 
         SeedTestData();
     }

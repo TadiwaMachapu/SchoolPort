@@ -182,13 +182,12 @@ public class BillingController : ControllerBase
         var school = await _context.Schools.FindAsync(schoolId);
         if (school != null)
         {
-            school.Features.AiGrading = plan is "Enterprise";
-            school.Features.PlagiarismDetection = plan is "Enterprise";
-            school.Features.Sso = plan is "Enterprise";
-            school.Features.WhiteLabel = plan is "Enterprise";
-            school.Features.PluginApi = plan is "Enterprise";
-            school.Features.Analytics = plan is "Pro" or "Enterprise";
-            school.Features.CustomReports = plan is "Pro" or "Enterprise";
+            school.Features.SmartReports = plan is "Pro" or "Enterprise";
+            school.Features.Gradebook = plan is "Pro" or "Enterprise";
+            school.Features.SchoolPay = plan is "Enterprise";
+            school.Features.VirtualClassroom = plan is "Enterprise";
+            school.Features.SkillsProfile = plan is "Enterprise";
+            school.Features.SchoolChat = plan is "Enterprise";
         }
 
         await _context.SaveChangesAsync();

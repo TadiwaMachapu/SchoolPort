@@ -1,8 +1,8 @@
 "use client";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function SsoCallbackPage() {
+function SsoCallback() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -25,5 +25,20 @@ export default function SsoCallbackPage() {
         <p className="text-lg">Signing you in…</p>
       </div>
     </div>
+  );
+}
+
+export default function SsoCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+        <div className="text-center text-white">
+          <div className="text-5xl mb-4 animate-spin">⚙️</div>
+          <p className="text-lg">Signing you in…</p>
+        </div>
+      </div>
+    }>
+      <SsoCallback />
+    </Suspense>
   );
 }

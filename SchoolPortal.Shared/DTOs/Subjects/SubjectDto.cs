@@ -6,4 +6,5 @@ public class SubjectDto
     public string Name { get; set; } = null!;
     public string? Code { get; set; }
     public string? Description { get; set; }
+    public string? CapsPhase { get; set; }
 }

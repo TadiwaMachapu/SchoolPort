@@ -1,10 +1,60 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, ParentChild, ParentGrade, ParentAttendanceSummary, ParentAssignment } from "@/lib/api";
+import { api, ParentChild, ParentGrade, ParentAttendanceSummary, ParentAssignment, ParentPathways, GoalWithTracking } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, BarChart2, ClipboardList } from "lucide-react";
+import { Users, BarChart2, ClipboardList, Target, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+
+function PathwaysWidget({ data }: { data: ParentPathways | null }) {
+  if (!data) return null;
+
+  const statusConfig = {
+    Green: { label: "On track",     icon: CheckCircle2, cls: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+    Amber: { label: "Almost there", icon: AlertTriangle, cls: "text-amber-700 bg-amber-50 border-amber-200" },
+    Red:   { label: "Needs work",   icon: XCircle,       cls: "text-red-700 bg-red-50 border-red-200" },
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-semibold text-gray-800">Career Pathways</CardTitle>
+          </div>
+          <span className="text-xs text-gray-500">
+            APS: <span className="font-bold text-gray-800">{data.currentAps}</span>
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="px-5 pb-4">
+        {data.goals.length === 0 ? (
+          <p className="text-xs text-gray-400 py-2">No career goals saved yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {data.goals.map((goal: GoalWithTracking) => {
+              const cfg = statusConfig[goal.status];
+              const Icon = cfg.icon;
+              return (
+                <li key={goal.learnerCareerGoalId} className={`flex items-center justify-between rounded-lg border px-3 py-2 ${cfg.cls}`}>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium truncate">{goal.courseName}</p>
+                    <p className="text-[11px] opacity-75 truncate">{goal.universityName}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 ml-3 shrink-0 text-xs font-medium">
+                    <Icon className="h-3.5 w-3.5" />
+                    {cfg.label}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function gradeLetter(pct: number) {
   if (pct >= 90) return { letter: "A+", color: "text-green-600" };
@@ -21,6 +71,7 @@ export default function ParentPortalPage() {
   const [grades, setGrades] = useState<ParentGrade[]>([]);
   const [attendance, setAttendance] = useState<ParentAttendanceSummary | null>(null);
   const [assignments, setAssignments] = useState<ParentAssignment[]>([]);
+  const [pathways, setPathways] = useState<ParentPathways | null>(null);
   const [tab, setTab] = useState<"grades" | "attendance" | "assignments">("grades");
   const [loading, setLoading] = useState(true);
   const [childLoading, setChildLoading] = useState(false);
@@ -42,15 +93,18 @@ export default function ParentPortalPage() {
     setGrades([]);
     setAttendance(null);
     setAssignments([]);
+    setPathways(null);
     try {
-      const [g, att, asgn] = await Promise.allSettled([
+      const [g, att, asgn, pw] = await Promise.allSettled([
         api.parent.grades(child.studentId),
         api.parent.attendance(child.studentId),
         api.parent.assignments(child.studentId),
+        api.parent.pathways(),
       ]);
       if (g.status === "fulfilled") setGrades(g.value as ParentGrade[]);
       if (att.status === "fulfilled") setAttendance(att.value as ParentAttendanceSummary);
       if (asgn.status === "fulfilled") setAssignments(asgn.value as ParentAssignment[]);
+      if (pw.status === "fulfilled") setPathways(pw.value as ParentPathways);
     } finally {
       setChildLoading(false);
     }
@@ -136,6 +190,9 @@ export default function ParentPortalPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Pathways widget */}
+          {!childLoading && <PathwaysWidget data={pathways} />}
 
           {/* Tabs */}
           <div className="flex gap-2">

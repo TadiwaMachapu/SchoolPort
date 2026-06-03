@@ -11,16 +11,19 @@ public class AttendanceService : IAttendanceService
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<AttendanceService> _logger;
+    private readonly INotificationService _notifications;
     private const int BatchSize = 100;
 
     public AttendanceService(
-        SchoolPortalDbContext context, 
+        SchoolPortalDbContext context,
         ICurrentUserService currentUser,
-        ILogger<AttendanceService> logger)
+        ILogger<AttendanceService> logger,
+        INotificationService notifications)
     {
         _context = context;
         _currentUser = currentUser;
         _logger = logger;
+        _notifications = notifications;
     }
 
     public async Task<List<AttendanceDto>> GetAttendanceAsync(Guid classId, DateTime date)
@@ -45,7 +48,89 @@ public class AttendanceService : IAttendanceService
             })
             .ToListAsync();
 
-        return attendances;
+        if (attendances.Count > 0)
+            return attendances;
+
+        // No attendance taken yet — pre-populate all enrolled students as Present
+        // so the teacher can use the "mark all present → tap exceptions" flow.
+        // Load the entity graph first, then project in-memory to avoid EF Core
+        // translation issues with constants (Guid.Empty, null) inside Select().
+        var enrollments = await _context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.ClassId == classId && e.SchoolId == _currentUser.SchoolId && e.IsActive)
+            .Include(e => e.Student)
+                .ThenInclude(s => s.User)
+            .OrderBy(e => e.Student.User.LastName)
+            .ThenBy(e => e.Student.User.FirstName)
+            .ToListAsync();
+
+        return enrollments.Select(e => new AttendanceDto
+        {
+            AttendanceId = Guid.Empty,
+            ClassId = classId,
+            StudentId = e.StudentId,
+            StudentName = e.Student.User.FirstName + " " + e.Student.User.LastName,
+            StudentNumber = e.Student.StudentNumber,
+            Date = date,
+            Status = 1,
+            Notes = null
+        }).ToList();
+    }
+
+    public async Task<List<MyAttendanceSummaryDto>> GetMyAttendanceAsync(int? month, int? year)
+    {
+        var userId = _currentUser.UserId;
+        var schoolId = _currentUser.SchoolId;
+
+        var student = await _context.Students
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.UserId == userId && s.SchoolId == schoolId)
+            ?? throw new KeyNotFoundException("Student record not found");
+
+        var from = new DateTime(year ?? DateTime.UtcNow.Year, month ?? DateTime.UtcNow.Month, 1);
+        var to   = from.AddMonths(1).AddDays(-1);
+
+        var enrolledClassIds = await _context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.StudentId == student.StudentId && e.SchoolId == schoolId && e.IsActive)
+            .Select(e => e.ClassId)
+            .ToListAsync();
+
+        var classes = await _context.Classes
+            .AsNoTracking()
+            .Where(c => enrolledClassIds.Contains(c.ClassId))
+            .Select(c => new { c.ClassId, c.Name })
+            .ToListAsync();
+
+        var records = await _context.Attendances
+            .AsNoTracking()
+            .Where(a => a.StudentId == student.StudentId && a.SchoolId == schoolId
+                     && a.Date >= from && a.Date <= to)
+            .Select(a => new { a.ClassId, a.Date, a.Status, a.Notes })
+            .ToListAsync();
+
+        return classes.Select(c =>
+        {
+            var classRecords = records.Where(r => r.ClassId == c.ClassId).ToList();
+            var present = classRecords.Count(r => r.Status == 1);
+            var absent  = classRecords.Count(r => r.Status == 0);
+            var late    = classRecords.Count(r => r.Status == 2);
+            var total   = classRecords.Count;
+            return new MyAttendanceSummaryDto
+            {
+                ClassId       = c.ClassId,
+                ClassName     = c.Name,
+                TotalDays     = total,
+                Present       = present,
+                Absent        = absent,
+                Late          = late,
+                AttendanceRate = total == 0 ? 100 : Math.Round((present + late * 0.5) / total * 100, 1),
+                Records       = classRecords
+                    .OrderByDescending(r => r.Date)
+                    .Select(r => new AttendanceDayDto { Date = r.Date, Status = r.Status, Notes = r.Notes })
+                    .ToList()
+            };
+        }).ToList();
     }
 
     public async Task BulkUpsertAttendanceAsync(BulkAttendanceRequest request)
@@ -76,8 +161,34 @@ public class AttendanceService : IAttendanceService
             processedRecords += batch.Count;
         }
 
-        _logger.LogInformation("Bulk upserted {Count} attendance records for SchoolId {SchoolId}", 
+        _logger.LogInformation("Bulk upserted {Count} attendance records for SchoolId {SchoolId}",
             totalRecords, schoolId);
+
+        // Notify parents of absent students
+        var absentStudentIds = request.Attendances
+            .Where(a => a.Status == 0)
+            .Select(a => a.StudentId)
+            .Distinct()
+            .ToList();
+
+        if (absentStudentIds.Count > 0)
+        {
+            var parentUserIds = await _context.Students
+                .Where(s => absentStudentIds.Contains(s.StudentId) && s.ParentUserId != null)
+                .Select(s => s.ParentUserId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            var date = request.Attendances.FirstOrDefault()?.Date ?? DateTime.UtcNow;
+            foreach (var parentUserId in parentUserIds)
+            {
+                _ = _notifications.NotifyUserAsync(parentUserId, new Notification(
+                    Type: "attendance_absent",
+                    Title: "Attendance Alert",
+                    Message: $"Your child was marked absent on {date:MMM d, yyyy}.",
+                    Link: "/dashboard"));
+            }
+        }
     }
 
     private async Task ExecuteBatchUpsertAsync(List<AttendanceItem> items, Guid schoolId)

@@ -24,9 +24,21 @@ public class GradebookController : ControllerBase
     // Full gradebook matrix for a class — teacher/admin view
     [HttpGet("{classId}")]
     [Authorize(Roles = "Admin,Teacher")]
-    public async Task<IActionResult> GetGradebook(Guid classId)
+    public async Task<IActionResult> GetGradebook(Guid classId, [FromQuery] Guid? termId)
     {
         var schoolId = _currentUser.SchoolId;
+
+        DateTime? termStart = null;
+        DateTime? termEnd = null;
+        if (termId.HasValue)
+        {
+            var term = await _context.Terms
+                .AsNoTracking()
+                .Where(t => t.TermId == termId.Value && t.SchoolId == schoolId)
+                .Select(t => new { t.StartDate, t.EndDate })
+                .FirstOrDefaultAsync();
+            if (term != null) { termStart = term.StartDate; termEnd = term.EndDate; }
+        }
 
         var students = await _context.Enrollments
             .AsNoTracking()
@@ -36,12 +48,17 @@ public class GradebookController : ControllerBase
             .Select(e => new { e.Student.StudentId, Name = $"{e.Student.User.FirstName} {e.Student.User.LastName}", e.Student.StudentNumber })
             .ToListAsync();
 
-        var assignments = await _context.Assignments
+        var assignmentsQuery = _context.Assignments
             .AsNoTracking()
-            .Where(a => a.ClassSubject.ClassId == classId && a.SchoolId == schoolId)
+            .Where(a => a.ClassSubject.ClassId == classId && a.SchoolId == schoolId);
+
+        if (termStart.HasValue && termEnd.HasValue)
+            assignmentsQuery = assignmentsQuery.Where(a => a.DueAt >= termStart.Value && a.DueAt <= termEnd.Value);
+
+        var assignments = await assignmentsQuery
             .Include(a => a.ClassSubject).ThenInclude(cs => cs.Subject)
             .OrderBy(a => a.DueAt)
-            .Select(a => new { a.AssignmentId, a.Title, a.MaxMarks, Subject = a.ClassSubject.Subject.Name })
+            .Select(a => new { a.AssignmentId, a.Title, a.MaxMarks, Subject = a.ClassSubject.Subject.Name, CapsPhase = a.ClassSubject.Subject.CapsPhase })
             .ToListAsync();
 
         var studentIds = students.Select(s => s.StudentId).ToList();

@@ -13,11 +13,13 @@ public class ParentController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IPathwaysService _pathways;
 
-    public ParentController(SchoolPortalDbContext context, ICurrentUserService currentUser)
+    public ParentController(SchoolPortalDbContext context, ICurrentUserService currentUser, IPathwaysService pathways)
     {
         _context = context;
         _currentUser = currentUser;
+        _pathways = pathways;
     }
 
     [HttpGet("children")]
@@ -165,6 +167,13 @@ public class ParentController : ControllerBase
             .ToListAsync();
 
         return Ok(announcements);
+    }
+
+    [HttpGet("pathways")]
+    public async Task<IActionResult> GetPathways()
+    {
+        var result = await _pathways.GetParentPathwaysAsync(_currentUser.UserId, _currentUser.SchoolId);
+        return Ok(result);
     }
 
     private async Task<bool> IsMyChild(Guid studentId) =>

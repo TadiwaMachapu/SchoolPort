@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { useFeature } from "@/lib/use-feature";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +34,8 @@ const GRADIENTS = [
 ];
 
 export default function CoursesPage() {
+  const router = useRouter();
+  const hasVirtualClassroom = useFeature("virtualClassroom");
   const [courses,    setCourses]    = useState<Course[]>([]);
   const [total,      setTotal]      = useState(0);
   const [loading,    setLoading]    = useState(true);
@@ -40,6 +44,17 @@ export default function CoursesPage() {
   const [role,       setRole]       = useState("");
 
   useEffect(() => { setRole(getClientRole()); }, []);
+
+  if (!hasVirtualClassroom) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 text-center px-4">
+        <BookOpen className="h-12 w-12 text-gray-200 mb-4" />
+        <h2 className="text-lg font-semibold text-gray-700">Virtual Classroom not enabled</h2>
+        <p className="text-sm text-gray-400 mt-1">Enable the Virtual Classroom feature in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+      </div>
+    );
+  }
 
   async function load() {
     setLoading(true);

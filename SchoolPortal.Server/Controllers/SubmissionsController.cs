@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Submissions;
+using SchoolPortal.Shared.DTOs.Common;
 
 namespace SchoolPortal.Server.Controllers;
 
@@ -53,6 +54,16 @@ public class SubmissionsController : ControllerBase
     {
         var submissions = await _submissionService.GetSubmissionsByAssignmentAsync(assignmentId);
         return Ok(submissions);
+    }
+
+    /// <summary>Returns ungraded submissions for the current teacher (or all for Admin).</summary>
+    [HttpGet("pending")]
+    [Authorize(Roles = "Admin,Teacher")]
+    [ProducesResponseType(typeof(List<PendingSubmissionDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPending([FromQuery] int limit = 20)
+    {
+        var result = await _submissionService.GetPendingSubmissionsAsync(limit);
+        return Ok(result);
     }
 
     [HttpGet("by-assignment/{assignmentId}/mine")]

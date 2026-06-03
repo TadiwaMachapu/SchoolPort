@@ -23,10 +23,11 @@ public class ClassesController : ControllerBase
     public async Task<IActionResult> GetClasses(
         [FromQuery] int? year,
         [FromQuery] string? q,
+        [FromQuery] bool mine = false,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var result = await _classService.GetClassesAsync(year, q, page, pageSize);
+        var result = await _classService.GetClassesAsync(year, q, page, pageSize, mine);
         return Ok(result);
     }
 

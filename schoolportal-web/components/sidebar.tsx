@@ -17,7 +17,17 @@ import {
   TrendingUp,
   Users,
   Settings,
+  Rocket,
   LogOut,
+  FileText,
+  CreditCard,
+  Route,
+  Star,
+  Trophy,
+  Phone,
+  ShieldCheck,
+  FolderDown,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,24 +36,53 @@ interface NavItem {
   label: string;
   Icon: LucideIcon;
   roles: string[];
-  feature: string | null;
+  feature: keyof SchoolFeatures | null;
   group?: string;
 }
 
+// Role caps (from CLAUDE.md): Admin ≤ 7, Teacher ≤ 6, Learner ≤ 7, Parent ≤ 7.
+// Always-on items (feature: null) are core LMS — never behind a flag.
+// Phase-gated items use the new pillar flag names; they are hidden until the
+// school enables the flag, not removed, so Phase 1 can surface them cheaply.
 const allNavItems: NavItem[] = [
-  { href: "/dashboard",     label: "Dashboard",     Icon: LayoutDashboard, roles: ["Admin","Teacher","Student","Parent"], feature: null,        group: "main" },
-  { href: "/courses",       label: "Courses",        Icon: BookOpen,        roles: ["Admin","Teacher","Student"],          feature: "courses",   group: "learn" },
-  { href: "/classes",       label: "Classes",        Icon: GraduationCap,   roles: ["Admin","Teacher","Student"],          feature: null,        group: "learn" },
-  { href: "/assignments",   label: "Assignments",    Icon: ClipboardList,   roles: ["Admin","Teacher","Student"],          feature: null,        group: "learn" },
-  { href: "/quizzes",       label: "Quizzes",        Icon: Brain,           roles: ["Admin","Teacher","Student"],          feature: "quizzes",   group: "learn" },
-  { href: "/gradebook",     label: "Gradebook",      Icon: BarChart2,       roles: ["Admin","Teacher"],                    feature: null,        group: "learn" },
-  { href: "/attendance",    label: "Attendance",     Icon: CheckSquare,     roles: ["Admin","Teacher"],                    feature: "attendance",group: "learn" },
-  { href: "/calendar",      label: "Calendar",       Icon: CalendarDays,    roles: ["Admin","Teacher","Student","Parent"], feature: null,        group: "tools" },
-  { href: "/messages",      label: "Messages",       Icon: MessageSquare,   roles: ["Admin","Teacher","Student","Parent"], feature: "messaging", group: "tools" },
-  { href: "/announcements", label: "Announcements",  Icon: Megaphone,       roles: ["Admin","Teacher","Student","Parent"], feature: null,        group: "tools" },
-  { href: "/analytics",     label: "Analytics",      Icon: TrendingUp,      roles: ["Admin"],                             feature: "analytics", group: "admin" },
-  { href: "/users",         label: "Users",          Icon: Users,           roles: ["Admin"],                             feature: null,        group: "admin" },
-  { href: "/settings",      label: "Settings",       Icon: Settings,        roles: ["Admin"],                             feature: null,        group: "admin" },
+  // ── Main ──────────────────────────────────────────────────────────────────
+  { href: "/dashboard",     label: "Dashboard",    Icon: LayoutDashboard, roles: ["Admin","Teacher","Student","Parent"], feature: null,               group: "main"  },
+
+  // ── Learning ──────────────────────────────────────────────────────────────
+  // Admin sees Classes but not individual teaching tools (assignments, quizzes)
+  { href: "/classes",       label: "Classes",      Icon: GraduationCap,   roles: ["Admin","Teacher","Student"],          feature: null,               group: "learn" },
+  { href: "/assignments",   label: "Assignments",  Icon: ClipboardList,   roles: ["Teacher","Student"],                  feature: null,               group: "learn" },
+  { href: "/quizzes",       label: "Quizzes",      Icon: Brain,           roles: ["Teacher","Student"],                  feature: null,               group: "learn" },
+  { href: "/attendance",    label: "Attendance",   Icon: CheckSquare,     roles: ["Teacher"],                            feature: null,               group: "learn" },
+  // Phase 1 — Classroom pillar
+  { href: "/gradebook",     label: "Gradebook",    Icon: BarChart2,       roles: ["Admin","Teacher"],                    feature: "gradebook",        group: "learn" },
+  { href: "/reports",       label: "Reports",      Icon: FileText,        roles: ["Admin","Teacher"],                    feature: "smartReports",     group: "learn" },
+  { href: "/pathways",      label: "Pathways",     Icon: Route,           roles: ["Admin","Teacher","Student"],          feature: "pathways",         group: "learn" },
+  { href: "/courses",       label: "Courses",      Icon: BookOpen,        roles: ["Teacher","Student"],                  feature: "virtualClassroom", group: "learn" },
+  { href: "/skills",        label: "Skills",       Icon: Star,            roles: ["Admin","Teacher","Student"],          feature: "skillsProfile",    group: "learn" },
+  { href: "/activities",    label: "Activities",   Icon: Trophy,          roles: ["Admin","Teacher","Student"],          feature: "sportsCulture",    group: "learn" },
+
+  // ── Communication ─────────────────────────────────────────────────────────
+  { href: "/calendar",      label: "Calendar",     Icon: CalendarDays,    roles: ["Teacher","Student","Parent"],          feature: null,               group: "tools" },
+  { href: "/announcements", label: "Announcements",Icon: Megaphone,       roles: ["Admin","Teacher","Student","Parent"], feature: null,               group: "tools" },
+  // Phase 2 — Connect pillar
+  { href: "/messages",      label: "Messages",     Icon: MessageSquare,   roles: ["Admin","Teacher","Student","Parent"], feature: "schoolChat",       group: "tools" },
+  // Phase 3 — Connect pillar
+  { href: "/whatsapp",      label: "WhatsApp",     Icon: Phone,           roles: ["Admin"],                             feature: "whatsApp",         group: "tools" },
+
+  // ── Administration ────────────────────────────────────────────────────────
+  // Phase 1 — Reports & Insights pillar
+  { href: "/analytics",     label: "Analytics",    Icon: TrendingUp,      roles: ["Admin"],                             feature: "smartReports",     group: "admin" },
+  // Phase 1 — SchoolPay pillar
+  { href: "/school-pay",    label: "SchoolPay",    Icon: CreditCard,      roles: ["Admin","Student","Parent"],          feature: "schoolPay",        group: "admin" },
+  // Phase 3 — Compliance pillar
+  { href: "/popia",         label: "POPIA Centre", Icon: ShieldCheck,     roles: ["Admin","Student","Parent"],          feature: "popiaCentre",      group: "admin" },
+  { href: "/sasams",        label: "SA-SAMS Export",Icon: FolderDown,     roles: ["Admin"],                             feature: "saSamsExport",     group: "admin" },
+  // Phase 3 — Matric Hub
+  { href: "/matric",        label: "Matric Hub",   Icon: Award,           roles: ["Admin","Teacher","Student"],         feature: "matricHub",        group: "learn" },
+  { href: "/users",         label: "Users",        Icon: Users,           roles: ["Admin"],                             feature: null,               group: "admin" },
+  { href: "/settings",      label: "Settings",     Icon: Settings,        roles: ["Admin"],                             feature: null,               group: "admin" },
+  { href: "/onboarding",    label: "Setup Wizard", Icon: Rocket,          roles: ["Admin"],                             feature: null,               group: "admin" },
 ];
 
 const GROUP_LABELS: Record<string, string> = {
@@ -61,7 +100,7 @@ interface SidebarProps {
 export function Sidebar({ user, school }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const features = school.features ?? {};
+  const features: SchoolFeatures = school.features ?? ({} as SchoolFeatures);
   const theme = school.theme;
   const primaryColor = theme?.primaryColor ?? "#2563eb";
 
@@ -72,7 +111,7 @@ export function Sidebar({ user, school }: SidebarProps) {
 
   const visibleItems = allNavItems.filter((item) => {
     if (!item.roles.includes(user.role)) return false;
-    if (item.feature && !(features as Record<string, boolean>)[item.feature]) return false;
+    if (item.feature && !features[item.feature]) return false;
     return true;
   });
 

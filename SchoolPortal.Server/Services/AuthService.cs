@@ -37,7 +37,8 @@ public class AuthService : IAuthService
                 throw new UnauthorizedAccessException("Invalid credentials");
             }
 
-            var accessToken = GenerateAccessToken(user);
+            var (positions, expiresAt) = await LoadPositionsAndTokenExpiryAsync(user);
+            var accessToken = GenerateAccessToken(user, positions, expiresAt);
             var refreshToken = GenerateRefreshToken();
 
             user.LastLoginAt = DateTime.UtcNow;
@@ -47,7 +48,7 @@ public class AuthService : IAuthService
             {
                 AccessToken = accessToken,
                 RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddHours(8),
+                ExpiresAt = expiresAt,
                 User = new UserInfo
                 {
                     UserId = user.UserId,
@@ -71,26 +72,99 @@ public class AuthService : IAuthService
         throw new UnauthorizedAccessException("Refresh tokens are not supported; please log in again");
     }
 
-    private string GenerateAccessToken(Data.Entities.User user)
+    /// <summary>
+    /// Loads the user's ACTIVE in-window positions (with scopes) for the "pos" claim and
+    /// computes the tiered token expiry (STEP 3 Section D):
+    ///   Learner/Parent/routine Staff → 8h; any Finance position → 1h;
+    ///   External → min(1h, EffectiveTo); System → min(30min, EffectiveTo).
+    /// Tokens never outlive a time-limited appointment. Sensitive operations re-resolve
+    /// from the database regardless of token contents (PermissionResolver).
+    /// </summary>
+    private async Task<(List<Authorization.PositionClaim> Positions, DateTime ExpiresAt)>
+        LoadPositionsAndTokenExpiryAsync(Data.Entities.User user)
+    {
+        var now = DateTime.UtcNow;
+
+        var rows = await _context.UserPositions.AsNoTracking()
+            .Where(up => up.UserId == user.UserId
+                      && up.SchoolId == user.SchoolId
+                      && up.IsActive
+                      && up.EffectiveFrom <= now
+                      && (up.EffectiveTo == null || up.EffectiveTo >= now))
+            .Select(up => new
+            {
+                up.Position.Key,
+                up.Position.Category,
+                up.Position.IsExternal,
+                up.Position.IsSystem,
+                up.EffectiveFrom,
+                up.EffectiveTo,
+                Scopes = up.Scopes.Select(s => new Authorization.ScopeClaim
+                {
+                    ScopeType = s.ScopeType,
+                    ScopeRefId = s.ScopeRefId,
+                    ScopeValue = s.ScopeValue,
+                }).ToList(),
+            })
+            .ToListAsync();
+
+        var positions = rows.Select(r => new Authorization.PositionClaim
+        {
+            Key = r.Key,
+            EffectiveFrom = r.EffectiveFrom,
+            EffectiveTo = r.EffectiveTo,
+            Scopes = r.Scopes,
+        }).ToList();
+
+        var expiresAt = now.AddHours(8);
+        if (rows.Any(r => r.IsSystem))
+            expiresAt = now.AddMinutes(30);
+        else if (rows.Any(r => r.IsExternal))
+            expiresAt = now.AddHours(1);
+        else if (rows.Any(r => r.Category == "Finance"))
+            expiresAt = now.AddHours(1);
+
+        // A token must never outlive a time-limited (External/System) appointment.
+        var earliestElevatedEnd = rows
+            .Where(r => (r.IsExternal || r.IsSystem) && r.EffectiveTo != null)
+            .Select(r => r.EffectiveTo!.Value)
+            .DefaultIfEmpty(DateTime.MaxValue)
+            .Min();
+        if (earliestElevatedEnd < expiresAt) expiresAt = earliestElevatedEnd;
+
+        return (positions, expiresAt);
+    }
+
+    private string GenerateAccessToken(
+        Data.Entities.User user,
+        List<Authorization.PositionClaim> positions,
+        DateTime expiresAt)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        // Legacy claims (sub/email/role/schoolId) unchanged for the transition.
+        // New: "identity" (Layer 1) and "pos" (positions + scopes + effective dates —
+        // NEVER the derived permission set; permissions are resolved server-side).
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
-            new Claim("schoolId", user.SchoolId.ToString())
+            new Claim("schoolId", user.SchoolId.ToString()),
         };
+        if (!string.IsNullOrEmpty(user.Identity))
+            claims.Add(new Claim("identity", user.Identity));
+        if (positions.Count > 0)
+            claims.Add(new Claim("pos", Authorization.PositionClaim.Serialize(positions)));
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),
+            expires: expiresAt,
             signingCredentials: credentials
         );
 

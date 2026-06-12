@@ -106,6 +106,11 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient("supabase-storage");
 builder.Services.AddHttpClient("anthropic");
 
+// Sprint 1.5.0 authorization — catalogue cache (immutable seed data, loaded at startup)
+// and the permission resolver (stateless; JWT fast path + DB authority path).
+builder.Services.AddSingleton<SchoolPortal.Server.Authorization.PermissionCatalogueCache>();
+builder.Services.AddScoped<SchoolPortal.Server.Authorization.PermissionResolver>();
+
 // Add Services
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IStorageService, StorageService>();
@@ -257,6 +262,12 @@ using (var scope = app.Services.CreateScope())
     await PathwaysSeedData.SeedAsync(db, logger);
     await MatricHubSeedData.SeedAsync(db, logger);
     await PositionsSeedData.SeedAsync(db, logger);
+
+    // Load the immutable position→permission map into the in-process cache (Step 3):
+    // request-time permission unions are pure memory — zero DB hits on the JWT path.
+    var catalogue = scope.ServiceProvider
+        .GetRequiredService<SchoolPortal.Server.Authorization.PermissionCatalogueCache>();
+    await catalogue.LoadAsync(db);
 
     if (!await db.SuperAdmins.AnyAsync())
     {

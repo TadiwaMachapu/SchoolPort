@@ -196,7 +196,14 @@ The JWT token contains `schoolId`, `email`, `role` claims. `schoolId` is a `Guid
 | `GET /api/gradebook/my-grades` | Student | Student's own grade history |
 
 ### Database
-Supabase Postgres. EF Core 8 with Npgsql. All table/column names use `snake_case` (applied globally in `SchoolPortalDbContext.OnModelCreating`). Two EF migrations: `InitialCreate` and `Phase2Features`. Two Postgres views mapped as keyless entities: `AttendanceSummaryView`, `GradebookSimpleView`.
+Supabase Postgres. EF Core 8 with Npgsql. All table/column names use `snake_case` (applied globally in `SchoolPortalDbContext.OnModelCreating`). Twelve EF migrations, `InitialCreate` through `AddIdentityPositionsPermissions` — see Migration chain notes below. Two Postgres views mapped as keyless entities: `AttendanceSummaryView`, `GradebookSimpleView`.
+
+### Migration chain notes (Sprint 1.5.0 findings — read before adding migrations)
+- **Migrations were gitignored from the initial commit (2025-10-07) until Sprint 1.5.0** (`**/Migrations/` in `.gitignore`). No migration was ever in version control before commit `1b2e2cc7` (12/06/2026). Do not re-ignore them.
+- **The live DB history contains two orphan rows whose files are lost** (never tracked, deleted from the dev machine): `20260521000000_Phase2Features` (an earlier Phase2Features applied before the surviving `20260521130950` one) and `20260523120000_Phase4SuperAdminSettings` (created `super_admins`). Verified 12/06/2026: a full table-level diff of the live DB against the current EF model shows **no drift** — every effect of the lost migrations is present in the current model/snapshot.
+- **The chain cannot replay from scratch**: nothing surviving creates `super_admins`, yet `AddAcademicCalendar` alters its PK. `InitialCreate`'s invalid `audit_logs` default (`bigint DEFAULT gen_random_uuid()`) was repaired in-place during Sprint 1.5.0. Fresh environments need `EnsureCreated` (what integration tests use) or a future baseline migration — candidate fix logged for Sprint 1.5.0 Step 11: reconstruct a stub `20260523120000_Phase4SuperAdminSettings` with guarded `CREATE TABLE IF NOT EXISTS super_admins` (it would never run on the live DB, whose history already records that id, but repairs fresh replays).
+- **Integration tests run on real Postgres via the Docker CLI** (`docker run … postgres:16-alpine`, see `PostgresFixture`), schema built by `EnsureCreated`. Testcontainers' .NET package is NOT used — Windows Smart App Control blocks its unsigned assembly. The legacy in-memory tests fail on the jsonb POCO columns (pre-existing; conversion scheduled in Sprint 1.5.0 Step 10).
+- `AddIdentityPositionsPermissions` (applied to live 12/06/2026) changed `audit_logs.audit_log_id` from `bigint` to `uuid` and added the identity/positions/permissions tables.
 
 Key relationships:
 - `Student.ParentUserId` → links a parent `User` to their child `Student`

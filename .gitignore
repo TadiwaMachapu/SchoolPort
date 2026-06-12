@@ -80,8 +80,12 @@ ScaffoldingReadMe.txt
 **/packages/*
 !**/packages/build/
 
-# Entity Framework Migrations
-**/Migrations/
+# EF migrations are SOURCE CODE and must be versioned. They were ignored until
+# Sprint 1.5.0, which is why the repo held no migrations and the live DB history
+# drifted from the repo (see CLAUDE.md "Migration chain notes"). Do not re-ignore.
+
+# Generated backfill reports contain live user emails (PII) — never commit.
+SchoolPortal.Server/backfill-identity-report.md
 
 # Logs
 logs/

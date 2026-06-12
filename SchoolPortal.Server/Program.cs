@@ -128,6 +128,7 @@ builder.Services.AddScoped<IMatricHubService, MatricHubService>();
 builder.Services.AddScoped<IMatricTutorService, MatricTutorService>();
 builder.Services.AddScoped<IGr9AdvisorService, Gr9AdvisorService>();
 builder.Services.AddScoped<ISmartReportsService, SmartReportsService>();
+builder.Services.AddScoped<IdentityBackfillService>();
 
 // Add SignalR
 builder.Services.AddSignalR();
@@ -232,16 +233,30 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 // Map Health Checks
 app.MapHealthChecks("/health");
 
-// Seed SuperAdmin on first startup if none exists
+// Read-only backfill modes (report, verify) must make NO database changes — skip migrate/seed.
+var isReadonlyBackfillReport = args.Length > 0
+    && args[0].Equals("backfill", StringComparison.OrdinalIgnoreCase)
+    && (args.Length < 2
+        || args[1].Equals("report", StringComparison.OrdinalIgnoreCase)
+        || args[1].Equals("verify", StringComparison.OrdinalIgnoreCase));
+
+// Apply migrations + seed on startup (and before `backfill apply`); never for the read-only report.
 using (var scope = app.Services.CreateScope())
 {
     var db     = scope.ServiceProvider.GetRequiredService<SchoolPortalDbContext>();
     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
+    if (isReadonlyBackfillReport)
+    {
+        logger.LogInformation("Backfill report (read-only): skipping migrate/seed; no database changes will be made.");
+    }
+    else
+    {
     await db.Database.MigrateAsync();
     await PathwaysSeedData.SeedAsync(db, logger);
     await MatricHubSeedData.SeedAsync(db, logger);
+    await PositionsSeedData.SeedAsync(db, logger);
 
     if (!await db.SuperAdmins.AnyAsync())
     {
@@ -265,6 +280,41 @@ using (var scope = app.Services.CreateScope())
         await db.SaveChangesAsync();
         logger.LogInformation("SuperAdmin seeded: {Email}", email);
     }
+    }
+}
+
+// Sprint 1.5.0 identity backfill — CLI entrypoint (no HTTP attack surface):
+//   dotnet run --project SchoolPortal.Server -- backfill report   (DRY RUN → writes report file, no DB writes)
+//   dotnet run --project SchoolPortal.Server -- backfill apply    (writes Identity + positions; run ONLY after report approved)
+if (args.Length > 0 && args[0].Equals("backfill", StringComparison.OrdinalIgnoreCase))
+{
+    using var scope = app.Services.CreateScope();
+    var backfill = scope.ServiceProvider.GetRequiredService<IdentityBackfillService>();
+    var mode = args.Length > 1 ? args[1].ToLowerInvariant() : "report";
+
+    if (mode == "apply")
+    {
+        var changes = await backfill.ApplyAsync();
+        Log.Information("Identity backfill APPLY complete: {Changes} changes written.", changes);
+    }
+    else if (mode == "verify")
+    {
+        var v = await backfill.VerifyAsync();
+        Log.Information("VERIFY: {Total} users, {RolePop} with Role populated, {IdSet} with Identity set.",
+            v.TotalUsers, v.RolePopulated, v.IdentitySet);
+        Log.Information("VERIFY identities: {Breakdown}", string.Join(", ", v.IdentityBreakdown.Select(kv => $"{kv.Key}={kv.Value}")));
+        Log.Information("VERIFY positions: {Count} total — {Breakdown}", v.UserPositions, string.Join(", ", v.PositionBreakdown.Select(kv => $"{kv.Key}={kv.Value}")));
+    }
+    else
+    {
+        var plan = await backfill.BuildPlanAsync();
+        var markdown = backfill.RenderMarkdown(plan);
+        var reportPath = Path.Combine(app.Environment.ContentRootPath, "backfill-identity-report.md");
+        await File.WriteAllTextAsync(reportPath, markdown);
+        Log.Information("Identity backfill DRY RUN report written to {Path} ({Users} users, no DB writes).",
+            reportPath, plan.Users.Count);
+    }
+    return; // do not start the web host
 }
 
 Log.Information("School Portal API starting up...");

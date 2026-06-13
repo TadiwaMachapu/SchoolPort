@@ -184,6 +184,13 @@ Controllers are thin. Business logic lives in services injected by interface. Se
 
 The JWT token contains `schoolId`, `email`, `role` claims. `schoolId` is a `Guid`.
 
+#### Permission catalogue widenings (Sprint 1.5.0 Step 6)
+Deliberate, reviewed additions to the position→permission map in `PositionsSeedData` (applied to live via sync-by-key on next server start). Recorded here so the catalogue's evolution is auditable:
+- `platform.access` — new baseline permission, **identity-implicit for all five identities** (Staff/Learner/Parent/External/System), attached to no position. Backs "any authenticated user" endpoints (e.g. `/api/me`) under the permission model (D1).
+- `system.integrations` — added to **Principal** and **DeputyPrincipal** (previously ITAdministrator only). Rationale: Principals/Deputies *authorise* which integrations a school uses; IT Administrators configure them technically — both legitimately hold it.
+- `communications.whatsapp_admin` — added to **ITAdministrator** (previously Principal/DeputyPrincipal only).
+- `communications.whatsapp_trigger` — was held by **no** position; now granted to **Principal, DeputyPrincipal, ClassTeacher, GradeHead, FinanceManager, SportCultureMIC**. Preserves the admin-vs-trigger distinction (administer the integration vs. send a message).
+
 ### Notable non-obvious endpoints
 | Endpoint | Auth | Purpose |
 |---|---|---|

@@ -82,6 +82,8 @@ public static class PositionsSeedData
             Perm("system.audit_log_view",  "System", "View the audit log"),
             Perm("system.backup",          "System", "Manage backups"),
             Perm("system.feature_flags",   "System", "Manage feature flags"),
+            // Platform — identity-implicit for every authenticated identity (no position map)
+            Perm("platform.access",        "Platform", "Baseline access for any authenticated user (identity-implicit, all identities)"),
         };
         // Sync by key: insert only what's missing; never delete or mutate existing rows.
         var existingPermKeys = (await db.Permissions.Select(p => p.Key).ToListAsync()).ToHashSet();
@@ -147,13 +149,17 @@ public static class PositionsSeedData
             "pathways.cohort_view", "discipline.escalate", "discipline.resolve",
             "communications.message_all", "communications.whatsapp_admin",
             "finance.view_all", "finance.reports", "finance.exempt_approve",
-            "system.users_manage", "system.positions_assign", "system.audit_log_view");
+            "system.users_manage", "system.positions_assign", "system.audit_log_view",
+            // Step 6 widening: Principals authorise integrations + can trigger WhatsApp messages.
+            "system.integrations", "communications.whatsapp_trigger");
 
         Map("DeputyPrincipal",
             "marks.view_all", "attendance.view_grade", "report.approve", "assessment.approve_plan",
             "pathways.cohort_view", "discipline.escalate", "discipline.resolve",
             "communications.message_all", "communications.whatsapp_admin",
-            "finance.view_all", "finance.reports", "system.audit_log_view");
+            "finance.view_all", "finance.reports", "system.audit_log_view",
+            // Step 6 widening: Deputies authorise integrations + can trigger WhatsApp messages.
+            "system.integrations", "communications.whatsapp_trigger");
 
         Map("HOD",
             "marks.view_subject", "assessment.approve_plan", "report.approve", "attendance.view_class",
@@ -165,7 +171,8 @@ public static class PositionsSeedData
 
         Map("GradeHead",
             "marks.view_grade", "attendance.view_grade", "discipline.log", "discipline.escalate",
-            "discipline.resolve", "communications.message_grade", "pathways.cohort_view");
+            "discipline.resolve", "communications.message_grade", "pathways.cohort_view",
+            "communications.whatsapp_trigger"); // Step 6 widening
 
         Map("SubjectTeacher",
             "marks.capture", "marks.view_subject", "assessment.create", "attendance.capture",
@@ -173,19 +180,22 @@ public static class PositionsSeedData
 
         Map("ClassTeacher",
             "attendance.capture", "attendance.view_class", "report.draft",
-            "discipline.log", "discipline.escalate", "communications.message_class");
+            "discipline.log", "discipline.escalate", "communications.message_class",
+            "communications.whatsapp_trigger"); // Step 6 widening
 
         Map("LOTeacher",
             "marks.capture", "attendance.capture", "pathways.advise", "pathways.cohort_view",
             "communications.message_class", "discipline.log");
 
         Map("SportCultureMIC",
-            "attendance.capture", "communications.message_class", "discipline.log");
+            "attendance.capture", "communications.message_class", "discipline.log",
+            "communications.whatsapp_trigger"); // Step 6 widening
 
         Map("FinanceManager",
             "finance.view_all", "finance.create_invoice", "finance.capture_payment", "finance.refund",
             "finance.exempt_initiate", "finance.exempt_approve", "finance.reports",
-            "finance.year_end", "finance.audit_pack");
+            "finance.year_end", "finance.audit_pack",
+            "communications.whatsapp_trigger"); // Step 6 widening
 
         Map("BursarDebtorsClerk",
             "finance.view_all", "finance.create_invoice", "finance.capture_payment",
@@ -196,7 +206,8 @@ public static class PositionsSeedData
 
         Map("ITAdministrator",
             "system.users_manage", "system.positions_assign", "system.integrations",
-            "system.audit_log_view", "system.backup", "system.feature_flags");
+            "system.audit_log_view", "system.backup", "system.feature_flags",
+            "communications.whatsapp_admin"); // Step 6 widening: IT admins administer the WhatsApp integration
 
         Map("Auditor",
             "finance.view_all", "finance.reports", "finance.audit_pack",

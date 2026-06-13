@@ -66,6 +66,9 @@ public static class PermissionKeys
     public const string SystemBackup = "system.backup";
     public const string SystemFeatureFlags = "system.feature_flags";
 
+    // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)
+    public const string PlatformAccess = "platform.access";
+
     /// <summary>
     /// Permissions whose checks must NEVER trust the JWT position cache — the resolver
     /// re-reads positions from the database at call time (STEP 3 Section C). Finance
@@ -87,14 +90,21 @@ public static class PermissionKeys
         {
             ["Learner"] = new HashSet<string>
             {
+                PlatformAccess,
                 MarksViewOwn, AttendanceViewOwn, PathwaysViewOwn,
                 AssignmentsViewAssigned, AssignmentsSubmit, FinanceViewOwn,
             },
             ["Parent"] = new HashSet<string>
             {
+                PlatformAccess,
                 MarksViewChild, AttendanceViewChild, PathwaysViewChild,
                 FinanceViewOwn, FinancePay,
             },
-            // Staff, External, System: no implicit permissions — everything via positions.
+            // Staff, External, System hold no DOMAIN permissions implicitly — those come only via
+            // positions — but every authenticated identity gets platform.access (D1 / Step 6): the
+            // baseline "any logged-in user" permission for endpoints like /api/me.
+            ["Staff"] = new HashSet<string> { PlatformAccess },
+            ["External"] = new HashSet<string> { PlatformAccess },
+            ["System"] = new HashSet<string> { PlatformAccess },
         };
 }

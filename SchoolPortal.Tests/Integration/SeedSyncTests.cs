@@ -34,6 +34,12 @@ public class SeedSyncTests
             Assert.True(await db.Permissions.AnyAsync(p => p.Key == "assignments.submit"));
             Assert.True(await db.Permissions.AnyAsync(p => p.Key == "finance.pay"));
 
+            // Step 6 / D1: platform.access is seeded in the catalogue and, being identity-implicit,
+            // is attached to NO position (it is granted by identity, not appointment).
+            Assert.True(await db.Permissions.AnyAsync(p => p.Key == "platform.access"));
+            var platformPerm = await db.Permissions.SingleAsync(p => p.Key == "platform.access");
+            Assert.False(await db.PositionPermissions.AnyAsync(pp => pp.PermissionId == platformPerm.PermissionId));
+
             // Re-run: nothing changes (idempotent).
             await PositionsSeedData.SeedAsync(db, NullLogger.Instance);
             Assert.Equal(perms, await db.Permissions.CountAsync());

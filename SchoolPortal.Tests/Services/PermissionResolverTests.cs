@@ -51,8 +51,11 @@ public class PermissionResolverTests
 
         var set = resolver.ResolveFromClaims(IdentityKeys.Staff, new[] { expired }, Now);
 
-        Assert.Empty(set.Permissions);
+        // The expired position contributes nothing; only the identity baseline remains.
         Assert.False(set.HasPosition(PositionKeys.SubjectTeacher));
+        Assert.False(set.HasPermission(PermissionKeys.MarksCapture));
+        Assert.False(set.HasPermission(PermissionKeys.AttendanceCapture));
+        Assert.Equal(new[] { PermissionKeys.PlatformAccess }, set.Permissions);
     }
 
     [Fact]
@@ -63,7 +66,9 @@ public class PermissionResolverTests
 
         var set = resolver.ResolveFromClaims(IdentityKeys.Staff, new[] { future }, Now);
 
-        Assert.Empty(set.Permissions);
+        // The not-yet-effective position contributes nothing; only the identity baseline remains.
+        Assert.False(set.HasPermission(PermissionKeys.MarksCapture));
+        Assert.Equal(new[] { PermissionKeys.PlatformAccess }, set.Permissions);
     }
 
     [Fact]
@@ -104,9 +109,11 @@ public class PermissionResolverTests
         var resolver = CreateResolver();
 
         var staff = resolver.ResolveFromClaims(IdentityKeys.Staff, Array.Empty<PositionClaim>(), Now);
-        Assert.False(staff.HasPermission(PermissionKeys.MarksViewOwn));
-        Assert.False(staff.HasPermission(PermissionKeys.MarksViewChild));
-        Assert.Empty(staff.Permissions); // Staff with no positions has nothing
+        Assert.False(staff.HasPermission(PermissionKeys.MarksViewOwn));   // Learner's, not leaked
+        Assert.False(staff.HasPermission(PermissionKeys.MarksViewChild)); // Parent's, not leaked
+        // Staff with no positions holds ONLY the baseline platform.access; all domain
+        // permissions come via positions (D1 / Step 6).
+        Assert.Equal(new[] { PermissionKeys.PlatformAccess }, staff.Permissions);
     }
 
     [Fact]

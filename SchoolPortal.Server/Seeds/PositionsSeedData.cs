@@ -82,6 +82,7 @@ public static class PositionsSeedData
             Perm("system.audit_log_view",  "System", "View the audit log"),
             Perm("system.backup",          "System", "Manage backups"),
             Perm("system.feature_flags",   "System", "Manage feature flags"),
+            Perm("system.data_export",     "System", "Export school data for SA-SAMS / compliance (bulk PII)"),
             // Platform — identity-implicit for every authenticated identity (no position map)
             Perm("platform.access",        "Platform", "Baseline access for any authenticated user (identity-implicit, all identities)"),
         };
@@ -218,6 +219,14 @@ public static class PositionsSeedData
 
         Map("SystemSupport",
             "system.audit_log_view");
+
+        // SA-SAMS / compliance bulk-PII export (Step 6 #27). Compliance/academic capability —
+        // NOT granted to Finance or teaching positions. Sensitive: DB-resolved per request.
+        Map("Principal",        "system.data_export");
+        Map("DeputyPrincipal",  "system.data_export");
+        Map("ITAdministrator",  "system.data_export");
+        Map("Auditor",          "system.data_export");
+        Map("DistrictOfficial", "system.data_export");
 
         var existingPairs = (await db.PositionPermissions.AsNoTracking()
                 .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())

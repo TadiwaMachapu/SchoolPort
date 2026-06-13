@@ -65,6 +65,7 @@ public static class PermissionKeys
     public const string SystemAuditLogView = "system.audit_log_view";
     public const string SystemBackup = "system.backup";
     public const string SystemFeatureFlags = "system.feature_flags";
+    public const string SystemDataExport = "system.data_export";
 
     // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)
     public const string PlatformAccess = "platform.access";
@@ -81,6 +82,8 @@ public static class PermissionKeys
         FinanceCreateInvoice, FinanceCapturePayment, FinanceRefund,
         FinanceExemptInitiate, FinanceExemptApprove, FinanceYearEnd, FinanceAuditPack,
         SystemBackup, SystemPositionsAssign, SystemUsersManage,
+        // Bulk PII export: never trust the cached JWT set — re-resolve from the DB per request.
+        SystemDataExport,
     };
 
     /// <summary>Identity-implicit permissions — granted by Layer-1 identity alone, no

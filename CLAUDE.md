@@ -190,6 +190,7 @@ Deliberate, reviewed additions to the position→permission map in `PositionsSee
 - `system.integrations` — added to **Principal** and **DeputyPrincipal** (previously ITAdministrator only). Rationale: Principals/Deputies *authorise* which integrations a school uses; IT Administrators configure them technically — both legitimately hold it.
 - `communications.whatsapp_admin` — added to **ITAdministrator** (previously Principal/DeputyPrincipal only).
 - `communications.whatsapp_trigger` — was held by **no** position; now granted to **Principal, DeputyPrincipal, ClassTeacher, GradeHead, FinanceManager, SportCultureMIC**. Preserves the admin-vs-trigger distinction (administer the integration vs. send a message).
+- `system.data_export` — **new permission, in the Sensitive set** (DB-resolved per request — these are bulk PII exports that must not trust cached JWT claims). Granted to **Principal, DeputyPrincipal, ITAdministrator, Auditor, DistrictOfficial**. Backs SaSamsController (#27) SA-SAMS compliance exports; deliberately **not** granted to Finance or teaching positions.
 
 ### Notable non-obvious endpoints
 | Endpoint | Auth | Purpose |

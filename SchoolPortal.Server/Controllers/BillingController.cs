@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using Stripe;
 using Stripe.Checkout;
@@ -124,6 +125,7 @@ public class BillingController : ControllerBase
     // Stripe webhook handler
     [HttpPost("webhook")]
     [AllowAnonymous]
+    [AnonymousJustification("Stripe billing webhook: invoked server-to-server by Stripe with no user JWT; authenticated instead by Stripe signature verification.")]
     public async Task<IActionResult> Webhook()
     {
         var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();

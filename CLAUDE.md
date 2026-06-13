@@ -212,6 +212,16 @@ Key relationships:
 
 `RowVersion` is `long` everywhere — Postgres doesn't support SQL Server's `byte[]` rowversion.
 
+### Test infrastructure notes
+
+- **Port 5432 vs 5433.** A native Postgres instance occupies the host's `5432`. Integration-test Docker containers must publish on **5433** (`docker run -p 5433:5432 …`) and the test run must point at it via `TEST_PG_CONNECTION=…Port=5433…`. Using 5432 collides with the native server and the tests bind to the wrong database.
+- **`BackfillTests.Apply` parallel-load flake.** This test has a known Npgsql timeout flake when run under parallel load while the machine sleeps — it is a machine/timing artefact, **not** a logic bug. It passes reliably in isolation (~4m51s). Run it alone if it flakes; do not "fix" it by changing backfill logic.
+- **Three legacy in-memory tests are baseline-red.** `AssignmentServiceTests`, `AttendanceServiceTests`, and `AssignmentEndpointTests` use the EF in-memory provider, which cannot map the `jsonb` POCO columns (`School.Theme`/`School.Features`). They are **pre-existing baseline failures**, deferred to **Step 10** (Sprint 1.5.0), which converts them to the real-Postgres fixture. Do not treat their red as a regression.
+- **CI excludes those three** (`.github/workflows/ci.yml`) via a filter carrying a comment that points to Step 10. When Step 10 converts them, remove the exclusion.
+- **Docker Desktop checkpoint-failure on this machine.** A plain `docker run … postgres:16-alpine` here exits (code 1) during the entrypoint's init→restart because the shutdown checkpoint fails on Docker Desktop's disk. Run the test container with its data dir on tmpfs and fsync off — fine for a throwaway DB and also fast:
+  `docker run -d --name schoolport-test-pg -p 5433:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=schoolport_test --tmpfs /var/lib/postgresql/data:rw postgres:16-alpine -c fsync=off -c full_page_writes=off -c synchronous_commit=off`
+  Then `TEST_PG_CONNECTION=Host=localhost;Port=5433;Database=schoolport_test;Username=postgres;Password=postgres`. With tmpfs the Backfill flake did not reproduce (full integration set ~14s).
+
 ### SignalR
 `NotificationHub` at `/hubs/notifications`. On connect, users join three groups: `school:{schoolId}`, `user:{userId}`, `school:{schoolId}:role:{Role}`. JWT is extracted from the `access_token` query param (browsers can't set headers on WebSocket upgrades) — configured in `Program.cs` via `OnMessageReceived`.
 

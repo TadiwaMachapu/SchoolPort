@@ -1,5 +1,6 @@
 using FluentValidation;
 using SchoolPortal.Server.Seeds;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -65,7 +66,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Deny by default (STEP 4): an endpoint carrying no authorization metadata at all is
+    // closed, not open. Deliberate exposure is [AllowAnonymous] (+[AnonymousJustification]);
+    // the controller-scan governance test enforces that every endpoint picks a path.
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+// STEP 4 permission enforcement: the policy provider turns [RequirePermission("key")] into a
+// one-requirement policy on demand; the handler enforces it (JWT fast path vs DB authority
+// path per PermissionResolver.RequiresDatabaseResolution). The handler is scoped because it
+// depends on the scoped PermissionResolver / request DbContext.
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, SchoolPortal.Server.Authorization.PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, SchoolPortal.Server.Authorization.PermissionAuthorizationHandler>();
 
 // SSO — Google & Microsoft 365 (add to existing authentication)
 builder.Services.AddAuthentication()
@@ -235,8 +251,9 @@ app.MapControllers();
 // Map SignalR Hub
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Map Health Checks
-app.MapHealthChecks("/health");
+// Map Health Checks — must stay anonymous (load balancers / CI probe it without a token);
+// otherwise the deny-by-default fallback policy would lock it behind authentication.
+app.MapHealthChecks("/health").AllowAnonymous();
 
 // Read-only backfill modes (report, verify) must make NO database changes — skip migrate/seed.
 var isReadonlyBackfillReport = args.Length > 0

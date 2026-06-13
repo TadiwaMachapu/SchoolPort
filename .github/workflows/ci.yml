@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Fast governance gate: the STEP 4 endpoint-authorization contract. Pure reflection, no
+  # database, no Docker — so it runs in seconds and blocks every PR. A new endpoint with no
+  # [RequirePermission]/[AllowAnonymous] fails this job and therefore the build.
+  architecture:
+    name: Architecture contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore SchoolPortal.sln
+      - name: Run architecture tests
+        run: dotnet test SchoolPortal.Tests/SchoolPortal.Tests.csproj
+          --filter "Category=Architecture"
+          --logger "console;verbosity=normal"
+
+  # Build + the database-backed and unit suites against a real Postgres (the in-memory provider
+  # cannot map the jsonb POCO columns). The three legacy in-memory test classes
+  # (AssignmentServiceTests, AttendanceServiceTests, AssignmentEndpointTests) are excluded until
+  # Sprint 1.5.0 Step 10 converts them to the Postgres fixture; remove the filter then.
+  backend:
+    name: Backend build + tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: schoolport_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_PG_CONNECTION: "Host=localhost;Port=5432;Database=schoolport_test;Username=postgres;Password=postgres"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore SchoolPortal.sln
+      - name: Build
+        run: dotnet build SchoolPortal.sln --configuration Release --no-restore
+      - name: Test
+        run: dotnet test SchoolPortal.sln --configuration Release --no-build
+          --filter "FullyQualifiedName!~AssignmentServiceTests&FullyQualifiedName!~AttendanceServiceTests&FullyQualifiedName!~AssignmentEndpointTests"
+          --logger "console;verbosity=normal"
+
+  # Catches a broken frontend build on every PR (the .NET side is covered above).
+  web:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: schoolportal-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: schoolportal-web/yarn.lock
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Build
+        run: yarn build

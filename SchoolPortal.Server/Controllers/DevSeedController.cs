@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Schools;
 
 namespace SchoolPortal.Server.Controllers;
@@ -21,6 +22,7 @@ public class DevSeedController : ControllerBase
     }
 
     [AllowAnonymous]
+    [AnonymousJustification("Dev-only demo seeding: guarded by IsDevelopment() (returns Forbid otherwise) and runs before any account exists, so no token can be required.")]
     [HttpPost("seed")]
     public async Task<IActionResult> Seed()
     {

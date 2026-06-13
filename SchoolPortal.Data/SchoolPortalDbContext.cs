@@ -26,6 +26,7 @@ public class SchoolPortalDbContext : DbContext
     public DbSet<Attendance> Attendances { get; set; }
     public DbSet<Announcement> Announcements { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     // Sprint 1.5.0 — Identity / Positions / Permissions
     public DbSet<Position> Positions { get; set; }
@@ -416,6 +417,19 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.IpAddress).HasMaxLength(50);
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.SchoolId, e.UserId });
+        });
+
+        // RefreshToken (Sprint 1.5.0 Step 5 — persisted, hashed, rotated)
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("refresh_tokens");
+            entity.HasKey(e => e.RefreshTokenId);
+            entity.Property(e => e.RefreshTokenId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // Course

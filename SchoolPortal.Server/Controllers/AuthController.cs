@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Auth;
 
@@ -6,6 +8,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[AllowAnonymous]
+[AnonymousJustification("Authentication endpoints: callers have no token yet (login/refresh), or this is an unauthenticated API health probe.")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;

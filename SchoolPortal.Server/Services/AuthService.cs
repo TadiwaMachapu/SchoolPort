@@ -37,28 +37,10 @@ public class AuthService : IAuthService
                 throw new UnauthorizedAccessException("Invalid credentials");
             }
 
-            var (positions, expiresAt) = await LoadPositionsAndTokenExpiryAsync(user);
-            var accessToken = GenerateAccessToken(user, positions, expiresAt);
-            var refreshToken = GenerateRefreshToken();
-
             user.LastLoginAt = DateTime.UtcNow;
+            var (response, _) = await IssueTokensAsync(user);
             await _context.SaveChangesAsync();
-
-            return new LoginResponse
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                ExpiresAt = expiresAt,
-                User = new UserInfo
-                {
-                    UserId = user.UserId,
-                    SchoolId = user.SchoolId,
-                    Email = user.Email,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Role = user.Role
-                }
-            };
+            return response;
         }
         catch (Exception ex)
         {
@@ -67,10 +49,86 @@ public class AuthService : IAuthService
         }
     }
 
-    public Task<LoginResponse> RefreshTokenAsync(string refreshToken)
+    /// <summary>
+    /// Re-issues an access/refresh pair from a presented refresh token (STEP 5 Section D).
+    /// Positions are re-read from the database here (via <see cref="LoadPositionsAndTokenExpiryAsync"/>),
+    /// NOT taken from the old token — so a position added or revoked since the previous login
+    /// propagates into the new access token rather than waiting out the old token's TTL. The
+    /// presented token is rotated: revoked and linked to its successor.
+    /// </summary>
+    public async Task<LoginResponse> RefreshTokenAsync(string refreshToken)
     {
-        throw new UnauthorizedAccessException("Refresh tokens are not supported; please log in again");
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            throw new UnauthorizedAccessException("Refresh token is required");
+
+        var hash = HashRefreshToken(refreshToken);
+        var now = DateTime.UtcNow;
+
+        var stored = await _context.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash);
+        if (stored is null || stored.RevokedAt != null || stored.ExpiresAt <= now)
+            throw new UnauthorizedAccessException("Invalid or expired refresh token");
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == stored.UserId && u.IsActive);
+        if (user is null)
+            throw new UnauthorizedAccessException("User is no longer active");
+
+        stored.RevokedAt = now;                          // rotate: the presented token is single-use
+        var (response, newToken) = await IssueTokensAsync(user);
+        stored.ReplacedByTokenId = newToken.RefreshTokenId;
+        await _context.SaveChangesAsync();
+        return response;
     }
+
+    /// <summary>How long a refresh token stays valid; matches the 30-day cookie set client-side.</summary>
+    private const int RefreshTokenLifetimeDays = 30;
+
+    /// <summary>
+    /// Builds an access token + a freshly-persisted (hashed) refresh token for a user, and the
+    /// matching <see cref="LoginResponse"/>. Adds the refresh-token row to the context but does
+    /// NOT call SaveChanges — the caller owns the transaction (login also stamps LastLoginAt;
+    /// refresh also revokes the old token), so a single SaveChanges covers the whole operation.
+    /// </summary>
+    private async Task<(LoginResponse Response, Data.Entities.RefreshToken Token)> IssueTokensAsync(
+        Data.Entities.User user)
+    {
+        var (positions, expiresAt) = await LoadPositionsAndTokenExpiryAsync(user);
+        var accessToken = GenerateAccessToken(user, positions, expiresAt);
+        var rawRefresh = GenerateRefreshToken();
+
+        var token = new Data.Entities.RefreshToken
+        {
+            RefreshTokenId = Guid.NewGuid(),
+            UserId = user.UserId,
+            SchoolId = user.SchoolId,
+            TokenHash = HashRefreshToken(rawRefresh),
+            ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenLifetimeDays),
+            CreatedAt = DateTime.UtcNow,
+        };
+        _context.RefreshTokens.Add(token);
+
+        var response = new LoginResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = rawRefresh,
+            ExpiresAt = expiresAt,
+            User = new UserInfo
+            {
+                UserId = user.UserId,
+                SchoolId = user.SchoolId,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Role = user.Role,
+                Identity = user.Identity ?? string.Empty,
+            }
+        };
+        return (response, token);
+    }
+
+    /// <summary>SHA-256 (hex) of a raw refresh token. Only the hash is ever stored, so a
+    /// database read cannot recover a usable token.</summary>
+    private static string HashRefreshToken(string raw) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
 
     /// <summary>
     /// Loads the user's ACTIVE in-window positions (with scopes) for the "pos" claim and

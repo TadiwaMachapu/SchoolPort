@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Schools;
 
@@ -18,6 +19,7 @@ public class SuperAdminController : ControllerBase
 
     [HttpPost("auth/login")]
     [AllowAnonymous]
+    [AnonymousJustification("Super-admin login: the caller has no token yet; this endpoint issues one.")]
     public async Task<IActionResult> Login([FromBody] SuperAdminLoginRequest request)
     {
         var result = await _service.LoginAsync(request.Email, request.Password);

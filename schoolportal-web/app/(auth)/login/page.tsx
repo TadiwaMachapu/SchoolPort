@@ -48,6 +48,7 @@ function LoginView() {
       document.cookie = `sp_token=${encodeURIComponent(res.accessToken)}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
       document.cookie = `sp_role=${res.user.role}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
       document.cookie = `sp_userid=${res.user.userId}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
+      document.cookie = `sp_identity=${res.user.identity}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
       if (res.refreshToken) {
         document.cookie = `sp_refresh_token=${encodeURIComponent(res.refreshToken)}; path=/; max-age=${3600 * 24 * 30}; SameSite=Lax`;
       }

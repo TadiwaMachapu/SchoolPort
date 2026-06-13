@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using System.Text;
 using System.Text.Json;
@@ -126,6 +127,7 @@ public class PluginsController : ControllerBase
     // Register a new plugin (for developers)
     [HttpPost("register")]
     [AllowAnonymous]
+    [AnonymousJustification("External plugin self-registration handshake: the calling plugin has no SchoolPort user JWT; it presents its own registration credentials in the body.")]
     public async Task<IActionResult> Register([FromBody] RegisterPluginRequest request)
     {
         var plugin = new Plugin

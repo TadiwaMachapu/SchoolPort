@@ -473,6 +473,7 @@ export interface UserInfo {
   firstName: string;
   lastName: string;
   role: string;
+  identity: string;
 }
 export interface MeResponse {
   user: { userId: string; email: string; firstName: string; lastName: string; role: string };

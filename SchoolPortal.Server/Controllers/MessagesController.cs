@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Hubs;
 using SchoolPortal.Server.Services;
 
@@ -11,7 +11,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin,Teacher")] on class-discussion creation.
+// Own threads/DMs/sending → platform.access (participant-checked in code); creating a class
+// discussion → communications.message_class (class-teacher function, CS-2).
 public class MessagesController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -26,6 +28,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpGet("threads")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetThreads()
     {
         var userId = _currentUser.UserId;
@@ -64,6 +67,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpGet("threads/{threadId}")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetMessages(Guid threadId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
         var userId = _currentUser.UserId;
@@ -104,6 +108,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost("threads/{threadId}/messages")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> SendMessage(Guid threadId, [FromBody] SendMessageRequest request)
     {
         var userId = _currentUser.UserId;
@@ -152,6 +157,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost("threads/direct")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> CreateDirectThread([FromBody] CreateDirectThreadRequest request)
     {
         var userId = _currentUser.UserId;
@@ -186,7 +192,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost("threads/class/{classId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CommunicationsMessageClass)]
     public async Task<IActionResult> CreateClassDiscussion(Guid classId, [FromBody] CreateDirectThreadRequest request)
     {
         var schoolId = _currentUser.SchoolId;

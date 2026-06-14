@@ -41,7 +41,7 @@ public class EndpointAuthorizationContractTests
         "BillingController", "CalendarController",
         "ClassSubjectsController", "ClassesController",
         "FeesController", "MatricController",
-        "MeController", "MessagesController", "NotificationsController", "ParentController",
+        "MeController", "NotificationsController", "ParentController",
         "PathwaysController", "PluginsController", "ProgressController",
         "SchoolsController",
         "SkillsController", "SubjectsController", "SuperAdminController",

@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Subjects;
 
@@ -7,7 +7,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/class-subjects")]
-[Authorize(Roles = "Admin,Teacher")]
+// Step 6: was [Authorize(Roles="Admin,Teacher")]. Subject-teacher assignment is academic
+// structure management → academics.manage (AS-3 tightening off rank-and-file teachers).
+[RequirePermission(PermissionKeys.AcademicsManage)]
 public class ClassSubjectsController : ControllerBase
 {
     private readonly ISubjectService _subjectService;

@@ -39,7 +39,6 @@ public class EndpointAuthorizationContractTests
     {
         "AiController",
         "BillingController",
-        "ClassSubjectsController",
         "FeesController", "MatricController",
         "MeController", "ParentController",
         "PathwaysController", "PluginsController", "ProgressController",

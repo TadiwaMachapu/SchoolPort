@@ -85,6 +85,8 @@ public static class PositionsSeedData
             Perm("system.data_export",     "System", "Export school data for SA-SAMS / compliance (bulk PII)"),
             Perm("system.popia_admin",     "System", "Administer POPIA consents and data-subject requests (bulk PII)"),
             Perm("analytics.view_school",  "Analytics", "View school-wide analytics dashboards"),
+            Perm("reporting.view",         "Reporting", "View/generate class reports, term reports, at-risk lists, AI report comments, and summary views"),
+            Perm("reporting.principal_summary", "Reporting", "Generate the principal's AI class summary (end-of-term, school-wide named data)"),
             // Platform — identity-implicit for every authenticated identity (no position map)
             Perm("platform.access",        "Platform", "Baseline access for any authenticated user (identity-implicit, all identities)"),
         };
@@ -242,6 +244,21 @@ public static class PositionsSeedData
         Map("HOD",              "analytics.view_school");
         Map("PhaseHead",        "analytics.view_school");
         Map("GradeHead",        "analytics.view_school");
+
+        // Reporting (Step 6 #26). reporting.view = view/generate class reports, at-risk, AI
+        // comments, and summary views (teaching + academic oversight + SMT). NOTE: report.draft
+        // stays reserved for comment SUBMISSION; AI comment GENERATION is reporting.view (D-R2).
+        Map("SubjectTeacher",   "reporting.view");
+        Map("ClassTeacher",     "reporting.view");
+        Map("LOTeacher",        "reporting.view");
+        Map("HOD",              "reporting.view");
+        Map("PhaseHead",        "reporting.view");
+        Map("GradeHead",        "reporting.view");
+        Map("Principal",        "reporting.view");
+        Map("DeputyPrincipal",  "reporting.view");
+        // Principal's end-of-term AI summary — Principal/Deputy only.
+        Map("Principal",        "reporting.principal_summary");
+        Map("DeputyPrincipal",  "reporting.principal_summary");
 
         var existingPairs = (await db.PositionPermissions.AsNoTracking()
                 .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())

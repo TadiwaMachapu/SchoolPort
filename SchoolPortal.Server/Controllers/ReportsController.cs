@@ -1,15 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Teacher")]
+// Step 6: was [Authorize(Roles="Admin,Teacher")]. reporting.view covers report viewing/
+// generation (incl. AI comment GENERATION — distinct from report.draft = comment submission).
+// principal-summary additionally requires reporting.principal_summary (Sensitive), method-level.
+[RequirePermission(PermissionKeys.ReportingView)]
 public class ReportsController : ControllerBase
 {
     private readonly IConfiguration _configuration;
@@ -166,7 +169,7 @@ public class ReportsController : ControllerBase
     }
 
     [HttpPost("principal-summary")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.ReportingPrincipalSummary)]
     public async Task<IActionResult> GetPrincipalSummary(
         [FromQuery] Guid classId, [FromQuery] Guid termId, [FromQuery] bool forceRefresh = false)
     {

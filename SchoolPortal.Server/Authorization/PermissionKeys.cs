@@ -71,6 +71,10 @@ public static class PermissionKeys
     // Analytics
     public const string AnalyticsViewSchool = "analytics.view_school";
 
+    // Reporting
+    public const string ReportingView = "reporting.view";
+    public const string ReportingPrincipalSummary = "reporting.principal_summary";
+
     // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)
     public const string PlatformAccess = "platform.access";
 
@@ -91,6 +95,8 @@ public static class PermissionKeys
         SystemDataExport, SystemPopiaAdmin,
         // School-wide analytics surfaces named at-risk learners + activity → DB-resolve per request.
         AnalyticsViewSchool,
+        // Principal's end-of-term class summary (school-wide named data) → DB-resolve per request.
+        ReportingPrincipalSummary,
     };
 
     /// <summary>Identity-implicit permissions — granted by Layer-1 identity alone, no

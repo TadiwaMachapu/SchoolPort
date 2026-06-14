@@ -754,7 +754,9 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.ActivityType).IsRequired().HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.OwnerUserId);
             entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.OwnerUser).WithMany().HasForeignKey(e => e.OwnerUserId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ActivityParticipant>(entity =>

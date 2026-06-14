@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Attendance;
 using System.Text;
 
@@ -12,22 +13,29 @@ public class AttendanceService : IAttendanceService
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<AttendanceService> _logger;
     private readonly INotificationService _notifications;
+    private readonly IScopeService _scope;
     private const int BatchSize = 100;
 
     public AttendanceService(
         SchoolPortalDbContext context,
         ICurrentUserService currentUser,
         ILogger<AttendanceService> logger,
-        INotificationService notifications)
+        INotificationService notifications,
+        IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
         _logger = logger;
         _notifications = notifications;
+        _scope = scope;
     }
 
     public async Task<List<AttendanceDto>> GetAttendanceAsync(Guid classId, DateTime date)
     {
+        // Step 7 IDOR: a class outside the caller's scope returns empty, never another class's data.
+        if (!await _scope.CanAccessClassAsync(classId))
+            return new List<AttendanceDto>();
+
         var attendances = await _context.Attendances
             .AsNoTracking()
             .Where(a => a.ClassId == classId && a.SchoolId == _currentUser.SchoolId && a.Date.Date == date.Date)
@@ -143,6 +151,10 @@ public class AttendanceService : IAttendanceService
                 throw new ArgumentException($"Invalid status value: {item.Status}. Must be 0 (Absent), 1 (Present), or 2 (Late)");
             }
         }
+
+        // Step 7 IDOR (write): every class being captured must be in the caller's scope → 403 otherwise.
+        foreach (var classId in request.Attendances.Select(a => a.ClassId).Distinct())
+            await _scope.EnsureClassAsync(classId);
 
         var schoolId = _currentUser.SchoolId;
         var totalRecords = request.Attendances.Count;

@@ -19,22 +19,26 @@ public class ReportsController : ControllerBase
     private readonly ICurrentUserService _currentUser;
     private readonly SchoolPortalDbContext _context;
     private readonly ISmartReportsService _smartReports;
+    private readonly IScopeService _scope;
 
     public ReportsController(
         IConfiguration configuration,
         ICurrentUserService currentUser,
         SchoolPortalDbContext context,
-        ISmartReportsService smartReports)
+        ISmartReportsService smartReports,
+        IScopeService scope)
     {
         _configuration = configuration;
         _currentUser = currentUser;
         _context = context;
         _smartReports = smartReports;
+        _scope = scope;
     }
 
     [HttpGet("term-report/{classId}/{termId}")]
     public async Task<IActionResult> GetTermReport(Guid classId, Guid termId)
     {
+        if (!await _scope.CanAccessClassAsync(classId)) return NotFound(); // Step 7 IDOR
         var schoolId = _currentUser.SchoolId;
 
         var term = await _context.Terms
@@ -152,6 +156,7 @@ public class ReportsController : ControllerBase
     [HttpGet("at-risk")]
     public async Task<IActionResult> GetAtRisk([FromQuery] Guid classId, [FromQuery] Guid termId)
     {
+        if (!await _scope.CanAccessClassAsync(classId)) return NotFound(); // Step 7 IDOR
         var schoolId = _currentUser.SchoolId;
         var result = await _smartReports.GetAtRiskStudentsAsync(classId, termId, schoolId);
         return Ok(result);
@@ -161,6 +166,7 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> GetReportComment(
         [FromQuery] Guid studentId, [FromQuery] Guid termId, [FromQuery] bool forceRefresh = false)
     {
+        if (!await _scope.CanAccessStudentAsync(studentId)) return NotFound(); // Step 7 IDOR
         var schoolId = _currentUser.SchoolId;
         var result = await _smartReports.GetReportCommentAsync(studentId, termId, schoolId, forceRefresh);
         if (result == null)
@@ -173,6 +179,7 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> GetPrincipalSummary(
         [FromQuery] Guid classId, [FromQuery] Guid termId, [FromQuery] bool forceRefresh = false)
     {
+        if (!await _scope.CanAccessClassAsync(classId)) return NotFound(); // Step 7 IDOR (oversight: always in scope)
         var schoolId = _currentUser.SchoolId;
         var result = await _smartReports.GetPrincipalSummaryAsync(classId, termId, schoolId, forceRefresh);
         if (result == null)
@@ -195,6 +202,11 @@ public class ReportsController : ControllerBase
     [ProducesResponseType(typeof(List<object>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAttendanceSummary([FromQuery] Guid? classId, [FromQuery] int? year)
     {
+        // Step 7: a specific class must be in scope; non-oversight callers may not pull school-wide.
+        if (classId.HasValue && !await _scope.CanAccessClassAsync(classId.Value)) return NotFound();
+        if (!classId.HasValue && await _scope.GetAccessibleClassIdsAsync() is not null)
+            return Ok(new List<Dictionary<string, object?>>());
+
         var connectionString = _configuration.GetConnectionString("DefaultConnection");
         var results = new List<Dictionary<string, object?>>();
 
@@ -237,6 +249,11 @@ public class ReportsController : ControllerBase
     [ProducesResponseType(typeof(List<object>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGradebookSimple([FromQuery] Guid? classId)
     {
+        // Step 7: a specific class must be in scope; non-oversight callers may not pull school-wide.
+        if (classId.HasValue && !await _scope.CanAccessClassAsync(classId.Value)) return NotFound();
+        if (!classId.HasValue && await _scope.GetAccessibleClassIdsAsync() is not null)
+            return Ok(new List<Dictionary<string, object?>>());
+
         var connectionString = _configuration.GetConnectionString("DefaultConnection");
         var results = new List<Dictionary<string, object?>>();
 

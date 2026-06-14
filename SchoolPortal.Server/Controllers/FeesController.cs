@@ -169,14 +169,14 @@ public class FeesController : ControllerBase
         var schoolId = _currentUser.SchoolId;
         Guid? studentId = null;
 
-        if (_currentUser.Role == "Student")
+        if (_currentUser.Identity == IdentityKeys.Learner)
         {
             studentId = await _context.Students
                 .Where(s => s.UserId == _currentUser.UserId)
                 .Select(s => (Guid?)s.StudentId)
                 .FirstOrDefaultAsync();
         }
-        else if (_currentUser.Role == "Parent")
+        else if (_currentUser.Identity == IdentityKeys.Parent)
         {
             studentId = await _context.Students
                 .Where(s => s.ParentUserId == _currentUser.UserId && s.SchoolId == schoolId)

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using System.Net;
 using System.Text.Json;
 
@@ -35,6 +36,7 @@ public class ExceptionMiddleware
         var statusCode = exception switch
         {
             UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
+            ForbiddenAccessException => (int)HttpStatusCode.Forbidden,
             ArgumentException => (int)HttpStatusCode.BadRequest,
             KeyNotFoundException => (int)HttpStatusCode.NotFound,
             InvalidOperationException => (int)HttpStatusCode.BadRequest,
@@ -65,6 +67,7 @@ public class ExceptionMiddleware
         {
             400 => "Bad Request",
             401 => "Unauthorized",
+            403 => "Forbidden",
             404 => "Not Found",
             500 => "Internal Server Error",
             _ => "Error"

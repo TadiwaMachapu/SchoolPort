@@ -37,10 +37,6 @@ public class CurrentUserService : ICurrentUserService
         }
     }
 
-#pragma warning disable CS0618 // the legacy member implements its own [Obsolete] contract
-    public string Role => _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
-#pragma warning restore CS0618
-
     public bool IsAuthenticated => _httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated ?? false;
 
     public string Identity
@@ -50,10 +46,9 @@ public class CurrentUserService : ICurrentUserService
             var identityClaim = _httpContextAccessor.HttpContext?.User.FindFirst("identity")?.Value;
             if (!string.IsNullOrEmpty(identityClaim)) return identityClaim;
 
-            // Transition fallback for pre-1.5.0 tokens that carry only the legacy role.
-#pragma warning disable CS0618
-            return Role switch
-#pragma warning restore CS0618
+            // Transition fallback for pre-1.5.0 tokens that carry only the legacy role claim.
+            var roleClaim = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value;
+            return roleClaim switch
             {
                 "Admin" or "Teacher" => IdentityKeys.Staff,
                 "Student" => IdentityKeys.Learner,

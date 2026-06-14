@@ -20,19 +20,22 @@ public class PathwaysController : ControllerBase
     private readonly IPathwaysService _pathways;
     private readonly IAiGapAnalysisService _gapAnalysis;
     private readonly IGr9AdvisorService _gr9Advisor;
+    private readonly IScopeService _scope;
 
     public PathwaysController(
         SchoolPortalDbContext context,
         ICurrentUserService currentUser,
         IPathwaysService pathways,
         IAiGapAnalysisService gapAnalysis,
-        IGr9AdvisorService gr9Advisor)
+        IGr9AdvisorService gr9Advisor,
+        IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
         _pathways = pathways;
         _gapAnalysis = gapAnalysis;
         _gr9Advisor = gr9Advisor;
+        _scope = scope;
     }
 
     // ── Existing subject enrolment endpoints (unchanged) ─────────────────────
@@ -42,16 +45,10 @@ public class PathwaysController : ControllerBase
     [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetLearnerSubjects(Guid studentId)
     {
-        var schoolId = _currentUser.SchoolId;
+        // Step 7 IDOR: learner → own only, parent → children, teacher → their students, oversight → all.
+        if (!await _scope.CanAccessStudentAsync(studentId)) return NotFound();
 
-        if (_currentUser.Role == "Student")
-        {
-            var myStudentId = await _context.Students
-                .Where(s => s.UserId == _currentUser.UserId)
-                .Select(s => (Guid?)s.StudentId)
-                .FirstOrDefaultAsync();
-            if (myStudentId != studentId) return Forbid();
-        }
+        var schoolId = _currentUser.SchoolId;
 
         var subjects = await _context.LearnerSubjects
             .AsNoTracking()
@@ -116,6 +113,7 @@ public class PathwaysController : ControllerBase
     [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetClassMatrix(Guid classId)
     {
+        if (!await _scope.CanAccessClassAsync(classId)) return NotFound(); // Step 7 IDOR
         var schoolId = _currentUser.SchoolId;
 
         var currentYear = await _context.AcademicYears

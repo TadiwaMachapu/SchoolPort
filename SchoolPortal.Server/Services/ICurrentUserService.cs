@@ -8,9 +8,6 @@ public interface ICurrentUserService
     Guid UserId { get; }
     bool IsAuthenticated { get; }
 
-    [Obsolete("Sprint 1.5.0: use Identity / HasPermission / HasPosition instead. The legacy Role path is removed in a later, separate cleanup.")]
-    string Role { get; }
-
     /// <summary>Layer-1 identity: Staff | Learner | Parent | External | System.
     /// Falls back to a mapping from the legacy role claim for pre-1.5.0 tokens.</summary>
     string Identity { get; }

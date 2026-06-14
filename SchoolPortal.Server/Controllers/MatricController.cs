@@ -18,17 +18,20 @@ public class MatricController : ControllerBase
     private readonly ICurrentUserService _currentUser;
     private readonly IMatricHubService _hub;
     private readonly IMatricTutorService _tutor;
+    private readonly IScopeService _scope;
 
     public MatricController(
         SchoolPortalDbContext context,
         ICurrentUserService currentUser,
         IMatricHubService hub,
-        IMatricTutorService tutor)
+        IMatricTutorService tutor,
+        IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
         _hub = hub;
         _tutor = tutor;
+        _scope = scope;
     }
 
     // GET /api/matric/dashboard?classId= [Admin, Teacher]
@@ -45,6 +48,13 @@ public class MatricController : ControllerBase
 
         if (classId.HasValue)
             classQuery = classQuery.Where(c => c.ClassId == classId.Value);
+
+        // Step 7: IDOR on an explicit class + scope the dashboard to the caller's classes
+        // (oversight = null = all Gr12; a teacher sees only their own Gr12 classes).
+        if (classId.HasValue && !await _scope.CanAccessClassAsync(classId.Value)) return NotFound();
+        var accessible = await _scope.GetAccessibleClassIdsAsync();
+        if (accessible is not null)
+            classQuery = classQuery.Where(c => accessible.Contains(c.ClassId));
 
         var classes = await classQuery.Select(c => new { c.ClassId, c.Name }).ToListAsync();
 

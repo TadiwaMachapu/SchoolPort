@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Classes;
 using SchoolPortal.Shared.DTOs.Common;
 using SchoolPortal.Shared.DTOs.Subjects;
@@ -23,11 +24,13 @@ public class ClassService : IClassService
 {
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IScopeService _scope;
 
-    public ClassService(SchoolPortalDbContext context, ICurrentUserService currentUser)
+    public ClassService(SchoolPortalDbContext context, ICurrentUserService currentUser, IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
+        _scope = scope;
     }
 
     public async Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool mineOnly = false)
@@ -36,14 +39,13 @@ public class ClassService : IClassService
             .AsNoTracking()
             .Where(c => c.SchoolId == _currentUser.SchoolId);
 
-        if (mineOnly && _currentUser.Role == "Teacher")
+        // Step 7: ?mine=true narrows to the caller's in-scope classes (driven by IScopeService,
+        // not the legacy role string). School-wide oversight (null scope) sees all even with mine.
+        if (mineOnly)
         {
-            var teacherId = await _context.Teachers
-                .Where(t => t.UserId == _currentUser.UserId)
-                .Select(t => t.TeacherId)
-                .FirstOrDefaultAsync();
-            if (teacherId != Guid.Empty)
-                query = query.Where(c => c.TeacherId == teacherId);
+            var accessible = await _scope.GetAccessibleClassIdsAsync();
+            if (accessible is not null)
+                query = query.Where(c => accessible.Contains(c.ClassId));
         }
 
         if (year.HasValue)

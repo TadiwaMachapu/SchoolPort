@@ -126,6 +126,8 @@ builder.Services.AddHttpClient("anthropic");
 // and the permission resolver (stateless; JWT fast path + DB authority path).
 builder.Services.AddSingleton<SchoolPortal.Server.Authorization.PermissionCatalogueCache>();
 builder.Services.AddScoped<SchoolPortal.Server.Authorization.PermissionResolver>();
+// Step 7 — Layer-3 scope enforcement (query filtering + IDOR checks).
+builder.Services.AddScoped<SchoolPortal.Server.Authorization.IScopeService, SchoolPortal.Server.Authorization.ScopeService>();
 
 // Add Services
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();

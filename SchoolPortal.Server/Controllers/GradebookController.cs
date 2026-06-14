@@ -15,11 +15,13 @@ public class GradebookController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IScopeService _scope;
 
-    public GradebookController(SchoolPortalDbContext context, ICurrentUserService currentUser)
+    public GradebookController(SchoolPortalDbContext context, ICurrentUserService currentUser, IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
+        _scope = scope;
     }
 
     // Full gradebook matrix for a class — teacher/admin view
@@ -27,6 +29,7 @@ public class GradebookController : ControllerBase
     [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetGradebook(Guid classId, [FromQuery] Guid? termId)
     {
+        if (!await _scope.CanAccessClassAsync(classId)) return NotFound(); // Step 7 IDOR
         var schoolId = _currentUser.SchoolId;
 
         DateTime? termStart = null;
@@ -147,6 +150,7 @@ public class GradebookController : ControllerBase
     [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetCategories(Guid classSubjectId)
     {
+        if (!await CanAccessClassSubjectAsync(classSubjectId)) return NotFound(); // Step 7 IDOR
         var categories = await _context.GradeCategories
             .AsNoTracking()
             .Where(c => c.ClassSubjectId == classSubjectId)
@@ -159,6 +163,7 @@ public class GradebookController : ControllerBase
     [RequirePermission(PermissionKeys.AssessmentCreate)]
     public async Task<IActionResult> SetCategories(Guid classSubjectId, [FromBody] List<SetCategoryRequest> request)
     {
+        if (!await CanAccessClassSubjectAsync(classSubjectId)) return Forbid(); // Step 7 IDOR (write)
         var totalWeight = request.Sum(r => r.Weight);
         if (Math.Abs(totalWeight - 1.0m) > 0.01m)
             return BadRequest("Category weights must sum to 1.0 (100%)");
@@ -177,6 +182,17 @@ public class GradebookController : ControllerBase
 
         await _context.SaveChangesAsync();
         return Ok();
+    }
+
+    // Step 7: a class-subject is in scope iff its parent class is in the caller's scope.
+    private async Task<bool> CanAccessClassSubjectAsync(Guid classSubjectId)
+    {
+        var classId = await _context.ClassSubjects
+            .AsNoTracking()
+            .Where(cs => cs.ClassSubjectId == classSubjectId && cs.SchoolId == _currentUser.SchoolId)
+            .Select(cs => (Guid?)cs.ClassId)
+            .FirstOrDefaultAsync();
+        return classId is not null && await _scope.CanAccessClassAsync(classId.Value);
     }
 }
 

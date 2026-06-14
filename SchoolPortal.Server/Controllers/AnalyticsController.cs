@@ -1,14 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Teacher")]
+// Step 6: was [Authorize(Roles="Admin,Teacher")]. All endpoints are school-wide analytics
+// dashboards (named at-risk lists, all-class performance) → one oversight permission.
+// Intentional tightening: rank-and-file teachers no longer have school-wide analytics.
+// analytics.view_school is Sensitive → handler re-resolves from the DB per request.
+[RequirePermission(PermissionKeys.AnalyticsViewSchool)]
 public class AnalyticsController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;

@@ -84,6 +84,7 @@ public static class PositionsSeedData
             Perm("system.feature_flags",   "System", "Manage feature flags"),
             Perm("system.data_export",     "System", "Export school data for SA-SAMS / compliance (bulk PII)"),
             Perm("system.popia_admin",     "System", "Administer POPIA consents and data-subject requests (bulk PII)"),
+            Perm("analytics.view_school",  "Analytics", "View school-wide analytics dashboards"),
             // Platform — identity-implicit for every authenticated identity (no position map)
             Perm("platform.access",        "Platform", "Baseline access for any authenticated user (identity-implicit, all identities)"),
         };
@@ -233,6 +234,14 @@ public static class PositionsSeedData
         // delegable to a deputy. Governance/legal function — NOT IT or external positions.
         Map("Principal",        "system.popia_admin");
         Map("DeputyPrincipal",  "system.popia_admin");
+
+        // School-wide analytics (Step 6 #3). SMT + academic oversight ONLY — intentionally NOT
+        // rank-and-file teachers; scoped teacher analytics come from Gradebook/Attendance.
+        Map("Principal",        "analytics.view_school");
+        Map("DeputyPrincipal",  "analytics.view_school");
+        Map("HOD",              "analytics.view_school");
+        Map("PhaseHead",        "analytics.view_school");
+        Map("GradeHead",        "analytics.view_school");
 
         var existingPairs = (await db.PositionPermissions.AsNoTracking()
                 .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())

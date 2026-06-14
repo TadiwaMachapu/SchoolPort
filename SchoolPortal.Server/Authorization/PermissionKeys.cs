@@ -68,6 +68,9 @@ public static class PermissionKeys
     public const string SystemDataExport = "system.data_export";
     public const string SystemPopiaAdmin = "system.popia_admin";
 
+    // Analytics
+    public const string AnalyticsViewSchool = "analytics.view_school";
+
     // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)
     public const string PlatformAccess = "platform.access";
 
@@ -86,6 +89,8 @@ public static class PermissionKeys
         // Bulk PII export + POPIA administration: never trust the cached JWT set —
         // re-resolve from the DB per request.
         SystemDataExport, SystemPopiaAdmin,
+        // School-wide analytics surfaces named at-risk learners + activity → DB-resolve per request.
+        AnalyticsViewSchool,
     };
 
     /// <summary>Identity-implicit permissions — granted by Layer-1 identity alone, no

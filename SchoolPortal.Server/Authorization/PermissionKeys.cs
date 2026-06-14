@@ -86,6 +86,11 @@ public static class PermissionKeys
     public const string ActivitiesManage = "activities.manage";
     public const string SkillsEndorse = "skills.endorse";
 
+    // Admin / system (Step 6 admin cluster)
+    public const string SchoolManage = "school.manage";
+    public const string AcademicsManage = "academics.manage";
+    public const string AiUse = "ai.use";
+
     // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)
     public const string PlatformAccess = "platform.access";
 

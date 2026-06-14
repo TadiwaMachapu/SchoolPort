@@ -57,6 +57,10 @@ public static class PositionsSeedData
             Perm("timetable.manage",       "Calendar", "Manage the school timetable"),
             Perm("activities.manage",      "Activities", "Manage sports & cultural activities and their participants"),
             Perm("skills.endorse",         "Skills", "View and endorse learner skill entries"),
+            // Admin / system (Step 6)
+            Perm("school.manage",          "System", "Manage school profile, branding, settings, and CAPS subject seeding"),
+            Perm("academics.manage",       "System", "Manage academic structure: classes, subjects, class-subject assignments"),
+            Perm("ai.use",                 "System", "Use AI-assisted tools (grade suggestion, question generation, plagiarism check)"),
             // Pathways
             Perm("pathways.view_own",      "Pathways", "View own pathways (Learner, identity-implicit)"),
             Perm("pathways.view_child",    "Pathways", "View linked child's pathways (Parent, identity-implicit)"),
@@ -341,6 +345,31 @@ public static class PositionsSeedData
         Map("GradeHead",        "skills.endorse");
         Map("Principal",        "skills.endorse");
         Map("DeputyPrincipal",  "skills.endorse");
+
+        // ── Admin / system cluster (Step 6) ──────────────────────────────────────────
+        // school.manage — Principal/Deputy only (AS-1).
+        Map("Principal",        "school.manage");
+        Map("DeputyPrincipal",  "school.manage");
+
+        // academics.manage — Principal/Deputy/HOD (AS-3). ClassSubjects bulk tightened off Teacher.
+        Map("Principal",        "academics.manage");
+        Map("DeputyPrincipal",  "academics.manage");
+        Map("HOD",              "academics.manage");
+
+        // ai.use — teaching + SMT + ITAdministrator (diagnostics) (AS-5). Cost-capped via School.Settings.
+        Map("SubjectTeacher",   "ai.use");
+        Map("ClassTeacher",     "ai.use");
+        Map("LOTeacher",        "ai.use");
+        Map("HOD",              "ai.use");
+        Map("PhaseHead",        "ai.use");
+        Map("GradeHead",        "ai.use");
+        Map("Principal",        "ai.use");
+        Map("DeputyPrincipal",  "ai.use");
+        Map("ITAdministrator",  "ai.use");
+
+        // system.feature_flags WIDENED to SMT (was ITAdministrator only) so admins can toggle features (AS-2).
+        Map("Principal",        "system.feature_flags");
+        Map("DeputyPrincipal",  "system.feature_flags");
 
         var existingPairs = (await db.PositionPermissions.AsNoTracking()
                 .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())

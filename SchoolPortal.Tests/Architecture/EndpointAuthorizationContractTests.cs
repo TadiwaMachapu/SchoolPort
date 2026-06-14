@@ -45,7 +45,7 @@ public class EndpointAuthorizationContractTests
         "PathwaysController", "PluginsController", "ProgressController",
         "SchoolsController",
         "SubjectsController", "SuperAdminController",
-        "TermsController", "UsersController",
+        "TermsController",
     };
 
     private static List<Type> DiscoverControllers() => ServerAssembly.GetTypes()

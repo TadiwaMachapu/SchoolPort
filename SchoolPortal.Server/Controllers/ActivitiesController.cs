@@ -1,15 +1,17 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Learner's own activities → platform.access; all
+// staff endpoints (list/participants/create/update/delete) → activities.manage (MIC + HOD/
+// GradeHead + SMT; CS-5 intentional tightening of the views). MIC→own-activity scope in Step 7.
 public class ActivitiesController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -23,7 +25,7 @@ public class ActivitiesController : ControllerBase
 
     // GET /api/activities [Admin, Teacher]
     [HttpGet]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.ActivitiesManage)]
     public async Task<IActionResult> GetAll()
     {
         var schoolId = _currentUser.SchoolId;
@@ -48,7 +50,7 @@ public class ActivitiesController : ControllerBase
 
     // GET /api/activities/mine [Student]
     [HttpGet("mine")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetMine()
     {
         var schoolId = _currentUser.SchoolId;
@@ -83,7 +85,7 @@ public class ActivitiesController : ControllerBase
 
     // POST /api/activities [Admin]
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.ActivitiesManage)]
     public async Task<IActionResult> Create([FromBody] ActivityRequest request)
     {
         var activity = new Activity
@@ -102,7 +104,7 @@ public class ActivitiesController : ControllerBase
 
     // PUT /api/activities/{id} [Admin]
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.ActivitiesManage)]
     public async Task<IActionResult> Update(Guid id, [FromBody] ActivityRequest request)
     {
         var activity = await _context.Activities
@@ -120,7 +122,7 @@ public class ActivitiesController : ControllerBase
 
     // DELETE /api/activities/{id} [Admin]
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.ActivitiesManage)]
     public async Task<IActionResult> Delete(Guid id)
     {
         var activity = await _context.Activities
@@ -134,7 +136,7 @@ public class ActivitiesController : ControllerBase
 
     // GET /api/activities/{id}/participants [Admin, Teacher]
     [HttpGet("{id}/participants")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.ActivitiesManage)]
     public async Task<IActionResult> GetParticipants(Guid id)
     {
         var schoolId = _currentUser.SchoolId;
@@ -159,7 +161,7 @@ public class ActivitiesController : ControllerBase
 
     // POST /api/activities/{id}/participants [Admin, Teacher] — accepts userId
     [HttpPost("{id}/participants")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.ActivitiesManage)]
     public async Task<IActionResult> AddParticipant(Guid id, [FromBody] AddParticipantRequest request)
     {
         var schoolId = _currentUser.SchoolId;
@@ -195,7 +197,7 @@ public class ActivitiesController : ControllerBase
 
     // DELETE /api/activities/{id}/participants/{participantId} [Admin, Teacher]
     [HttpDelete("{id}/participants/{participantId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.ActivitiesManage)]
     public async Task<IActionResult> RemoveParticipant(Guid id, Guid participantId)
     {
         var p = await _context.ActivityParticipants

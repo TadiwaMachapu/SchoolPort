@@ -35,7 +35,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("subscription")]
-    [Authorize]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetSubscription()
     {
         var sub = await _context.Subscriptions
@@ -56,7 +56,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("checkout")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     public async Task<IActionResult> CreateCheckoutSession([FromBody] CreateCheckoutRequest request)
     {
         if (!PriceLookup.ContainsKey(request.Plan))
@@ -100,7 +100,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("portal")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     public async Task<IActionResult> CreatePortalSession()
     {
         var sub = await _context.Subscriptions

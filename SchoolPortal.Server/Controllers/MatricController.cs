@@ -1,14 +1,17 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Staff Gr12 dashboard (named learners) →
+// marks.view_class; learner's own NSC status → marks.view_own; study tools (subjects, past
+// papers, quiz, AI tutor) → platform.access (learner study features; AI tutor cost-capped via
+// School.Settings.AiMonthlyCostCapZar).
 public class MatricController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -30,7 +33,7 @@ public class MatricController : ControllerBase
 
     // GET /api/matric/dashboard?classId= [Admin, Teacher]
     [HttpGet("dashboard")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetDashboard([FromQuery] Guid? classId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -130,7 +133,7 @@ public class MatricController : ControllerBase
 
     // GET /api/matric/mine [Student]
     [HttpGet("mine")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.MarksViewOwn)]
     public async Task<IActionResult> GetMine()
     {
         var schoolId = _currentUser.SchoolId;
@@ -194,7 +197,7 @@ public class MatricController : ControllerBase
 
     // GET /api/matric/subjects [Student]
     [HttpGet("subjects")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetSubjects()
     {
         var subjects = await _hub.GetSubjectsAsync();
@@ -203,7 +206,7 @@ public class MatricController : ControllerBase
 
     // GET /api/matric/past-papers?subject= [Student]
     [HttpGet("past-papers")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetPastPapers([FromQuery] string? subject)
     {
         var papers = await _hub.GetPastPapersAsync(subject);
@@ -212,7 +215,7 @@ public class MatricController : ControllerBase
 
     // GET /api/matric/quiz?subject=&count=10 [Student]
     [HttpGet("quiz")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetQuiz([FromQuery] string subject, [FromQuery] int count = 10)
     {
         if (string.IsNullOrWhiteSpace(subject))
@@ -225,7 +228,7 @@ public class MatricController : ControllerBase
 
     // POST /api/matric/tutor [Student]
     [HttpPost("tutor")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> AskTutor([FromBody] TutorRequest request, [FromQuery] bool forceRefresh = false)
     {
         if (string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Question))

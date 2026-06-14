@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Grades;
 
@@ -7,7 +7,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Teacher")]
+// Step 6: was [Authorize(Roles="Admin,Teacher")]. Capturing grades requires marks.capture
+// (SubjectTeacher, LOTeacher). Oversight roles excluded per TC-1.
+[RequirePermission(PermissionKeys.MarksCapture)]
 public class GradesController : ControllerBase
 {
     private readonly IGradeService _gradeService;

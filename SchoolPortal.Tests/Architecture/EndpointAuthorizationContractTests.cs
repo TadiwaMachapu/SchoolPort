@@ -37,7 +37,8 @@ public class EndpointAuthorizationContractTests
     /// </summary>
     private static readonly IReadOnlySet<string> LegacyAuthorizeControllers = new HashSet<string>
     {
-        "SuperAdminController",
+        // EMPTY — Step 6 complete: every controller is on [RequirePermission], justified
+        // [AllowAnonymous], or the [RequireSuperAdmin] platform exemption (D3). Do not add entries.
     };
 
     private static List<Type> DiscoverControllers() => ServerAssembly.GetTypes()
@@ -64,12 +65,13 @@ public class EndpointAuthorizationContractTests
             .Concat(controller.GetCustomAttributes<AnonymousJustificationAttribute>(inherit: true))
             .Any(a => !string.IsNullOrWhiteSpace(a.Reason));
 
-    /// <summary>Plain [Authorize] = an AuthorizeAttribute that is not our RequirePermission
-    /// subclass (RequirePermissionAttribute derives from AuthorizeAttribute).</summary>
+    /// <summary>Plain [Authorize] = an AuthorizeAttribute that is neither our RequirePermission
+    /// subclass nor the platform-level RequireSuperAdmin exemption (both derive from
+    /// AuthorizeAttribute).</summary>
     private static bool HasPlainAuthorize(MethodInfo action, Type controller) =>
         action.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
             .Concat(controller.GetCustomAttributes<AuthorizeAttribute>(inherit: true))
-            .Any(a => a is not RequirePermissionAttribute);
+            .Any(a => a is not RequirePermissionAttribute and not RequireSuperAdminAttribute);
 
     [Fact]
     [Trait("Category", "Architecture")]
@@ -104,6 +106,14 @@ public class EndpointAuthorizationContractTests
 
                 if (Has<RequirePermissionAttribute>(action, controller))
                     continue; // permission model — compliant
+
+                if (Has<RequireSuperAdminAttribute>(action, controller))
+                {
+                    // Platform-level exemption (D3): must say WHY it is outside the school model.
+                    if (!HasNonEmptyJustification(action, controller))
+                        offenders.Add($"{name} — [RequireSuperAdmin] without a non-empty [AnonymousJustification].");
+                    continue;
+                }
 
                 if (HasPlainAuthorize(action, controller))
                 {

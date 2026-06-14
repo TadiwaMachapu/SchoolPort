@@ -1,15 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Learner pathways feature (own subjects/APS/goals/
+// gap-analysis/Gr9) → pathways.view_own; reference data + a learner's subject lookup →
+// platform.access; class subject-enrolment matrix → marks.view_class; subject enrol/withdraw →
+// academics.manage (academic structure; tightened off rank-and-file teachers, cf. AS-3).
 public class PathwaysController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -36,6 +39,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/learner/{studentId}
     [HttpGet("learner/{studentId}")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetLearnerSubjects(Guid studentId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -73,7 +77,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/mine
     [HttpGet("mine")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> GetMySubjects()
     {
         var schoolId = _currentUser.SchoolId;
@@ -109,7 +113,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/class/{classId}
     [HttpGet("class/{classId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetClassMatrix(Guid classId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -153,7 +157,7 @@ public class PathwaysController : ControllerBase
 
     // POST /api/pathways/enrol
     [HttpPost("enrol")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AcademicsManage)]
     public async Task<IActionResult> Enrol([FromBody] EnrolRequest request)
     {
         var schoolId = _currentUser.SchoolId;
@@ -177,7 +181,7 @@ public class PathwaysController : ControllerBase
 
     // DELETE /api/pathways/{learnerSubjectId}
     [HttpDelete("{learnerSubjectId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AcademicsManage)]
     public async Task<IActionResult> Withdraw(Guid learnerSubjectId)
     {
         var ls = await _context.LearnerSubjects
@@ -193,6 +197,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/universities
     [HttpGet("universities")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetUniversities()
     {
         var universities = await _context.Universities
@@ -214,6 +219,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/universities/{id}/courses
     [HttpGet("universities/{id}/courses")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetUniversityCourses(Guid id)
     {
         var courses = await _context.UniversityCourses
@@ -244,6 +250,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/careers
     [HttpGet("careers")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetCareers()
     {
         var careers = await _context.Careers
@@ -265,7 +272,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/aps — current learner's APS from live gradebook
     [HttpGet("aps")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> GetMyAps()
     {
         var schoolId = _currentUser.SchoolId;
@@ -283,7 +290,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/goals
     [HttpGet("goals")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> GetMyGoals()
     {
         var schoolId = _currentUser.SchoolId;
@@ -296,7 +303,7 @@ public class PathwaysController : ControllerBase
 
     // POST /api/pathways/goals
     [HttpPost("goals")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> AddGoal([FromBody] AddGoalRequest request)
     {
         var schoolId = _currentUser.SchoolId;
@@ -320,7 +327,7 @@ public class PathwaysController : ControllerBase
 
     // DELETE /api/pathways/goals/{goalId}
     [HttpDelete("goals/{goalId}")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> DeleteGoal(Guid goalId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -340,7 +347,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/goals/{goalId}/tracking
     [HttpGet("goals/{goalId}/tracking")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> GetGoalTracking(Guid goalId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -360,7 +367,7 @@ public class PathwaysController : ControllerBase
 
     // POST /api/pathways/goals/{goalId}/gap-analysis
     [HttpPost("goals/{goalId}/gap-analysis")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> GetGapAnalysis(Guid goalId, [FromQuery] bool forceRefresh = false)
     {
         var schoolId = _currentUser.SchoolId;
@@ -389,7 +396,7 @@ public class PathwaysController : ControllerBase
 
     // GET /api/pathways/gr9-profile [Student]
     [HttpGet("gr9-profile")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> GetGr9Profile()
     {
         var studentId = await GetStudentIdAsync();
@@ -401,7 +408,7 @@ public class PathwaysController : ControllerBase
 
     // POST /api/pathways/gr9-advice?forceRefresh=bool [Student]
     [HttpPost("gr9-advice")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PathwaysViewOwn)]
     public async Task<IActionResult> GetGr9Advice([FromQuery] bool forceRefresh = false)
     {
         var studentId = await GetStudentIdAsync();

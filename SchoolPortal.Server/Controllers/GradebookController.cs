@@ -1,15 +1,16 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Class gradebook/category views → marks.view_class;
+// learner's own grades → marks.view_own; setting category weights → assessment.create.
 public class GradebookController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -23,7 +24,7 @@ public class GradebookController : ControllerBase
 
     // Full gradebook matrix for a class — teacher/admin view
     [HttpGet("{classId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetGradebook(Guid classId, [FromQuery] Guid? termId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -110,7 +111,7 @@ public class GradebookController : ControllerBase
 
     // Student's own grade summary
     [HttpGet("my-grades")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.MarksViewOwn)]
     public async Task<IActionResult> GetMyGrades()
     {
         var studentId = await _context.Students
@@ -143,7 +144,7 @@ public class GradebookController : ControllerBase
 
     // Grade categories (weighted marking)
     [HttpGet("categories/{classSubjectId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetCategories(Guid classSubjectId)
     {
         var categories = await _context.GradeCategories
@@ -155,7 +156,7 @@ public class GradebookController : ControllerBase
     }
 
     [HttpPost("categories/{classSubjectId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AssessmentCreate)]
     public async Task<IActionResult> SetCategories(Guid classSubjectId, [FromBody] List<SetCategoryRequest> request)
     {
         var totalWeight = request.Sum(r => r.Weight);

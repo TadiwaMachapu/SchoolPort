@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using SchoolPortal.Data;
+using SchoolPortal.Data.Entities;
 using SchoolPortal.Server.Seeds;
 using Xunit;
 
@@ -60,5 +62,58 @@ public class SeedSyncTests
             Assert.True(await db.Permissions.AnyAsync(p => p.Key == "finance.refund"));
         }
         finally { await db.DisposeAsync(); await source.DisposeAsync(); }
+    }
+
+    /// <summary>Step 6 Finance SoD (FIN-1/FIN-2): the seed produces the corrected finance grant
+    /// matrix, and the revocation block is delete-if-present — re-introducing a violating grant on
+    /// an already-seeded DB and re-running removes it again.</summary>
+    [Fact]
+    public async Task SeedSync_EnforcesFinanceSoD_AndRevokesViolatingGrants()
+    {
+        var (db, source) = await _pg.CreateIsolatedDatabaseAsync();
+        try
+        {
+            await PositionsSeedData.SeedAsync(db, NullLogger.Instance);
+
+            // FIN-1: FinanceManager keeps everything except exempt_approve.
+            Assert.False(await Holds(db, "FinanceManager", "finance.exempt_approve"));
+            Assert.True(await Holds(db, "FinanceManager", "finance.exempt_initiate"));
+            Assert.True(await Holds(db, "FinanceManager", "finance.create_invoice"));
+            Assert.True(await Holds(db, "FinanceManager", "finance.refund"));
+
+            // FIN-2: Bursar is capture-and-chase only.
+            Assert.False(await Holds(db, "BursarDebtorsClerk", "finance.create_invoice"));
+            Assert.False(await Holds(db, "BursarDebtorsClerk", "finance.exempt_initiate"));
+            Assert.True(await Holds(db, "BursarDebtorsClerk", "finance.capture_payment"));
+            Assert.True(await Holds(db, "BursarDebtorsClerk", "finance.view_all"));
+
+            // FIN-1: SMT approves exemptions.
+            Assert.True(await Holds(db, "Principal", "finance.exempt_approve"));
+            Assert.True(await Holds(db, "DeputyPrincipal", "finance.exempt_approve"));
+
+            // SoD line: no single position holds both create_invoice AND exempt_approve.
+            Assert.False(await Holds(db, "Principal", "finance.create_invoice"));
+            Assert.False(await Holds(db, "DeputyPrincipal", "finance.create_invoice"));
+
+            // Revocation is delete-if-present: re-introduce a violating grant (as a legacy DB had),
+            // re-seed, and confirm it is removed again.
+            var fmId = (await db.Positions.SingleAsync(p => p.Key == "FinanceManager")).PositionId;
+            var approveId = (await db.Permissions.SingleAsync(p => p.Key == "finance.exempt_approve")).PermissionId;
+            db.PositionPermissions.Add(new PositionPermission { PositionId = fmId, PermissionId = approveId });
+            await db.SaveChangesAsync();
+            Assert.True(await Holds(db, "FinanceManager", "finance.exempt_approve")); // re-introduced
+
+            await PositionsSeedData.SeedAsync(db, NullLogger.Instance);
+            Assert.False(await Holds(db, "FinanceManager", "finance.exempt_approve")); // revoked again
+        }
+        finally { await db.DisposeAsync(); await source.DisposeAsync(); }
+    }
+
+    private static async Task<bool> Holds(SchoolPortalDbContext db, string posKey, string permKey)
+    {
+        var posId = await db.Positions.Where(p => p.Key == posKey).Select(p => p.PositionId).FirstOrDefaultAsync();
+        var permId = await db.Permissions.Where(p => p.Key == permKey).Select(p => p.PermissionId).FirstOrDefaultAsync();
+        if (posId == Guid.Empty || permId == Guid.Empty) return false;
+        return await db.PositionPermissions.AnyAsync(pp => pp.PositionId == posId && pp.PermissionId == permId);
     }
 }

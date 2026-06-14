@@ -105,6 +105,8 @@ public static class PermissionKeys
     {
         FinanceCreateInvoice, FinanceCapturePayment, FinanceRefund,
         FinanceExemptInitiate, FinanceExemptApprove, FinanceYearEnd, FinanceAuditPack,
+        // Bulk financial reads (all accounts / financial reports) → DB-resolve per request (FIN-3).
+        FinanceViewAll, FinanceReports,
         SystemBackup, SystemPositionsAssign, SystemUsersManage,
         // Bulk PII export + POPIA administration: never trust the cached JWT set —
         // re-resolve from the DB per request.

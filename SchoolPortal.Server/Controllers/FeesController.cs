@@ -1,15 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin")]. Fee operations now map to fine-grained
+// finance permissions (SoD-corrected). Reads → finance.view_all (Sensitive); create/edit/delete
+// fees → finance.create_invoice; record payment → finance.capture_payment; own statement →
+// finance.view_own. Principal/Deputy no longer hold operational fee writes (FIN-5).
 public class FeesController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -22,7 +25,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceViewAll)]
     public async Task<IActionResult> GetFees()
     {
         var fees = await _context.Fees
@@ -48,7 +51,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCreateInvoice)]
     public async Task<IActionResult> CreateFee([FromBody] FeeRequest request)
     {
         var fee = new Fee
@@ -67,7 +70,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceViewAll)]
     public async Task<IActionResult> GetFee(Guid id)
     {
         var fee = await _context.Fees
@@ -80,7 +83,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCreateInvoice)]
     public async Task<IActionResult> UpdateFee(Guid id, [FromBody] FeeRequest request)
     {
         var fee = await _context.Fees.FirstOrDefaultAsync(f => f.FeeId == id && f.SchoolId == _currentUser.SchoolId);
@@ -98,7 +101,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCreateInvoice)]
     public async Task<IActionResult> DeleteFee(Guid id)
     {
         var fee = await _context.Fees.FirstOrDefaultAsync(f => f.FeeId == id && f.SchoolId == _currentUser.SchoolId);
@@ -109,7 +112,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet("{id}/payments")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceViewAll)]
     public async Task<IActionResult> GetPayments(Guid id)
     {
         var payments = await _context.FeePayments
@@ -135,7 +138,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpPost("{id}/payments")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCapturePayment)]
     public async Task<IActionResult> RecordPayment(Guid id, [FromBody] RecordPaymentRequest request)
     {
         var fee = await _context.Fees
@@ -160,7 +163,7 @@ public class FeesController : ControllerBase
 
     // Student/Parent: view their own outstanding and paid fees
     [HttpGet("my-statement")]
-    [Authorize(Roles = "Student,Parent")]
+    [RequirePermission(PermissionKeys.FinanceViewOwn)]
     public async Task<IActionResult> GetMyStatement()
     {
         var schoolId = _currentUser.SchoolId;

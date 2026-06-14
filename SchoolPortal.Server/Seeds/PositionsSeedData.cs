@@ -175,7 +175,7 @@ public static class PositionsSeedData
             "marks.view_all", "attendance.view_grade", "report.approve", "assessment.approve_plan",
             "pathways.cohort_view", "discipline.escalate", "discipline.resolve",
             "communications.message_all", "communications.whatsapp_admin",
-            "finance.view_all", "finance.reports", "system.audit_log_view",
+            "finance.view_all", "finance.reports", "finance.exempt_approve", "system.audit_log_view",
             // Step 6 widening: Deputies authorise integrations + can trigger WhatsApp messages.
             "system.integrations", "communications.whatsapp_trigger");
 
@@ -211,13 +211,14 @@ public static class PositionsSeedData
 
         Map("FinanceManager",
             "finance.view_all", "finance.create_invoice", "finance.capture_payment", "finance.refund",
-            "finance.exempt_initiate", "finance.exempt_approve", "finance.reports",
+            "finance.exempt_initiate", "finance.reports",
             "finance.year_end", "finance.audit_pack",
             "communications.whatsapp_trigger"); // Step 6 widening
+            // NOTE: finance.exempt_approve intentionally NOT granted (SoD — FM initiates, SMT approves; FIN-1).
 
         Map("BursarDebtorsClerk",
-            "finance.view_all", "finance.create_invoice", "finance.capture_payment",
-            "finance.exempt_initiate", "finance.reports");
+            // Capture-and-chase role only — NOT fee creation or exemption initiation (SoD; FIN-2).
+            "finance.view_all", "finance.capture_payment", "finance.reports");
 
         Map("Cashier",
             "finance.view_all", "finance.capture_payment");
@@ -385,8 +386,31 @@ public static class PositionsSeedData
         }
         if (newMappings > 0) await db.SaveChangesAsync();
 
-        if (newPerms.Count > 0 || newPositions.Count > 0 || newMappings > 0)
-            logger.LogInformation("Catalogue sync: +{Perms} permissions, +{Pos} positions, +{Map} mappings.",
-                newPerms.Count, newPositions.Count, newMappings);
+        // ── SoD revocations (Step 6 Finance audit, FIN-1/FIN-2; applied 2026-06-14) ────────
+        // DELIBERATE EXCEPTION to the additive-only sync above: these pairs were seeded
+        // historically but create segregation-of-duties violations, so they must be REMOVED from
+        // already-seeded databases (incl. live) — a fresh install and the live DB must end up with
+        // the same security properties. Idempotent delete-if-present; a no-op on a fresh DB where
+        // the additive sync above never created them. See CLAUDE.md "Permission catalogue widenings".
+        var revocations = new[]
+        {
+            ("FinanceManager",     "finance.exempt_approve"),  // FM initiates; SMT approves (FIN-1)
+            ("BursarDebtorsClerk", "finance.create_invoice"),  // Bursar is capture-and-chase, not fee creation (FIN-2)
+            ("BursarDebtorsClerk", "finance.exempt_initiate"),
+        };
+        var revoked = 0;
+        foreach (var (posKey, permKey) in revocations)
+        {
+            if (!posIdByKey.TryGetValue(posKey, out var posId) ||
+                !permIdByKey.TryGetValue(permKey, out var permId)) continue;
+            var pair = await db.PositionPermissions
+                .FirstOrDefaultAsync(pp => pp.PositionId == posId && pp.PermissionId == permId);
+            if (pair != null) { db.PositionPermissions.Remove(pair); revoked++; }
+        }
+        if (revoked > 0) await db.SaveChangesAsync();
+
+        if (newPerms.Count > 0 || newPositions.Count > 0 || newMappings > 0 || revoked > 0)
+            logger.LogInformation("Catalogue sync: +{Perms} permissions, +{Pos} positions, +{Map} mappings, -{Rev} SoD revocations.",
+                newPerms.Count, newPositions.Count, newMappings, revoked);
     }
 }

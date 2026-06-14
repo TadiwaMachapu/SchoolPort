@@ -1,15 +1,16 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Learner self-progress + learning-path browse →
+// platform.access; teacher's all-students course progress (named) → marks.view_class.
 public class ProgressController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -23,7 +24,7 @@ public class ProgressController : ControllerBase
 
     // Mark a lesson as complete
     [HttpPost("lessons/{lessonId}/complete")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> CompleteLesson(Guid lessonId, [FromQuery] int? timeSpentSeconds)
     {
         var studentId = await _context.Students
@@ -65,7 +66,7 @@ public class ProgressController : ControllerBase
 
     // Get course completion % for current student
     [HttpGet("courses/{courseId}")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetCourseProgress(Guid courseId)
     {
         var studentId = await _context.Students
@@ -94,7 +95,7 @@ public class ProgressController : ControllerBase
 
     // Teacher view: all students' progress on a course
     [HttpGet("courses/{courseId}/all-students")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     public async Task<IActionResult> GetAllStudentsProgress(Guid courseId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -134,6 +135,7 @@ public class ProgressController : ControllerBase
 
     // Learning Paths
     [HttpGet("learning-paths")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetLearningPaths()
     {
         var paths = await _context.LearningPaths

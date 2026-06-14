@@ -38,7 +38,7 @@ public class EndpointAuthorizationContractTests
     private static readonly IReadOnlySet<string> LegacyAuthorizeControllers = new HashSet<string>
     {
         "ActivitiesController", "AiController",
-        "BillingController", "CalendarController",
+        "BillingController",
         "ClassSubjectsController", "ClassesController",
         "FeesController", "MatricController",
         "MeController", "ParentController",

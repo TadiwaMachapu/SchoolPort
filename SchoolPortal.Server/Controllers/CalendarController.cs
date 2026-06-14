@@ -1,15 +1,16 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Calendar/timetable views → platform.access;
+// event create/delete → calendar.manage; timetable management → timetable.manage (SMT only).
 public class CalendarController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -22,6 +23,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpGet("events")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetEvents([FromQuery] DateTime? from, [FromQuery] DateTime? to)
     {
         var schoolId = _currentUser.SchoolId;
@@ -67,7 +69,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpPost("events")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CalendarManage)]
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventRequest request)
     {
         var ev = new CalendarEvent
@@ -90,7 +92,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpDelete("events/{id}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CalendarManage)]
     public async Task<IActionResult> DeleteEvent(Guid id)
     {
         var ev = await _context.CalendarEvents
@@ -103,6 +105,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpGet("timetable")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetTimetable([FromQuery] Guid? classId)
     {
         var query = _context.TimetableSlots
@@ -136,7 +139,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpPost("timetable")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.TimetableManage)]
     public async Task<IActionResult> AddTimetableSlot([FromBody] CreateTimetableSlotRequest request)
     {
         var slot = new TimetableSlot

@@ -1,15 +1,17 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Learner self-service (mine/create/delete-own) →
+// platform.access; staff view + endorsement of learner skills → skills.endorse (CS-6 — a staff
+// trust action, never platform.access).
 public class SkillsController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -23,7 +25,7 @@ public class SkillsController : ControllerBase
 
     // GET /api/skills/mine [Student]
     [HttpGet("mine")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetMine()
     {
         var schoolId = _currentUser.SchoolId;
@@ -60,7 +62,7 @@ public class SkillsController : ControllerBase
 
     // GET /api/skills/learner/{userId} [Admin, Teacher]
     [HttpGet("learner/{userId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.SkillsEndorse)]
     public async Task<IActionResult> GetLearnerSkills(Guid userId)
     {
         var schoolId = _currentUser.SchoolId;
@@ -97,7 +99,7 @@ public class SkillsController : ControllerBase
 
     // POST /api/skills [Student]
     [HttpPost]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> Create([FromBody] CreateSkillRequest request)
     {
         var schoolId = _currentUser.SchoolId;
@@ -126,7 +128,7 @@ public class SkillsController : ControllerBase
 
     // DELETE /api/skills/{id} [Student — own only]
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> Delete(Guid id)
     {
         var schoolId = _currentUser.SchoolId;
@@ -149,7 +151,7 @@ public class SkillsController : ControllerBase
 
     // POST /api/skills/{id}/endorse [Admin, Teacher]
     [HttpPost("{id}/endorse")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.SkillsEndorse)]
     public async Task<IActionResult> Endorse(Guid id)
     {
         var entry = await _context.SkillEntries

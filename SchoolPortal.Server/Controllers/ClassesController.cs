@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Classes;
 using SchoolPortal.Shared.DTOs.Common;
@@ -8,7 +8,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin")]. List/detail/subjects → platform.access;
+// class management → academics.manage; the student roster (names) → marks.view_class (AS-4 — the
+// classId-bearing, name-bearing read is staff-only; metadata/subjects stay learner-accessible).
 public class ClassesController : ControllerBase
 {
     private readonly IClassService _classService;
@@ -19,6 +21,7 @@ public class ClassesController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(PaginatedResult<ClassDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetClasses(
         [FromQuery] int? year,
@@ -32,6 +35,7 @@ public class ClassesController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetClass(Guid id)
@@ -41,7 +45,7 @@ public class ClassesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.AcademicsManage)]
     [ProducesResponseType(typeof(ClassDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateClass([FromBody] CreateClassRequest request)
     {
@@ -50,7 +54,7 @@ public class ClassesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.AcademicsManage)]
     [ProducesResponseType(typeof(ClassDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateClass(Guid id, [FromBody] UpdateClassRequest request)
@@ -60,7 +64,7 @@ public class ClassesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.AcademicsManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteClass(Guid id)
@@ -70,6 +74,7 @@ public class ClassesController : ControllerBase
     }
 
     [HttpGet("{id}/students")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStudents(Guid id)
     {
@@ -78,6 +83,7 @@ public class ClassesController : ControllerBase
     }
 
     [HttpGet("{id}/subjects")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSubjects(Guid id)
     {

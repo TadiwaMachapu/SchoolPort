@@ -83,6 +83,7 @@ public static class PositionsSeedData
             Perm("system.backup",          "System", "Manage backups"),
             Perm("system.feature_flags",   "System", "Manage feature flags"),
             Perm("system.data_export",     "System", "Export school data for SA-SAMS / compliance (bulk PII)"),
+            Perm("system.popia_admin",     "System", "Administer POPIA consents and data-subject requests (bulk PII)"),
             // Platform — identity-implicit for every authenticated identity (no position map)
             Perm("platform.access",        "Platform", "Baseline access for any authenticated user (identity-implicit, all identities)"),
         };
@@ -227,6 +228,11 @@ public static class PositionsSeedData
         Map("ITAdministrator",  "system.data_export");
         Map("Auditor",          "system.data_export");
         Map("DistrictOfficial", "system.data_export");
+
+        // POPIA administration (Step 6 #23). Information Officer = head of organisation (Principal),
+        // delegable to a deputy. Governance/legal function — NOT IT or external positions.
+        Map("Principal",        "system.popia_admin");
+        Map("DeputyPrincipal",  "system.popia_admin");
 
         var existingPairs = (await db.PositionPermissions.AsNoTracking()
                 .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())

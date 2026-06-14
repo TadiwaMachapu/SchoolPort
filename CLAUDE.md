@@ -191,6 +191,7 @@ Deliberate, reviewed additions to the position→permission map in `PositionsSee
 - `communications.whatsapp_admin` — added to **ITAdministrator** (previously Principal/DeputyPrincipal only).
 - `communications.whatsapp_trigger` — was held by **no** position; now granted to **Principal, DeputyPrincipal, ClassTeacher, GradeHead, FinanceManager, SportCultureMIC**. Preserves the admin-vs-trigger distinction (administer the integration vs. send a message).
 - `system.data_export` — **new permission, in the Sensitive set** (DB-resolved per request — these are bulk PII exports that must not trust cached JWT claims). Granted to **Principal, DeputyPrincipal, ITAdministrator, Auditor, DistrictOfficial**. Backs SaSamsController (#27) SA-SAMS compliance exports; deliberately **not** granted to Finance or teaching positions.
+- `system.popia_admin` — **new permission, in the Sensitive set** (bulk PII reads of consents / data-subject requests). Granted to **Principal, DeputyPrincipal** only (POPIA Information Officer = head of organisation, delegable to a deputy; not IT/external/teaching). Backs PopiaController (#23) admin endpoints; the self-service consent/DSR endpoints there use `platform.access`.
 
 ### Notable non-obvious endpoints
 | Endpoint | Auth | Purpose |

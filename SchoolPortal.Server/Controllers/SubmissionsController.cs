@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Submissions;
 using SchoolPortal.Shared.DTOs.Common;
@@ -8,7 +8,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Learner submit/view-own → assignments.submit /
+// assignments.view_assigned (identity-implicit); teacher submission lists → marks.view_class.
 public class SubmissionsController : ControllerBase
 {
     private readonly ISubmissionService _submissionService;
@@ -26,7 +27,7 @@ public class SubmissionsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.AssignmentsSubmit)]
     [RequestSizeLimit(52_428_800)] // 50 MB
     [ProducesResponseType(typeof(object), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateSubmission(
@@ -48,7 +49,7 @@ public class SubmissionsController : ControllerBase
     }
 
     [HttpGet("by-assignment/{assignmentId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     [ProducesResponseType(typeof(List<SubmissionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSubmissionsByAssignment(Guid assignmentId)
     {
@@ -58,7 +59,7 @@ public class SubmissionsController : ControllerBase
 
     /// <summary>Returns ungraded submissions for the current teacher (or all for Admin).</summary>
     [HttpGet("pending")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     [ProducesResponseType(typeof(List<PendingSubmissionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPending([FromQuery] int limit = 20)
     {
@@ -67,7 +68,7 @@ public class SubmissionsController : ControllerBase
     }
 
     [HttpGet("by-assignment/{assignmentId}/mine")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.AssignmentsViewAssigned)]
     [ProducesResponseType(typeof(SubmissionDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMySubmission(Guid assignmentId)

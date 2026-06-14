@@ -43,7 +43,7 @@ public class EndpointAuthorizationContractTests
         "FeesController", "MatricController",
         "MeController", "MessagesController", "NotificationsController", "ParentController",
         "PathwaysController", "PluginsController", "ProgressController",
-        "QuizzesController", "SchoolsController",
+        "SchoolsController",
         "SkillsController", "SubjectsController", "SuperAdminController",
         "TermsController", "UsersController",
     };

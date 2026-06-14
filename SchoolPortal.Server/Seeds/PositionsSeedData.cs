@@ -37,6 +37,7 @@ public static class PositionsSeedData
             Perm("marks.view_grade",       "Academic", "View marks for an in-scope grade"),
             Perm("marks.view_phase",       "Academic", "View marks for an in-scope phase"),
             Perm("marks.view_all",         "Academic", "View all marks school-wide"),
+            Perm("marks.view_class",       "Academic", "View a class's gradebook/marks matrix and submissions for grading"),
             Perm("assessment.create",      "Academic", "Create assessments"),
             Perm("assessment.approve_plan","Academic", "Approve assessment plans"),
             Perm("attendance.capture",     "Academic", "Capture attendance for in-scope classes"),
@@ -48,6 +49,14 @@ public static class PositionsSeedData
             Perm("assignments.submit",     "Academic", "Submit assigned work (Learner, identity-implicit)"),
             Perm("report.draft",           "Academic", "Draft report comments"),
             Perm("report.approve",         "Academic", "Approve reports"),
+            // Courses (LMS)
+            Perm("courses.manage",         "Courses", "Create/manage LMS course content (courses, modules, lessons)"),
+            // Communication & social (Step 6)
+            Perm("announcements.publish",  "Communication", "Create/edit/delete announcements"),
+            Perm("calendar.manage",        "Calendar", "Create/delete calendar events"),
+            Perm("timetable.manage",       "Calendar", "Manage the school timetable"),
+            Perm("activities.manage",      "Activities", "Manage sports & cultural activities and their participants"),
+            Perm("skills.endorse",         "Skills", "View and endorse learner skill entries"),
             // Pathways
             Perm("pathways.view_own",      "Pathways", "View own pathways (Learner, identity-implicit)"),
             Perm("pathways.view_child",    "Pathways", "View linked child's pathways (Parent, identity-implicit)"),
@@ -259,6 +268,79 @@ public static class PositionsSeedData
         // Principal's end-of-term AI summary — Principal/Deputy only.
         Map("Principal",        "reporting.principal_summary");
         Map("DeputyPrincipal",  "reporting.principal_summary");
+
+        // ── Teaching cluster (Step 6) ────────────────────────────────────────────────
+        // marks.view_class: view a class gradebook/submissions/quiz attempts (teaching + oversight).
+        Map("SubjectTeacher",   "marks.view_class");
+        Map("ClassTeacher",     "marks.view_class");
+        Map("HOD",              "marks.view_class");
+        Map("PhaseHead",        "marks.view_class");
+        Map("GradeHead",        "marks.view_class");
+        Map("Principal",        "marks.view_class");
+        Map("DeputyPrincipal",  "marks.view_class");
+
+        // courses.manage: author/manage LMS course content.
+        Map("SubjectTeacher",   "courses.manage");
+        Map("ClassTeacher",     "courses.manage");
+        Map("LOTeacher",        "courses.manage");
+        Map("HOD",              "courses.manage");
+        Map("Principal",        "courses.manage");
+        Map("DeputyPrincipal",  "courses.manage");
+
+        // attendance.view_class WIDENED to oversight (already held by SubjectTeacher/ClassTeacher/HOD)
+        // so it matches marks.view_class — oversight can view a class's attendance. Semantic
+        // separation kept: attendance endpoints use attendance.view_class, not marks.view_class.
+        Map("PhaseHead",        "attendance.view_class");
+        Map("GradeHead",        "attendance.view_class");
+        Map("Principal",        "attendance.view_class");
+        Map("DeputyPrincipal",  "attendance.view_class");
+
+        // assessment.create WIDENED to LOTeacher (TC-2): LO teachers author assessments too.
+        Map("LOTeacher",        "assessment.create");
+
+        // ── Communication & social cluster (Step 6) ──────────────────────────────────
+        // announcements.publish — teaching + SMT (CS-1).
+        Map("SubjectTeacher",   "announcements.publish");
+        Map("ClassTeacher",     "announcements.publish");
+        Map("LOTeacher",        "announcements.publish");
+        Map("SportCultureMIC",  "announcements.publish");
+        Map("HOD",              "announcements.publish");
+        Map("PhaseHead",        "announcements.publish");
+        Map("GradeHead",        "announcements.publish");
+        Map("Principal",        "announcements.publish");
+        Map("DeputyPrincipal",  "announcements.publish");
+
+        // calendar.manage — teaching + SMT (CS-3). (SportCultureMIC not included.)
+        Map("SubjectTeacher",   "calendar.manage");
+        Map("ClassTeacher",     "calendar.manage");
+        Map("LOTeacher",        "calendar.manage");
+        Map("HOD",              "calendar.manage");
+        Map("PhaseHead",        "calendar.manage");
+        Map("GradeHead",        "calendar.manage");
+        Map("Principal",        "calendar.manage");
+        Map("DeputyPrincipal",  "calendar.manage");
+
+        // timetable.manage — SMT only (CS-4).
+        Map("Principal",        "timetable.manage");
+        Map("DeputyPrincipal",  "timetable.manage");
+
+        // activities.manage — MIC + academic oversight + SMT (CS-5). MIC→own activity in Step 7.
+        Map("SportCultureMIC",  "activities.manage");
+        Map("HOD",              "activities.manage");
+        Map("GradeHead",        "activities.manage");
+        Map("Principal",        "activities.manage");
+        Map("DeputyPrincipal",  "activities.manage");
+
+        // skills.endorse — teaching + SMT (CS-6). Staff trust action; never platform.access.
+        Map("SubjectTeacher",   "skills.endorse");
+        Map("ClassTeacher",     "skills.endorse");
+        Map("LOTeacher",        "skills.endorse");
+        Map("SportCultureMIC",  "skills.endorse");
+        Map("HOD",              "skills.endorse");
+        Map("PhaseHead",        "skills.endorse");
+        Map("GradeHead",        "skills.endorse");
+        Map("Principal",        "skills.endorse");
+        Map("DeputyPrincipal",  "skills.endorse");
 
         var existingPairs = (await db.PositionPermissions.AsNoTracking()
                 .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())

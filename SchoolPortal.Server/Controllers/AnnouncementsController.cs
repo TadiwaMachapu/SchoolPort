@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Announcements;
 using SchoolPortal.Shared.DTOs.Common;
@@ -8,7 +8,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin,Teacher")] writes. Reading is any-
+// authenticated (platform.access); publishing announcements → announcements.publish.
 public class AnnouncementsController : ControllerBase
 {
     private readonly IAnnouncementService _announcementService;
@@ -19,6 +20,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(PaginatedResult<AnnouncementDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAnnouncements(
         [FromQuery] DateTime? since,
@@ -30,7 +32,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AnnouncementsPublish)]
     [ProducesResponseType(typeof(AnnouncementDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateAnnouncement([FromBody] CreateAnnouncementRequest request)
     {
@@ -39,7 +41,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AnnouncementsPublish)]
     [ProducesResponseType(typeof(AnnouncementDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateAnnouncement(Guid id, [FromBody] UpdateAnnouncementRequest request)
@@ -49,7 +51,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AnnouncementsPublish)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAnnouncement(Guid id)

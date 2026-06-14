@@ -15,6 +15,7 @@ public static class PermissionKeys
     public const string MarksViewGrade = "marks.view_grade";
     public const string MarksViewPhase = "marks.view_phase";
     public const string MarksViewAll = "marks.view_all";
+    public const string MarksViewClass = "marks.view_class";
     public const string AssessmentCreate = "assessment.create";
     public const string AssessmentApprovePlan = "assessment.approve_plan";
     public const string AttendanceCapture = "attendance.capture";
@@ -26,6 +27,9 @@ public static class PermissionKeys
     public const string AssignmentsSubmit = "assignments.submit";
     public const string ReportDraft = "report.draft";
     public const string ReportApprove = "report.approve";
+
+    // Courses (LMS)
+    public const string CoursesManage = "courses.manage";
 
     // Pathways
     public const string PathwaysViewOwn = "pathways.view_own";
@@ -74,6 +78,13 @@ public static class PermissionKeys
     // Reporting
     public const string ReportingView = "reporting.view";
     public const string ReportingPrincipalSummary = "reporting.principal_summary";
+
+    // Communication & social (Step 6 comms cluster)
+    public const string AnnouncementsPublish = "announcements.publish";
+    public const string CalendarManage = "calendar.manage";
+    public const string TimetableManage = "timetable.manage";
+    public const string ActivitiesManage = "activities.manage";
+    public const string SkillsEndorse = "skills.endorse";
 
     // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)
     public const string PlatformAccess = "platform.access";

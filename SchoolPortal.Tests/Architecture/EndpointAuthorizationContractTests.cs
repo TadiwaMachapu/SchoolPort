@@ -42,7 +42,7 @@ public class EndpointAuthorizationContractTests
         "FeesController", "MatricController",
         "MeController", "ParentController",
         "PathwaysController", "PluginsController", "ProgressController",
-        "SubjectsController", "SuperAdminController",
+        "SuperAdminController",
     };
 
     private static List<Type> DiscoverControllers() => ServerAssembly.GetTypes()

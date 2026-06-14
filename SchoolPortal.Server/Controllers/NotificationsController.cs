@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Notifications;
 
@@ -7,7 +7,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/notifications")]
-[Authorize]
+// Step 6: was [Authorize]. All endpoints act on the current user's own notifications →
+// platform.access (any authenticated user).
+[RequirePermission(PermissionKeys.PlatformAccess)]
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notifications;

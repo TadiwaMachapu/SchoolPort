@@ -27,7 +27,7 @@ public class PluginsController : ControllerBase
 
     // Public marketplace
     [HttpGet("marketplace")]
-    [Authorize]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetMarketplace()
     {
         var installed = await _context.PluginInstallations
@@ -56,7 +56,7 @@ public class PluginsController : ControllerBase
 
     // Installed plugins for this school
     [HttpGet("installed")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemIntegrations)]
     public async Task<IActionResult> GetInstalled()
     {
         var installations = await _context.PluginInstallations
@@ -81,7 +81,7 @@ public class PluginsController : ControllerBase
 
     // Install a plugin
     [HttpPost("{pluginId}/install")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemIntegrations)]
     public async Task<IActionResult> Install(Guid pluginId)
     {
         var plugin = await _context.Plugins
@@ -112,7 +112,7 @@ public class PluginsController : ControllerBase
 
     // Uninstall a plugin
     [HttpDelete("{pluginId}/install")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemIntegrations)]
     public async Task<IActionResult> Uninstall(Guid pluginId)
     {
         var installation = await _context.PluginInstallations
@@ -157,7 +157,7 @@ public class PluginsController : ControllerBase
 
     // Dispatch a webhook event to all installed plugins (internal use)
     [HttpPost("dispatch")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.SystemIntegrations)]
     public async Task<IActionResult> Dispatch([FromBody] DispatchEventRequest request)
     {
         var installations = await _context.PluginInstallations

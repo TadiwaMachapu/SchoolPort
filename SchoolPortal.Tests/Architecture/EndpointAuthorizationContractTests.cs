@@ -41,7 +41,7 @@ public class EndpointAuthorizationContractTests
         "BillingController",
         "FeesController", "MatricController",
         "MeController", "ParentController",
-        "PathwaysController", "PluginsController",
+        "PathwaysController",
         "SuperAdminController",
     };
 

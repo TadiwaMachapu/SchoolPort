@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 import { Layers, PlayCircle } from "lucide-react";
 
 interface Lesson {
@@ -32,7 +32,7 @@ export default function CourseDetailPage() {
   const [course,          setCourse]         = useState<Course | null>(null);
   const [loading,         setLoading]        = useState(true);
   const [error,           setError]          = useState("");
-  const [role,            setRole]           = useState("");
+  const canEdit = usePermission("courses.manage"); // Step 8
   const [addingModule,    setAddingModule]   = useState(false);
   const [moduleTitle,     setModuleTitle]    = useState("");
   const [expandedModule,  setExpandedModule] = useState<string | null>(null);
@@ -40,7 +40,6 @@ export default function CourseDetailPage() {
   const [lessonForm, setLessonForm]          = useState({ title: "", type: "RichText", content: "", videoUrl: "", externalUrl: "" });
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setRole(getClientRole()); }, []);
 
   async function load() {
     setLoading(true);
@@ -85,7 +84,6 @@ export default function CourseDetailPage() {
     load();
   }
 
-  const canEdit = role === "Admin" || role === "Teacher";
 
   if (loading) return (
     <div className="p-8 max-w-4xl mx-auto space-y-6">

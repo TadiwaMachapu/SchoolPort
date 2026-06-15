@@ -5,23 +5,35 @@ import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell } from "@/components/notification-bell";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { FeaturesProvider } from "@/lib/features-context";
+import { AuthProvider, type AuthPosition } from "@/lib/auth-context";
+import { FinanceSessionGuard } from "@/components/finance-session-guard";
 import type { SchoolFeatures, SchoolTheme } from "@/lib/theme";
 
 const PAGE_TITLES: Record<string, string> = {
-  dashboard:     "Dashboard",
-  courses:       "Courses",
-  classes:       "Classes",
-  assignments:   "Assignments",
-  quizzes:       "Quizzes",
-  gradebook:     "Gradebook",
-  attendance:    "Attendance",
-  calendar:      "Calendar",
-  messages:      "Messages",
-  announcements: "Announcements",
-  analytics:     "Analytics",
-  users:         "Users",
-  settings:      "Settings",
-  parent:        "Parent Portal",
+  dashboard:       "Dashboard",
+  courses:         "Courses",
+  classes:         "Classes",
+  "my-academics":  "My Academics",
+  assignments:     "Assignments",
+  quizzes:         "Quizzes",
+  gradebook:       "Gradebook",
+  attendance:      "Attendance",
+  calendar:        "Calendar",
+  messages:        "Messages",
+  announcements:   "Announcements",
+  analytics:       "Analytics",
+  "sports-culture":"Sports & Culture",
+  matric:          "Matric Hub",
+  pathways:        "Pathways",
+  skills:          "Skills",
+  "school-pay":    "SchoolPay",
+  popia:           "POPIA Centre",
+  sasams:          "SA-SAMS",
+  whatsapp:        "WhatsApp",
+  reports:         "Reports",
+  users:           "Users",
+  settings:        "Settings",
+  parent:          "Parent Portal",
 };
 
 function getPageTitle(pathname: string): string {
@@ -93,6 +105,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const theme: SchoolTheme   = school?.theme    ?? { primaryColor: "#1E40AF", fontFamily: "Inter" };
   const features: SchoolFeatures = school?.features ?? {};
 
+  // Step 8: identity / positions / resolved permissions from /api/me (authoritative).
+  const identity: string = me.identity ?? "";
+  const positions: AuthPosition[] = me.positions ?? [];
+  const permissions: string[] = me.permissions ?? [];
+  const positionKeys = positions.map((p) => p.key);
+  // Grade context for the Matric Hub nav gate (learner's own grade / parent's Grade-12 child).
+  const gradeLevel: number | null = me.gradeLevel ?? null;
+  const hasGrade12Child: boolean = me.hasGrade12Child ?? false;
+  const navContext = { gradeLevel, hasGrade12Child };
+
   return (
     <div
       className="flex h-screen overflow-hidden"
@@ -100,7 +122,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     >
       {/* Sidebar — desktop only */}
       <div className="hidden md:flex">
-        <Sidebar user={me.user} school={{ ...me.school, theme, features }} />
+        <Sidebar user={me.user} school={{ ...me.school, theme, features }} identity={identity} positions={positionKeys} permissions={permissions} context={navContext} />
       </div>
 
       {/* Right column: header + scrollable content */}
@@ -137,12 +159,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
         {/* Main content — extra bottom padding on mobile for the nav bar */}
         <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 md:pb-0">
-          <FeaturesProvider features={features}>{children}</FeaturesProvider>
+          <AuthProvider value={{ identity, positions, permissions, gradeLevel, hasGrade12Child }}>
+            <FeaturesProvider features={features}>{children}</FeaturesProvider>
+            <FinanceSessionGuard />
+          </AuthProvider>
         </main>
       </div>
 
       {/* Mobile bottom navigation */}
-      <MobileNav role={me.user.role} primaryColor={theme.primaryColor} />
+      <MobileNav identity={identity} positions={positionKeys} permissions={permissions} features={features} context={navContext} primaryColor={theme.primaryColor} />
       <PwaInstallPrompt />
     </div>
   );

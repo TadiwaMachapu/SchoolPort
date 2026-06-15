@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type FeeItem, type FeeStatement, type FeePaymentItem, type Term } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
-import { getClientRole } from "@/lib/utils";
+import { useAnyPosition, usePermission } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, CreditCard, ChevronDown, ChevronRight, X, Check, Loader2 } from "lucide-react";
@@ -18,6 +18,9 @@ function fmtDate(iso: string) {
 
 // ── Admin view ────────────────────────────────────────────────────
 function AdminView() {
+  // Step 8 (P-2): permission-gated actions — a Cashier sees Record Payment but not Create Invoice.
+  const canCreateInvoice = usePermission("finance.create_invoice");
+  const canRecordPayment = usePermission("finance.capture_payment");
   const [fees,      setFees]      = useState<FeeItem[]>([]);
   const [terms,     setTerms]     = useState<Term[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -135,11 +138,11 @@ function AdminView() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : canCreateInvoice ? (
         <Button onClick={() => setShowForm(true)} className="gap-2">
           <Plus className="h-4 w-4" /> Add fee
         </Button>
-      )}
+      ) : null}
 
       {/* Record payment modal */}
       {payForm && (
@@ -202,10 +205,12 @@ function AdminView() {
                 <p className="text-sm font-bold text-gray-900">{fmt(fee.amountZar)}</p>
                 <p className="text-xs text-emerald-600">{fmt(fee.totalCollected)} collected · {fee.paymentCount} payment{fee.paymentCount !== 1 ? "s" : ""}</p>
               </div>
-              <button onClick={() => setPayForm({ feeId: fee.feeId, studentNumber: "", amount: "", notes: "" })}
-                className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                + Payment
-              </button>
+              {canRecordPayment && (
+                <button onClick={() => setPayForm({ feeId: fee.feeId, studentNumber: "", amount: "", notes: "" })}
+                  className="shrink-0 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  + Payment
+                </button>
+              )}
               <button onClick={() => deleteFee(fee.feeId)}
                 className="h-7 w-7 rounded flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0">
                 <Trash2 className="h-3.5 w-3.5" />
@@ -314,9 +319,8 @@ function StatementView() {
 export default function SchoolPayPage() {
   const router  = useRouter();
   const hasFlag = useFeature("schoolPay");
-  const [role,  setRole] = useState("");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  // Step 8 (P-2): finance operators get the management view; everyone else sees their statement.
+  const isFinance = useAnyPosition(["FinanceManager", "BursarDebtorsClerk", "Cashier"]);
 
   if (!hasFlag) {
     return (
@@ -329,17 +333,15 @@ export default function SchoolPayPage() {
     );
   }
 
-  const isAdmin = role === "Admin";
-
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">SchoolPay</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {isAdmin ? "Manage school fees and record learner payments." : "View your fee statement and payment history."}
+          {isFinance ? "Manage school fees and record learner payments." : "View your fee statement and payment history."}
         </p>
       </div>
-      {!role ? null : isAdmin ? <AdminView /> : <StatementView />}
+      {isFinance ? <AdminView /> : <StatementView />}
     </div>
   );
 }

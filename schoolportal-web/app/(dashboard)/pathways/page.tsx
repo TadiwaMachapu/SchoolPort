@@ -8,6 +8,7 @@ import {
   type GoalWithTracking, type GoalTracking,
 } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
+import { useIdentity } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import GapAnalysisCard from "@/components/pathways/GapAnalysisCard";
 import Gr9AdvisorCard from "@/components/pathways/Gr9AdvisorCard";
@@ -650,18 +651,15 @@ export default function PathwaysPage() {
   const router = useRouter();
   const hasPathways = useFeature("pathways");
 
-  const [role, setRole] = useState<string | null>(null);
+  const identity = useIdentity(); // Step 8
   const [tab, setTab] = useState<PageTab>("goals");
   const [isGr9, setIsGr9] = useState(false);
 
   useEffect(() => {
-    api.me.get().then(r => {
-      setRole(r.user.role);
-      if (r.user.role === "Student") {
-        api.pathways.gr9Profile().then(p => setIsGr9(p.isGrade9)).catch(() => {});
-      }
-    }).catch(() => {});
-  }, []);
+    if (identity === "Learner") {
+      api.pathways.gr9Profile().then(p => setIsGr9(p.isGrade9)).catch(() => {});
+    }
+  }, [identity]);
 
   if (!hasPathways) {
     return (
@@ -674,11 +672,7 @@ export default function PathwaysPage() {
     );
   }
 
-  if (role === null) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>;
-  }
-
-  const isStaff = role === "Admin" || role === "Teacher";
+  const isStaff = identity === "Staff";
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
@@ -690,7 +684,7 @@ export default function PathwaysPage() {
       </div>
 
       {/* Tab bar — students and staff see different tabs */}
-      {role === "Student" && (
+      {identity === "Learner" && (
         <div className="flex gap-1 border-b border-gray-200">
           {([
             { id: "goals",      label: "Career Goals",      icon: Target,         show: true    },
@@ -715,9 +709,9 @@ export default function PathwaysPage() {
       )}
 
       {/* Tab content */}
-      {role === "Student" && tab === "goals"      && <CareerGoalsTab />}
-      {role === "Student" && tab === "enrolment"  && <MySubjectsView />}
-      {role === "Student" && tab === "gr9advisor" && <Gr9AdvisorTab />}
+      {identity === "Learner" && tab === "goals"      && <CareerGoalsTab />}
+      {identity === "Learner" && tab === "enrolment"  && <MySubjectsView />}
+      {identity === "Learner" && tab === "gr9advisor" && <Gr9AdvisorTab />}
       {isStaff && <MatrixView />}
     </div>
   );

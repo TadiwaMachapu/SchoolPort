@@ -7,7 +7,7 @@ import { useAttendanceSession, useClasses, useBulkUpsertAttendance } from "@/fea
 import { useToastStore } from "@/stores/toast.store";
 import { AnimatePresence, motion } from "framer-motion";
 import { api, MyAttendanceSummary } from "@/lib/api";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity } from "@/lib/auth-context";
 
 const S = {
   1: { label: "Present", icon: CheckCircle2, card: "bg-emerald-50 border-emerald-300", avatar: "bg-emerald-500", badge: "text-emerald-700", ring: "ring-emerald-200" },
@@ -146,13 +146,13 @@ function StudentAttendanceView() {
 }
 
 export default function AttendancePage() {
-  const role = getClientRole();
+  const identity = useIdentity(); // Step 8
 
-  if (role === "Student") {
+  if (identity === "Learner") {
     return <StudentAttendanceView />;
   }
 
-  if (role === "Parent") {
+  if (identity === "Parent") {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
         <CalendarDays className="h-12 w-12 text-gray-200 mb-4" />

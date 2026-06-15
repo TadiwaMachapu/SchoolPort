@@ -1,4 +1,5 @@
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 
 namespace SchoolPortal.Server.Services;
 
@@ -25,4 +26,8 @@ public interface ICurrentUserService
     bool IsInScope(ScopeType type, Guid scopeId);
 
     IReadOnlySet<string> GetEffectivePermissions();
+
+    /// <summary>The user's active, in-window positions (with scopes + effective dates) from the
+    /// per-request resolved set — same source as GetEffectivePermissions(), so no re-resolution.</summary>
+    IReadOnlyList<PositionClaim> GetActivePositions();
 }

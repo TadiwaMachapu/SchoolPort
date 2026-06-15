@@ -50,6 +50,16 @@ export function useMyGrades() {
   });
 }
 
+// Single source of truth for the learner's task state (status-aware). The dashboard derives its
+// Overdue/Upcoming counts from this so it can never disagree with the My Academics page.
+export function useMyAcademics() {
+  return useQuery({
+    queryKey: ["gradebook", "myAcademics"],
+    queryFn: () => api.gradebook.myAcademics(),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
 export function useMyCourses() {
   return useQuery({
     queryKey: qk.courses.list({ pageSize: 6, publishedOnly: true }),

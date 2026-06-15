@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 import { CalendarDays } from "lucide-react";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -31,9 +31,7 @@ export default function CalendarPage() {
   const [tab,       setTab]       = useState<"month" | "timetable">("month");
   const [loading,   setLoading]   = useState(true);
   const [showAdd,   setShowAdd]   = useState(false);
-  const [role,      setRole]      = useState("");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  const canManageCalendar = usePermission("calendar.manage"); // Step 8
 
   useEffect(() => {
     const from = new Date(year, month, 1).toISOString();
@@ -108,7 +106,7 @@ export default function CalendarPage() {
           <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Calendar & Timetable</h1>
           <p className="text-sm text-gray-500 mt-1">School events, deadlines, and weekly schedule</p>
         </div>
-        {(role === "Admin" || role === "Teacher") && (
+        {canManageCalendar && (
           <Button size="sm" onClick={() => setShowAdd(true)}>+ Add Event</Button>
         )}
       </div>

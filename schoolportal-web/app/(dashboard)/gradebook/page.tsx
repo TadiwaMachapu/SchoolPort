@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity } from "@/lib/auth-context";
 import { useFeature } from "@/lib/use-feature";
 import { BarChart2, Download, Users } from "lucide-react";
 
@@ -149,13 +149,10 @@ function classGradebookHtml(gradebook: ClassGradebook, className: string) {
 }
 
 export default function GradebookPage() {
-  const [role, setRole] = useState("");
+  const identity = useIdentity(); // Step 8
   const router = useRouter();
   const hasGradebook = useFeature("gradebook");
 
-  useEffect(() => { setRole(getClientRole()); }, []);
-
-  if (!role) return null;
   if (!hasGradebook) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
@@ -166,7 +163,7 @@ export default function GradebookPage() {
       </div>
     );
   }
-  if (role === "Student") return <StudentGradebook />;
+  if (identity === "Learner") return <StudentGradebook />;
   return <TeacherGradebook />;
 }
 

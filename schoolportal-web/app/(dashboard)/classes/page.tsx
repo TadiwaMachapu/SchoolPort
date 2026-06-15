@@ -4,15 +4,14 @@ import { type Class } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 import { GraduationCap, BookOpen, Users, ChevronRight } from "lucide-react";
 import { useClassesList, useCreateClass, useUpdateClass } from "@/features/classes/api/hooks";
 import { useToastStore } from "@/stores/toast.store";
 import { useState } from "react";
 
 export default function ClassesPage() {
-  const role    = getClientRole();
-  const isAdmin = role === "Admin";
+  const isAdmin = usePermission("academics.manage"); // Step 8: class management
   const toast   = useToastStore();
 
   const [showAdd,   setShowAdd]   = useState(false);

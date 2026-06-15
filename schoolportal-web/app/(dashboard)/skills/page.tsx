@@ -5,7 +5,7 @@ import { api, type SkillEntry, type User } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity } from "@/lib/auth-context";
 import { Star, Plus, Trash2, CheckCircle2, Loader2, AlertTriangle, X } from "lucide-react";
 
 const CATEGORIES = ["Academic", "Leadership", "Sport", "Arts & Culture", "Community", "Technology", "Other"];
@@ -272,9 +272,7 @@ function StaffSkillsView() {
 export default function SkillsPage() {
   const router = useRouter();
   const hasSkillsProfile = useFeature("skillsProfile");
-  const [role, setRole] = useState("");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  const identity = useIdentity(); // Step 8
 
   if (!hasSkillsProfile) {
     return (
@@ -292,10 +290,10 @@ export default function SkillsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Skills Profile</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {role === "Student" ? "Record your skills, achievements, and activities." : "View and endorse learner skills and achievements."}
+          {identity === "Learner" ? "Record your skills, achievements, and activities." : "View and endorse learner skills and achievements."}
         </p>
       </div>
-      {role === "Student" ? <MySkillsView /> : role ? <StaffSkillsView /> : null}
+      {identity === "Learner" ? <MySkillsView /> : identity ? <StaffSkillsView /> : null}
     </div>
   );
 }

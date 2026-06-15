@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { api, type ConsentRecord, type DataSubjectRequest, type AdminRequestRow, type AdminConsentRow } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
 import { Button } from "@/components/ui/button";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 import { ShieldCheck, AlertTriangle, Loader2, CheckCircle2, Clock, XCircle } from "lucide-react";
 
 const REQUEST_TYPES = ["Access", "Deletion", "Correction", "Portability"];
@@ -324,10 +324,8 @@ function AdminConsentsPanel() {
 export default function PopiaPage() {
   const router = useRouter();
   const hasPopia = useFeature("popiaCentre");
-  const [role, setRole] = useState("");
+  const isAdmin = usePermission("system.popia_admin"); // Step 8
   const [tab,  setTab]  = useState<"consents" | "requests">("consents");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
 
   if (!hasPopia) {
     return (
@@ -339,8 +337,6 @@ export default function PopiaPage() {
       </div>
     );
   }
-
-  const isAdmin = role === "Admin";
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">

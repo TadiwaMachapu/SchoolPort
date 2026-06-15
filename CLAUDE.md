@@ -65,6 +65,9 @@ WhatsApp integration, POPIA Centre, SA-SAMS export, Matric Hub.
 ### Phase 4 Backlog
 _Log future ideas here rather than implementing out of scope._
 
+### Known improvements (Step 8 follow-ups)
+- **My Academics → My Marks subject selector:** switch the pill-tabs vs dropdown threshold from "≤4 → pills" to "≤5 → pills, >5 → dropdown" (`components/my-academics/MarksTab.tsx`).
+
 ---
 
 ## South African Context

@@ -68,6 +68,8 @@ public class CurrentUserService : ICurrentUserService
 
     public IReadOnlySet<string> GetEffectivePermissions() => GetResolved().Permissions;
 
+    public IReadOnlyList<PositionClaim> GetActivePositions() => GetResolved().ActivePositions;
+
     /// <summary>Per-request resolve-once: JWT claim path (0 DB hits, expiry enforced
     /// against the server clock), cached in HttpContext.Items.</summary>
     private EffectivePermissionSet GetResolved()

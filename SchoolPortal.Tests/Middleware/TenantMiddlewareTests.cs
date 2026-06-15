@@ -97,5 +97,8 @@ public class TenantMiddlewareTests
             ThrowOnResolve
                 ? throw new InvalidOperationException("permission catalogue unavailable")
                 : new HashSet<string>();
+
+        public IReadOnlyList<SchoolPortal.Server.Authorization.PositionClaim> GetActivePositions() =>
+            System.Array.Empty<SchoolPortal.Server.Authorization.PositionClaim>();
     }
 }

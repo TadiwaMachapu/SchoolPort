@@ -31,6 +31,9 @@ function LoginView() {
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
+  // null = user hasn't chosen. Persistence then defaults ON for staff/parents but OFF
+  // for Learners (BYOD / shared devices) — see post-login logic below. (Step 8)
+  const [rememberMe, setRememberMe] = useState<boolean | null>(null);
   const [error, setError]       = useState(
     ssoError === "sso_failed"        ? "SSO sign-in failed. Please try again." :
     ssoError === "school_not_found"  ? "Your school is not registered on this platform." : ""
@@ -50,7 +53,13 @@ function LoginView() {
       document.cookie = `sp_userid=${res.user.userId}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
       document.cookie = `sp_identity=${res.user.identity}; path=/; max-age=${tokenMaxAge}; SameSite=Lax`;
       if (res.refreshToken) {
-        document.cookie = `sp_refresh_token=${encodeURIComponent(res.refreshToken)}; path=/; max-age=${3600 * 24 * 30}; SameSite=Lax`;
+        // Default OFF for Learners (shared/BYOD devices); ON for everyone else.
+        // An untouched checkbox (null) resolves per-identity; an explicit choice always wins.
+        const isLearner = res.user.identity === "Learner";
+        const persist = rememberMe === null ? !isLearner : rememberMe;
+        // Persistent: 30-day cookie. Otherwise a session cookie cleared when the browser closes.
+        const refreshAttrs = persist ? `; max-age=${3600 * 24 * 30}` : "";
+        document.cookie = `sp_refresh_token=${encodeURIComponent(res.refreshToken)}; path=/${refreshAttrs}; SameSite=Lax`;
       }
       router.push("/dashboard");
       router.refresh();
@@ -138,6 +147,12 @@ function LoginView() {
                 <Input type="password" placeholder="••••••••" value={password}
                   onChange={e => setPassword(e.target.value)} required />
               </div>
+              <label className="flex items-center gap-2 text-sm text-gray-600 select-none cursor-pointer">
+                <input type="checkbox" checked={rememberMe ?? true}
+                  onChange={e => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                Keep me signed in on this device
+              </label>
               <Button type="submit" className="w-full" size="lg" loading={loading}>
                 Sign in
               </Button>

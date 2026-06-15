@@ -96,6 +96,9 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ email, password }),
       }),
+    // Refreshes the access token via the refresh-token cookie and rewrites sp_token /
+    // sp_refresh_token. Returns the new access token, or null if refresh failed. (Step 8)
+    refresh: () => refreshTokenOnce(),
   },
   me: {
     get: () => request<MeResponse>("/api/me"),
@@ -192,6 +195,7 @@ export const api = {
   },
   gradebook: {
     myGrades: () => request<GradeEntry[]>("/api/gradebook/my-grades"),
+    myAcademics: () => request<MyAcademics>("/api/gradebook/my-academics"),
     classGradebook: (classId: string, termId?: string) =>
       request<ClassGradebook>(`/api/gradebook/${classId}${termId ? `?termId=${termId}` : ""}`),
   },
@@ -478,6 +482,10 @@ export interface UserInfo {
 export interface MeResponse {
   user: { userId: string; email: string; firstName: string; lastName: string; role: string };
   school: { schoolId: string; name: string; logoUrl?: string; primaryColor?: string };
+  // Step 8: Layer-1 identity, active positions, and the resolved effective permission set.
+  identity: string;
+  positions: { key: string; effectiveFrom: string; effectiveTo?: string; scopes: { scopeType: number; scopeRefId?: string; scopeValue?: string }[] }[];
+  permissions: string[];
 }
 export interface Paginated<T> {
   items: T[];
@@ -871,6 +879,48 @@ export interface GradeEntry {
   class: string;
   feedback?: string;
   gradedAt: string;
+}
+
+// Step 8 — aggregated learner academics payload (My Academics page). Percentages only; CAPS
+// codes derived client-side via getCapsCode. Assignments + quizzes unified in `tasks`.
+export type TaskStatus = "not_submitted" | "submitted" | "graded";
+export type TaskTrend = "up" | "down" | "flat" | "none";
+
+export interface MyAcademicsTerm {
+  termId: string;
+  termNumber: number;
+  isCurrent: boolean;
+}
+export interface MyAcademicsSubject {
+  classSubjectId: string;
+  subjectName: string;
+  teacherName?: string | null;
+  capsPhase?: string | null;
+  termAveragePercent?: number | null;
+  tasksAssessed: number;
+  tasksTotal: number;
+  trend: TaskTrend;
+}
+export interface MyAcademicsTask {
+  taskId: string;
+  source: "assignment" | "quiz";
+  classSubjectId: string;
+  subjectName: string;
+  title: string;
+  type: string;            // TaskType (assignment) or "Quiz"
+  termNumber?: number | null;
+  date?: string | null;
+  dueAt?: string | null;
+  score?: number | null;
+  outOf?: number | null;
+  percent?: number | null;
+  status: TaskStatus;
+}
+export interface MyAcademics {
+  currentTerm?: MyAcademicsTerm | null;
+  terms: MyAcademicsTerm[];
+  subjects: MyAcademicsSubject[];
+  tasks: MyAcademicsTask[];
 }
 export interface ClassGradebook {
   students: {

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity, usePermission } from "@/lib/auth-context";
 import { Inbox } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,15 +28,14 @@ export default function AssignmentDetailPage() {
   const [gradeForm,    setGradeForm]    = useState({ score: "", feedback: "" });
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState("");
-  const [role,         setRole]         = useState("");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  const identity = useIdentity(); // Step 8
+  const canGrade = usePermission("marks.capture"); // Step 8
 
   useEffect(() => {
-    if (!role) return;
+    if (!identity) return;
     Promise.allSettled([api.assignments.get(id)]).then(([asgn]) => {
       if (asgn.status === "fulfilled") setAssignment(asgn.value as Assignment);
-      if (role === "Student") {
+      if (identity === "Learner") {
         api.submissions.mySubmission(id)
           .then(s => setSubmission(s as Submission | null))
           .catch(() => {});
@@ -47,7 +46,7 @@ export default function AssignmentDetailPage() {
       }
     }).catch(e => setError(String(e)))
       .finally(() => setLoading(false));
-  }, [id, role]);
+  }, [id, identity]);
 
   async function handleSubmit() {
     if (!content.trim()) return;
@@ -135,7 +134,7 @@ export default function AssignmentDetailPage() {
       )}
 
       {/* Student: submission */}
-      {role === "Student" && (
+      {identity === "Learner" && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -190,8 +189,8 @@ export default function AssignmentDetailPage() {
         </Card>
       )}
 
-      {/* Teacher/Admin: submissions list */}
-      {(role === "Teacher" || role === "Admin") && (
+      {/* Staff with mark-capture permission: submissions list */}
+      {canGrade && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">

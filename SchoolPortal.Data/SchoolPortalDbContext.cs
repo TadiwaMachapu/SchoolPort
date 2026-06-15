@@ -326,6 +326,7 @@ public class SchoolPortalDbContext : DbContext
             entity.HasKey(e => e.AssignmentId);
             entity.Property(e => e.AssignmentId).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.TaskType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(TaskType.Assignment);
             entity.Property(e => e.MaxMarks).HasPrecision(10, 2);
             entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
             entity.HasIndex(e => e.SchoolId);

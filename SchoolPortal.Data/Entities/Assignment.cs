@@ -1,5 +1,20 @@
 namespace SchoolPortal.Data.Entities;
 
+/// <summary>
+/// CAPS assessment task type for an <see cref="Assignment"/>. Stored as a string column
+/// (see DbContext). Existing rows default to <see cref="Assignment"/>. Quizzes are a separate
+/// entity and surface as <see cref="Quiz"/> in the learner's unified task list.
+/// </summary>
+public enum TaskType
+{
+    Assignment,
+    Quiz,
+    Test,
+    Project,
+    Practical,
+    Exam,
+}
+
 public class Assignment
 {
     public Guid AssignmentId { get; set; }
@@ -7,6 +22,7 @@ public class Assignment
     public Guid SchoolId { get; set; }
     public string Title { get; set; } = null!;
     public string? Description { get; set; }
+    public TaskType TaskType { get; set; } = TaskType.Assignment;
     public DateTime DueAt { get; set; }
     public decimal MaxMarks { get; set; }
     public DateTime CreatedAt { get; set; }

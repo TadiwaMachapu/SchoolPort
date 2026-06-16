@@ -97,6 +97,7 @@ public static class PositionsSeedData
             Perm("system.feature_flags",   "System", "Manage feature flags"),
             Perm("system.data_export",     "System", "Export school data for SA-SAMS / compliance (bulk PII)"),
             Perm("system.popia_admin",     "System", "Administer POPIA consents and data-subject requests (bulk PII)"),
+            Perm("system.refresh_views",   "System", "Refresh materialized analytics/reporting views (recomputes over all school data)"),
             Perm("analytics.view_school",  "Analytics", "View school-wide analytics dashboards"),
             Perm("reporting.view",         "Reporting", "View/generate class reports, term reports, at-risk lists, AI report comments, and summary views"),
             Perm("reporting.principal_summary", "Reporting", "Generate the principal's AI class summary (end-of-term, school-wide named data)"),
@@ -371,6 +372,13 @@ public static class PositionsSeedData
         // system.feature_flags WIDENED to SMT (was ITAdministrator only) so admins can toggle features (AS-2).
         Map("Principal",        "system.feature_flags");
         Map("DeputyPrincipal",  "system.feature_flags");
+
+        // ── Sprint 1.5.0.5 ───────────────────────────────────────────────────────────
+        // system.refresh_views — manually refresh the materialized analytics/reporting views
+        // (Sensitive: recomputes over all school data). SMT + IT only; no auto-refresh on grade save.
+        Map("Principal",        "system.refresh_views");
+        Map("DeputyPrincipal",  "system.refresh_views");
+        Map("ITAdministrator",  "system.refresh_views");
 
         var existingPairs = (await db.PositionPermissions.AsNoTracking()
                 .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())

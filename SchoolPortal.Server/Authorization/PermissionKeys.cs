@@ -71,6 +71,7 @@ public static class PermissionKeys
     public const string SystemFeatureFlags = "system.feature_flags";
     public const string SystemDataExport = "system.data_export";
     public const string SystemPopiaAdmin = "system.popia_admin";
+    public const string SystemRefreshViews = "system.refresh_views";
 
     // Analytics
     public const string AnalyticsViewSchool = "analytics.view_school";
@@ -115,6 +116,8 @@ public static class PermissionKeys
         AnalyticsViewSchool,
         // Principal's end-of-term class summary (school-wide named data) → DB-resolve per request.
         ReportingPrincipalSummary,
+        // Refreshing the materialized views recomputes over ALL school data → DB-resolve per request.
+        SystemRefreshViews,
     };
 
     /// <summary>Identity-implicit permissions — granted by Layer-1 identity alone, no

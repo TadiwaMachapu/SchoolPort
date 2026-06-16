@@ -121,6 +121,10 @@ public class SchoolPortalDbContext : DbContext
     // View entities
     public DbSet<AttendanceSummaryView> AttendanceSummaryView { get; set; }
     public DbSet<GradebookSimpleView> GradebookSimpleView { get; set; }
+    // Sprint 1.5.0.5 — materialized views (refreshed manually via the refresh-views admin endpoint)
+    public DbSet<SubjectTermAverageView> SubjectTermAverages { get; set; }
+    public DbSet<MatricApsSummaryView> MatricApsSummaries { get; set; }
+    public DbSet<SchoolPerformanceSummaryView> SchoolPerformanceSummaries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1082,6 +1086,29 @@ public class SchoolPortalDbContext : DbContext
         {
             entity.ToView("vw_gradebook_simple");
             entity.HasNoKey();
+        });
+
+        // Sprint 1.5.0.5 — materialized views (created in migration AddMaterializedViews). Mapped
+        // view-ONLY: the global snake_case loop above sets a table name on every entity, so we null
+        // it out here to avoid scaffolding a redundant empty physical table (the older two views
+        // carry that pre-existing quirk; these don't).
+        modelBuilder.Entity<SubjectTermAverageView>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_subject_term_averages");
+            entity.Metadata.SetTableName(null);
+        });
+        modelBuilder.Entity<MatricApsSummaryView>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_matric_aps_summary");
+            entity.Metadata.SetTableName(null);
+        });
+        modelBuilder.Entity<SchoolPerformanceSummaryView>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_school_performance_summary");
+            entity.Metadata.SetTableName(null);
         });
     }
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SchoolPortal.Data;
@@ -12,9 +13,11 @@ using SchoolPortal.Shared.DTOs.Schools;
 namespace SchoolPortal.Data.Migrations
 {
     [DbContext(typeof(SchoolPortalDbContext))]
-    partial class SchoolPortalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260615202646_AddPerformanceIndexes")]
+    partial class AddPerformanceIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1797,33 +1800,6 @@ namespace SchoolPortal.Data.Migrations
                     b.ToTable("lesson_progress", (string)null);
                 });
 
-            modelBuilder.Entity("SchoolPortal.Data.Entities.MatricApsSummaryView", b =>
-                {
-                    b.Property<Guid>("AcademicYearId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("academic_year_id");
-
-                    b.Property<int>("ProjectedAps")
-                        .HasColumnType("integer")
-                        .HasColumnName("projected_aps");
-
-                    b.Property<Guid>("SchoolId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("school_id");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_id");
-
-                    b.Property<int>("SubjectCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("subject_count");
-
-                    b.ToTable((string)null);
-
-                    b.ToView("vw_matric_aps_summary", (string)null);
-                });
-
             modelBuilder.Entity("SchoolPortal.Data.Entities.MatricPastPaper", b =>
                 {
                     b.Property<Guid>("MatricPastPaperId")
@@ -2816,50 +2792,6 @@ namespace SchoolPortal.Data.Migrations
                     b.ToTable("schools", (string)null);
                 });
 
-            modelBuilder.Entity("SchoolPortal.Data.Entities.SchoolPerformanceSummaryView", b =>
-                {
-                    b.Property<int>("AtRiskCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("at_risk_count");
-
-                    b.Property<int>("LearnerCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("learner_count");
-
-                    b.Property<decimal>("PassRate")
-                        .HasColumnType("numeric")
-                        .HasColumnName("pass_rate");
-
-                    b.Property<Guid>("SchoolId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("school_id");
-
-                    b.Property<decimal>("SubjectAverage")
-                        .HasColumnType("numeric")
-                        .HasColumnName("subject_average");
-
-                    b.Property<Guid>("SubjectId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_id");
-
-                    b.Property<string>("SubjectName")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("subject_name");
-
-                    b.Property<Guid>("TermId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("term_id");
-
-                    b.Property<int>("TermNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("term_number");
-
-                    b.ToTable((string)null);
-
-                    b.ToView("vw_school_performance_summary", (string)null);
-                });
-
             modelBuilder.Entity("SchoolPortal.Data.Entities.SeniorPhaseRequirement", b =>
                 {
                     b.Property<Guid>("SeniorPhaseRequirementId")
@@ -3083,46 +3015,6 @@ namespace SchoolPortal.Data.Migrations
                         .HasFilter("code IS NOT NULL");
 
                     b.ToTable("subjects", (string)null);
-                });
-
-            modelBuilder.Entity("SchoolPortal.Data.Entities.SubjectTermAverageView", b =>
-                {
-                    b.Property<decimal>("AveragePercent")
-                        .HasColumnType("numeric")
-                        .HasColumnName("average_percent");
-
-                    b.Property<Guid>("SchoolId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("school_id");
-
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("student_id");
-
-                    b.Property<Guid>("SubjectId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subject_id");
-
-                    b.Property<string>("SubjectName")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("subject_name");
-
-                    b.Property<int>("TasksAssessed")
-                        .HasColumnType("integer")
-                        .HasColumnName("tasks_assessed");
-
-                    b.Property<Guid>("TermId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("term_id");
-
-                    b.Property<int>("TermNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("term_number");
-
-                    b.ToTable((string)null);
-
-                    b.ToView("vw_subject_term_averages", (string)null);
                 });
 
             modelBuilder.Entity("SchoolPortal.Data.Entities.Submission", b =>

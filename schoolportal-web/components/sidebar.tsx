@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn, clearSession, identityLabel } from "@/lib/utils";
+import { queryClient } from "@/shared/api/queryClient";
 import { deriveNav, type NavContext } from "@/lib/nav";
 import { NAV_ICONS } from "@/lib/nav-icons";
 import type { SchoolFeatures, SchoolTheme } from "@/lib/theme";
@@ -27,6 +28,7 @@ export function Sidebar({ user, school, identity, positions, permissions, contex
 
   function logout() {
     clearSession(); // Step 8 FLAG 3: clear all five session cookies, not just sp_token.
+    queryClient.clear(); // drop cached queries so the next user starts clean (no cross-account leakage).
     router.push("/login");
   }
 

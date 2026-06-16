@@ -15,7 +15,7 @@ import {
 } from "@/features/dashboard/api/hooks";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useIdentity, usePosition, useAnyPosition } from "@/lib/auth-context";
+import { useIdentity, usePosition, useAnyPosition, useAuthUser } from "@/lib/auth-context";
 
 export default function DashboardPage() {
   const { data: me, isLoading } = useMe();
@@ -23,6 +23,7 @@ export default function DashboardPage() {
 
   // Step 8 (P-1): route by identity + positions, not a role string. Finance/IT get a home redirect.
   const identity  = useIdentity();
+  const authUser  = useAuthUser(); // server-sourced name (same as the header) — never a stale cache
   const isSMT     = useAnyPosition(["Principal", "DeputyPrincipal"]);
   const isFinance = useAnyPosition(["FinanceManager", "BursarDebtorsClerk", "Cashier"]);
   const isIT      = usePosition("ITAdministrator");
@@ -42,7 +43,7 @@ export default function DashboardPage() {
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-5 md:mb-6">
         <h1 className="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight">
-          Welcome back, {user.firstName}
+          Welcome back, {authUser.firstName || user.firstName}
         </h1>
         <p className="text-xs md:text-sm text-gray-500 mt-0.5">{school.name}</p>
       </div>

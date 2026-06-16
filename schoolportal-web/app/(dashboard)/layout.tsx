@@ -32,6 +32,7 @@ const PAGE_TITLES: Record<string, string> = {
   whatsapp:        "WhatsApp",
   reports:         "Reports",
   users:           "Users",
+  positions:       "Positions",
   settings:        "Settings",
   parent:          "Parent Portal",
 };
@@ -159,7 +160,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
         {/* Main content — extra bottom padding on mobile for the nav bar */}
         <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 md:pb-0">
-          <AuthProvider value={{ identity, positions, permissions, gradeLevel, hasGrade12Child }}>
+          <AuthProvider value={{ identity, positions, permissions, gradeLevel, hasGrade12Child, user: { firstName: me.user?.firstName ?? "", lastName: me.user?.lastName ?? "" } }}>
             <FeaturesProvider features={features}>{children}</FeaturesProvider>
             <FinanceSessionGuard />
           </AuthProvider>

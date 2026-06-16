@@ -117,6 +117,8 @@ export const api = {
       request<void>("/api/schools/settings", { method: "PUT", body: JSON.stringify(body) }),
     seedCapsSubjects: () =>
       request<{ created: number; skipped: number }>("/api/schools/seed-caps-subjects", { method: "POST" }),
+    applySizePreset: (preset: string) =>
+      request<SchoolSettings>("/api/schools/apply-size-preset", { method: "POST", body: JSON.stringify({ preset }) }),
   },
   users: {
     list: (params?: { role?: string; q?: string; page?: number; pageSize?: number }) =>
@@ -141,6 +143,30 @@ export const api = {
         body: form,
       }).then(r => r.ok ? r.json() as Promise<ImportCsvResult> : r.json().then((e: { message?: string; title?: string }) => { throw new Error(e.message ?? e.title ?? r.statusText); }));
     },
+    importStaffCsv: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const token = typeof document !== "undefined"
+        ? (() => { const m = document.cookie.match(/(?:^|; )sp_token=([^;]*)/); return m ? decodeURIComponent(m[1]) : null; })()
+        : null;
+      return fetch(`${API_URL}/api/users/import-staff-csv`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      }).then(r => r.ok ? r.json() as Promise<StaffImportResult> : r.json().then((e: { message?: string; title?: string }) => { throw new Error(e.message ?? e.title ?? r.statusText); }));
+    },
+  },
+
+  positions: {
+    catalogue: () => request<PositionCatalogueItem[]>("/api/positions/catalogue"),
+    overview: () => request<PositionOverviewItem[]>("/api/positions/overview"),
+    forUser: (userId: string) => request<UserPositions>(`/api/positions/assignments${toQueryString({ userId })}`),
+    assign: (body: AssignPositionRequest) =>
+      request<PositionAssignment>("/api/positions/assign", { method: "POST", body: JSON.stringify(body) }),
+    update: (userPositionId: string, body: UpdateAssignmentRequest) =>
+      request<PositionAssignment>(`/api/positions/assignments/${userPositionId}`, { method: "PUT", body: JSON.stringify(body) }),
+    revoke: (userPositionId: string) =>
+      request<{ revoked: boolean }>(`/api/positions/assignments/${userPositionId}/revoke`, { method: "POST" }),
   },
   subjects: {
     list: () => request<Subject[]>("/api/subjects"),
@@ -869,6 +895,38 @@ export interface QuizAnswer {
   isCorrect?: boolean;
   marksAwarded?: number;
 }
+// Sprint 1.5.0 Step 9 — staff import + position management.
+export interface StaffImportResult { created: number; failed: { row: number; reason: string }[]; }
+
+export interface PositionCatalogueItem {
+  key: string; displayName: string; category: string;
+  scopeType: number; scopeTypeName: string;
+  isExternal: boolean; isSystem: boolean;
+  requiresTimeLimit: boolean; requiresConsent: boolean;
+  defaultDurationHours?: number | null; inPreset: boolean;
+}
+export interface ScopeDto { scopeType: number; scopeRefId?: string | null; scopeValue?: string | null; label: string; }
+export interface PositionAssignment {
+  userPositionId: string; positionKey: string; displayName: string; category: string;
+  scopeType: number; effectiveFrom: string; effectiveTo?: string | null; isActive: boolean; scopes: ScopeDto[];
+}
+export interface UserPositions {
+  userId: string; userName: string; email: string; identity: string; assignments: PositionAssignment[];
+}
+export interface PositionHolder {
+  userPositionId: string; userId: string; userName: string;
+  effectiveFrom: string; effectiveTo?: string | null; scopes: ScopeDto[];
+}
+export interface PositionOverviewItem { positionKey: string; displayName: string; category: string; holders: PositionHolder[]; }
+export interface ScopeInput { scopeType?: number; scopeRefId?: string | null; scopeValue?: string | null; }
+export interface AssignPositionRequest {
+  userId: string; positionKey: string;
+  effectiveFrom?: string | null; effectiveTo?: string | null; consentRecordId?: string | null; scopes: ScopeInput[];
+}
+export interface UpdateAssignmentRequest {
+  effectiveFrom?: string | null; effectiveTo?: string | null; isActive?: boolean; scopes?: ScopeInput[];
+}
+
 export interface GradeEntry {
   gradeId: string;
   score: number;

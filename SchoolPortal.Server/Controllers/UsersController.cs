@@ -18,12 +18,14 @@ public class UsersController : ControllerBase
     private readonly IUserService _userService;
     private readonly ICurrentUserService _currentUser;
     private readonly SchoolPortalDbContext _context;
+    private readonly IStaffImportService _staffImport;
 
-    public UsersController(IUserService userService, ICurrentUserService currentUser, SchoolPortalDbContext context)
+    public UsersController(IUserService userService, ICurrentUserService currentUser, SchoolPortalDbContext context, IStaffImportService staffImport)
     {
         _userService = userService;
         _currentUser = currentUser;
         _context = context;
+        _staffImport = staffImport;
     }
 
     [HttpGet]
@@ -91,6 +93,28 @@ public class UsersController : ControllerBase
     /// <summary>
     /// Accepts a multipart CSV upload and bulk-creates users. Returns a summary of created/failed rows.
     /// </summary>
+    // Sprint 1.5.0 Step 9 — staff import WITH positions + scopes (separate from the simple import-csv).
+    [HttpGet("import-staff-csv")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
+    public IActionResult GetStaffImportTemplate()
+    {
+        var bytes = Encoding.UTF8.GetBytes(_staffImport.TemplateCsv());
+        return File(bytes, "text/csv", "staff_import_template.csv");
+    }
+
+    [HttpPost("import-staff-csv")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
+    public async Task<IActionResult> ImportStaffCsv(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file uploaded." });
+        if (!file.ContentType.Contains("csv") && !file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "File must be a CSV." });
+
+        var result = await _staffImport.ImportAsync(file.OpenReadStream());
+        return Ok(new { created = result.Created, failed = result.Failed });
+    }
+
     [HttpPost("import-csv")]
     [RequirePermission(PermissionKeys.SystemUsersManage)]
     [ProducesResponseType(StatusCodes.Status200OK)]

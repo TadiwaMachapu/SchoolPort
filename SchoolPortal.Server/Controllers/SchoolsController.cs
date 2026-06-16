@@ -73,6 +73,21 @@ public class SchoolsController : ControllerBase
         return Ok(settings);
     }
 
+    [HttpPost("apply-size-preset")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
+    public async Task<IActionResult> ApplySizePreset([FromBody] ApplySizePresetRequest request)
+    {
+        try
+        {
+            var settings = await _schoolService.ApplySizePresetAsync(request.Preset);
+            return Ok(settings);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("seed-caps-subjects")]
     [RequirePermission(PermissionKeys.SchoolManage)]
     [ProducesResponseType(typeof(CapsSeedException), StatusCodes.Status200OK)]

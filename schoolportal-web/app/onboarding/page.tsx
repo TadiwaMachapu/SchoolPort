@@ -41,6 +41,7 @@ export default function OnboardingPage() {
   const [logoUrl,       setLogoUrl]       = useState("");
   const [welcomeMsg,    setWelcomeMsg]    = useState("");
   const [supportEmail,  setSupportEmail]  = useState("");
+  const [sizePreset,    setSizePreset]    = useState("Standard"); // Step 9 — onboarding size preset
 
   // Step 2 state
   const [classes, setClasses] = useState<ClassDraft[]>([]);
@@ -118,6 +119,7 @@ export default function OnboardingPage() {
     try {
       if (schoolName.trim()) await api.schools.updateInfo({ name: schoolName.trim(), domain: schoolDomain || undefined });
       await api.schools.updateTheme({ primaryColor, logoUrl: logoUrl || undefined, welcomeMessage: welcomeMsg || undefined, supportEmail: supportEmail || undefined, fontFamily: "Inter" });
+      if (sizePreset) await api.schools.applySizePreset(sizePreset); // Step 9 — seed default position set
       advance();
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "Save failed"); }
     finally { setSaving(false); }
@@ -252,6 +254,7 @@ export default function OnboardingPage() {
               logoUrl={logoUrl} setLogoUrl={setLogoUrl}
               welcomeMsg={welcomeMsg} setWelcomeMsg={setWelcomeMsg}
               supportEmail={supportEmail} setSupportEmail={setSupportEmail}
+              sizePreset={sizePreset} setSizePreset={setSizePreset}
               saving={saving} onNext={saveStep1} onSkip={advance}
             />
           )}
@@ -302,15 +305,21 @@ export default function OnboardingPage() {
 }
 
 // ── Step 1: School Info ──────────────────────────────────────────
-function Step1SchoolInfo({ schoolName, setSchoolName, schoolDomain, setSchoolDomain, primaryColor, setPrimaryColor, logoUrl, setLogoUrl, welcomeMsg, setWelcomeMsg, supportEmail, setSupportEmail, saving, onNext, onSkip }: {
+function Step1SchoolInfo({ schoolName, setSchoolName, schoolDomain, setSchoolDomain, primaryColor, setPrimaryColor, logoUrl, setLogoUrl, welcomeMsg, setWelcomeMsg, supportEmail, setSupportEmail, sizePreset, setSizePreset, saving, onNext, onSkip }: {
   schoolName: string; setSchoolName: (v: string) => void;
   schoolDomain: string; setSchoolDomain: (v: string) => void;
   primaryColor: string; setPrimaryColor: (v: string) => void;
   logoUrl: string; setLogoUrl: (v: string) => void;
   welcomeMsg: string; setWelcomeMsg: (v: string) => void;
   supportEmail: string; setSupportEmail: (v: string) => void;
+  sizePreset: string; setSizePreset: (v: string) => void;
   saving: boolean; onNext: () => void; onSkip: () => void;
 }) {
+  const SIZE_OPTIONS = [
+    { key: "Compact",  label: "Compact",  hint: "Under 30 staff — finance handled by one manager; no middle-management tiers." },
+    { key: "Standard", label: "Standard", hint: "30–80 staff — the full common model, incl. Grade Heads." },
+    { key: "Large",    label: "Large",    hint: "80+ staff — adds Phase Heads and granular finance roles (Bursar, Cashier)." },
+  ];
   return (
     <div className="space-y-6">
       <WizardCard title="School Information" subtitle="Tell us about your school — this appears across the portal">
@@ -355,6 +364,19 @@ function Step1SchoolInfo({ schoolName, setSchoolName, schoolDomain, setSchoolDom
             </div>
           )}
         </div>
+      </WizardCard>
+
+      <WizardCard title="School size" subtitle="Seeds a starting set of staff positions — you can customise any of them later">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {SIZE_OPTIONS.map(o => (
+            <button key={o.key} type="button" onClick={() => setSizePreset(o.key)}
+              className={`rounded-xl border p-4 text-left transition-all ${sizePreset === o.key ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/40" : "border-gray-200 hover:border-gray-300"}`}>
+              <p className="text-sm font-semibold text-gray-900">{o.label}</p>
+              <p className="mt-1 text-xs text-gray-500">{o.hint}</p>
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-gray-400">The preset is just a starting point — the Positions admin can assign any position regardless of size.</p>
       </WizardCard>
 
       <StepNav saving={saving} onNext={onNext} onSkip={onSkip} nextLabel="Save & Continue" />

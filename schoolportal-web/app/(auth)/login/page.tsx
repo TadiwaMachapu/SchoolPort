@@ -2,6 +2,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { queryClient } from "@/shared/api/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GraduationCap, Shield, BookOpen, User, Users } from "lucide-react";
@@ -61,6 +62,9 @@ function LoginView() {
         const refreshAttrs = persist ? `; max-age=${3600 * 24 * 30}` : "";
         document.cookie = `sp_refresh_token=${encodeURIComponent(res.refreshToken)}; path=/${refreshAttrs}; SameSite=Lax`;
       }
+      // Drop any cached queries from a previous session so the new user never sees the prior
+      // account's cached /api/me (or other) data (the "Welcome back, <wrong name>" bug).
+      queryClient.clear();
       router.push("/dashboard");
       router.refresh();
     } catch (err: unknown) {

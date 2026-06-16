@@ -18,6 +18,9 @@ export interface AuthState {
   permissions: string[];     // resolved effective permission set
   gradeLevel?: number | null;   // learner's own grade (null for non-learners) — Matric Hub gate
   hasGrade12Child?: boolean;    // parent has any linked child in Grade 12 — Matric Hub gate
+  // The authenticated user, seeded server-side from /api/me (the SAME source the header uses) so
+  // name displays never read a stale client-cached profile after an account switch.
+  user?: { firstName: string; lastName: string };
 }
 
 const AuthContext = createContext<AuthState>({ identity: "", positions: [], permissions: [] });
@@ -54,4 +57,10 @@ export function usePermission(name: string): boolean {
 /** The learner's own grade level (null for non-learners). For Matric Hub / grade-gated UI. */
 export function useGradeLevel(): number | null {
   return useContext(AuthContext).gradeLevel ?? null;
+}
+
+/** The authenticated user (server-sourced, same as the header). Use for name displays so they
+ *  never show a stale client-cached profile after switching accounts. */
+export function useAuthUser(): { firstName: string; lastName: string } {
+  return useContext(AuthContext).user ?? { firstName: "", lastName: "" };
 }

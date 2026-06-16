@@ -97,6 +97,7 @@ export function deriveNav(
     f("popiaCentre") && can("system.popia_admin") && n("/popia", "POPIA Centre", "shield"),
     f("saSamsExport") && can("system.data_export") && n("/sasams", "SA-SAMS", "download"),
     can("system.users_manage") && n("/users", "Users", "users"),
+    can("system.positions_assign") && n("/positions", "Positions", "idcard"),
     hasAny(SMT) && n("/onboarding", "Setup Wizard", "rocket"),
     hasAny(SETTINGS_POS) && n("/settings", "Settings", "settings"),
   ];

@@ -2,7 +2,7 @@ import {
   LayoutDashboard, BookOpen, BookOpenCheck, GraduationCap, ClipboardList, BarChart2,
   CheckSquare, CalendarDays, MessageSquare, MessageCircle, Megaphone, TrendingUp, Users,
   Settings, Rocket, FileText, CreditCard, Route, Star, Trophy, ShieldCheck, Award, Download,
-  Wallet, Percent, Plug, type LucideIcon,
+  Wallet, Percent, Plug, IdCard, type LucideIcon,
 } from "lucide-react";
 
 // Sprint 1.5.0 Step 8 — string icon keys from lib/nav.ts → lucide components, shared by the
@@ -34,4 +34,5 @@ export const NAV_ICONS: Record<string, LucideIcon> = {
   plug: Plug,
   whatsapp: MessageCircle,
   download: Download,
+  idcard: IdCard,
 };

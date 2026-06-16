@@ -82,10 +82,14 @@ public sealed class ScopeService : IScopeService
                 .Where(cs => cs.SchoolId == schoolId && subjectIds.Contains(cs.SubjectId))
                 .Select(cs => cs.ClassId).Distinct().ToListAsync());
 
-        // GradeHead grade scopes → classes at those grade levels (UserPositionScope).
+        // GradeHead grade scopes + PhaseHead phase scopes → classes at those grade levels
+        // (UserPositionScope). Phase expands to its CAPS grades (Step 9 D4): a PhaseHead of FET
+        // oversees Gr 10–12; Senior Phase oversees Gr 7–9.
         var grades = (await PositionScopeValuesAsync(ScopeType.Grade))
             .Select(v => int.TryParse(v, out var g) ? (int?)g : null)
-            .Where(g => g is not null).Select(g => g!.Value).ToList();
+            .Where(g => g is not null).Select(g => g!.Value).ToHashSet();
+        foreach (var phase in await PositionScopeValuesAsync(ScopeType.Phase))
+            grades.UnionWith(GradesForPhase(phase));
         if (grades.Count > 0)
             classIds.UnionWith(await _db.Classes.AsNoTracking()
                 .Where(c => c.SchoolId == schoolId && c.GradeLevel != null && grades.Contains(c.GradeLevel.Value))
@@ -179,6 +183,16 @@ public sealed class ScopeService : IScopeService
     {
         if (!await CanAccessActivityAsync(activityId)) throw new ForbiddenAccessException();
     }
+
+    // CAPS phase → grade levels (Step 9 D4). Accepts "FET"/"SeniorPhase" (and a couple of
+    // tolerant spellings); unknown phases expand to nothing (no access rather than over-grant).
+    private static IEnumerable<int> GradesForPhase(string phase) =>
+        phase.Replace(" ", "").ToLowerInvariant() switch
+        {
+            "fet" => new[] { 10, 11, 12 },
+            "seniorphase" => new[] { 7, 8, 9 },
+            _ => Array.Empty<int>(),
+        };
 
     private async Task<HashSet<Guid>> PositionScopeRefIdsAsync(ScopeType type)
     {

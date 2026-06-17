@@ -34,6 +34,11 @@ public class ProgressController : ControllerBase
 
         if (studentId == Guid.Empty) return BadRequest("Student not found");
 
+        // Step 10 (burn-down, H1-class): lessonId is a route id — validate it belongs to the caller's
+        // school so a learner can't record progress against (and link to) a foreign school's lesson.
+        if (!await _context.Lessons.AnyAsync(l => l.LessonId == lessonId && l.Module.Course.SchoolId == _currentUser.SchoolId))
+            return NotFound("Lesson not found");
+
         var progress = await _context.LessonProgress
             .FirstOrDefaultAsync(p => p.LessonId == lessonId && p.StudentId == studentId);
 

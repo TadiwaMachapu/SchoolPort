@@ -72,6 +72,12 @@ public class CalendarController : ControllerBase
     [RequirePermission(PermissionKeys.CalendarManage)]
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventRequest request)
     {
+        // Step 10 (Comms cluster, H1-class): ClassId is a nullable body id — validate it belongs to
+        // the caller's school so an event can't be linked to a foreign class.
+        if (request.ClassId.HasValue &&
+            !await _context.Classes.AnyAsync(c => c.ClassId == request.ClassId.Value && c.SchoolId == _currentUser.SchoolId))
+            return NotFound("Class not found in your school.");
+
         var ev = new CalendarEvent
         {
             SchoolId = _currentUser.SchoolId,
@@ -142,6 +148,11 @@ public class CalendarController : ControllerBase
     [RequirePermission(PermissionKeys.TimetableManage)]
     public async Task<IActionResult> AddTimetableSlot([FromBody] CreateTimetableSlotRequest request)
     {
+        // Step 10 (Comms cluster, H1-class): ClassSubjectId is a body id — validate it belongs to the
+        // caller's school so a timetable slot can't be attached to a foreign class-subject.
+        if (!await _context.ClassSubjects.AnyAsync(cs => cs.ClassSubjectId == request.ClassSubjectId && cs.SchoolId == _currentUser.SchoolId))
+            return NotFound("Class-subject not found in your school.");
+
         var slot = new TimetableSlot
         {
             SchoolId = _currentUser.SchoolId,

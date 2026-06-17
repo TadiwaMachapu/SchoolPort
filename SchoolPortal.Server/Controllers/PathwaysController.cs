@@ -159,6 +159,15 @@ public class PathwaysController : ControllerBase
     public async Task<IActionResult> Enrol([FromBody] EnrolRequest request)
     {
         var schoolId = _currentUser.SchoolId;
+
+        // Step 10 (Academics cluster, H1-class guard): the StudentId/SubjectId in the body must belong
+        // to the caller's school — otherwise a cross-tenant learner/subject would be linked into this
+        // school's LearnerSubjects (the FKs resolve regardless of school; nothing else prevents it).
+        if (!await _context.Students.AnyAsync(s => s.StudentId == request.StudentId && s.SchoolId == schoolId))
+            return NotFound("Student not found in your school.");
+        if (!await _context.Subjects.AnyAsync(s => s.SubjectId == request.SubjectId && s.SchoolId == schoolId))
+            return NotFound("Subject not found in your school.");
+
         var existing = await _context.LearnerSubjects
             .FirstOrDefaultAsync(ls => ls.StudentId == request.StudentId && ls.SubjectId == request.SubjectId && ls.AcademicYearId == request.AcademicYearId);
 

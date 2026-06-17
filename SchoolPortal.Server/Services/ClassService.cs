@@ -117,8 +117,21 @@ public class ClassService : IClassService
         };
     }
 
+    // Step 10 (Academics cluster, H1-class guard): a TeacherId supplied in a create/update body must
+    // belong to the caller's school. Without this, a cross-tenant Teacher PK would link to the class
+    // (the FK to teachers resolves regardless of school — the same gap H1 closed on class-subjects).
+    private async Task EnsureTeacherInSchoolAsync(Guid? teacherId)
+    {
+        if (teacherId is null) return;
+        var ok = await _context.Teachers.AsNoTracking()
+            .AnyAsync(t => t.TeacherId == teacherId.Value && t.SchoolId == _currentUser.SchoolId);
+        if (!ok) throw new KeyNotFoundException("Teacher not found in your school.");
+    }
+
     public async Task<ClassDto> CreateClassAsync(CreateClassRequest request)
     {
+        await EnsureTeacherInSchoolAsync(request.TeacherId);
+
         var classEntity = new Class
         {
             SchoolId = _currentUser.SchoolId,
@@ -153,6 +166,8 @@ public class ClassService : IClassService
 
         if (classEntity == null)
             throw new KeyNotFoundException("Class not found");
+
+        await EnsureTeacherInSchoolAsync(request.TeacherId);
 
         classEntity.Name = request.Name;
         classEntity.GradeLevel = request.GradeLevel;
@@ -190,11 +205,27 @@ public class ClassService : IClassService
 
     public async Task BulkEnrollAsync(BulkEnrollmentRequest request)
     {
-        var classIds = request.Enrollments.Select(e => e.ClassId).ToList();
-        var studentIds = request.Enrollments.Select(e => e.StudentId).ToList();
+        var schoolId = _currentUser.SchoolId;
+        var classIds = request.Enrollments.Select(e => e.ClassId).Distinct().ToList();
+        var studentIds = request.Enrollments.Select(e => e.StudentId).Distinct().ToList();
+
+        // Step 10 (Teaching cluster, H1-class): every class AND student must belong to the caller's
+        // school before enrolling. Guards BOTH directions — a foreign student into a local class, and
+        // a local student into a foreign class — neither of which any FK prevents on its own.
+        var validClassIds = (await _context.Classes.AsNoTracking()
+            .Where(c => c.SchoolId == schoolId && classIds.Contains(c.ClassId))
+            .Select(c => c.ClassId).ToListAsync()).ToHashSet();
+        if (classIds.Any(id => !validClassIds.Contains(id)))
+            throw new KeyNotFoundException("One or more classes were not found in your school.");
+
+        var validStudentIds = (await _context.Students.AsNoTracking()
+            .Where(s => s.SchoolId == schoolId && studentIds.Contains(s.StudentId))
+            .Select(s => s.StudentId).ToListAsync()).ToHashSet();
+        if (studentIds.Any(id => !validStudentIds.Contains(id)))
+            throw new KeyNotFoundException("One or more students were not found in your school.");
 
         var existing = await _context.Enrollments
-            .Where(e => classIds.Contains(e.ClassId) && studentIds.Contains(e.StudentId))
+            .Where(e => e.SchoolId == schoolId && classIds.Contains(e.ClassId) && studentIds.Contains(e.StudentId))
             .ToListAsync();
 
         var existingLookup = existing.ToDictionary(e => (e.ClassId, e.StudentId));

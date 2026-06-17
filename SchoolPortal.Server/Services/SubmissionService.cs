@@ -38,6 +38,12 @@ public class SubmissionService : ISubmissionService
         if (studentId == Guid.Empty)
             throw new InvalidOperationException("Student not found");
 
+        // Step 10 (Teaching cluster, H1-class): assignmentId is a body id — it must belong to the
+        // caller's school, else a learner could create a submission linked to another school's
+        // assignment (the FK resolves across tenants; SchoolId alone would silently mislink).
+        if (!await _context.Assignments.AnyAsync(a => a.AssignmentId == assignmentId && a.SchoolId == _currentUser.SchoolId))
+            throw new KeyNotFoundException("Assignment not found");
+
         var submission = new Submission
         {
             AssignmentId = assignmentId,

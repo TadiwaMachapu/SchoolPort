@@ -24,6 +24,11 @@ public class FeesController : ControllerBase
         _currentUser = currentUser;
     }
 
+    // Step 10 (Finance cluster, H1-class guard): a TermId supplied in a fee body must belong to the
+    // caller's school (the FK resolves across tenants). Nullable — null means no term link.
+    private async Task<bool> TermInSchoolAsync(Guid? termId) =>
+        termId is null || await _context.Terms.AnyAsync(t => t.TermId == termId.Value && t.SchoolId == _currentUser.SchoolId);
+
     [HttpGet]
     [RequirePermission(PermissionKeys.FinanceViewAll)]
     public async Task<IActionResult> GetFees()
@@ -54,6 +59,9 @@ public class FeesController : ControllerBase
     [RequirePermission(PermissionKeys.FinanceCreateInvoice)]
     public async Task<IActionResult> CreateFee([FromBody] FeeRequest request)
     {
+        if (!await TermInSchoolAsync(request.TermId))
+            return NotFound("Term not found in your school.");
+
         var fee = new Fee
         {
             SchoolId = _currentUser.SchoolId,
@@ -88,6 +96,8 @@ public class FeesController : ControllerBase
     {
         var fee = await _context.Fees.FirstOrDefaultAsync(f => f.FeeId == id && f.SchoolId == _currentUser.SchoolId);
         if (fee == null) return NotFound();
+        if (!await TermInSchoolAsync(request.TermId))
+            return NotFound("Term not found in your school.");
 
         fee.Name = request.Name;
         fee.Description = request.Description;
@@ -144,6 +154,12 @@ public class FeesController : ControllerBase
         var fee = await _context.Fees
             .FirstOrDefaultAsync(f => f.FeeId == id && f.SchoolId == _currentUser.SchoolId);
         if (fee == null) return NotFound();
+
+        // Step 10 (Finance cluster — money crossing tenants, the worst kind): StudentId is a body id.
+        // Recording a payment for a foreign student would attribute money across schools. Validate the
+        // student belongs to the caller's school BEFORE any payment row is written (FK resolves cross-tenant).
+        if (!await _context.Students.AnyAsync(s => s.StudentId == request.StudentId && s.SchoolId == _currentUser.SchoolId))
+            return NotFound("Student not found in your school.");
 
         var payment = new FeePayment
         {

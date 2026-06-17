@@ -157,6 +157,16 @@ public class AttendanceService : IAttendanceService
             await _scope.EnsureClassAsync(classId);
 
         var schoolId = _currentUser.SchoolId;
+
+        // Step 10 (Teaching cluster, H1-class): the class is scope-checked above, but the studentId in
+        // each row is a body id — validate every student belongs to the caller's school, else a foreign
+        // learner could be attached to a local class's attendance (the FK resolves across tenants).
+        var studentIds = request.Attendances.Select(a => a.StudentId).Distinct().ToList();
+        var validStudentIds = (await _context.Students.AsNoTracking()
+            .Where(s => s.SchoolId == schoolId && studentIds.Contains(s.StudentId))
+            .Select(s => s.StudentId).ToListAsync()).ToHashSet();
+        if (studentIds.Any(id => !validStudentIds.Contains(id)))
+            throw new KeyNotFoundException("One or more students were not found in your school.");
         var totalRecords = request.Attendances.Count;
         var processedRecords = 0;
 

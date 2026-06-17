@@ -279,7 +279,13 @@ using (var scope = app.Services.CreateScope())
     }
     else
     {
-    await db.Database.MigrateAsync();
+    // Step 10 test harness: the migration chain cannot replay from scratch (documented in
+    // CLAUDE.md — InitialCreate/super_admins gaps), so WebApplicationFactory integration tests
+    // build the schema from the current model. Production and dev migrate normally.
+    if (app.Environment.IsEnvironment("Testing"))
+        await db.Database.EnsureCreatedAsync();
+    else
+        await db.Database.MigrateAsync();
     await PathwaysSeedData.SeedAsync(db, logger);
     await MatricHubSeedData.SeedAsync(db, logger);
     await PositionsSeedData.SeedAsync(db, logger);

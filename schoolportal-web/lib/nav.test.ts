@@ -100,6 +100,16 @@ describe("deriveNav — structural invariants", () => {
     expect(hrefs(principal)).toEqual(expect.arrayContaining(["/gradebook", "/reports", "/analytics"]));
   });
 
+  it("HOD reaches Subjects via academics.manage; staff without it do not (Step 9.5 Fix #5)", () => {
+    // HOD holds academics.manage but is NOT in the SMT/IT Settings gate — Subjects must still appear.
+    const hod = hrefs(nav("Staff", ["HOD"], ["academics.manage"], NO_FLAGS));
+    expect(hod).toContain("/settings/subjects");
+    expect(hod).not.toContain("/settings"); // the full Settings page stays SMT/IT-only
+    // A rank-and-file teacher without academics.manage sees neither.
+    const teacher = hrefs(nav("Staff", ["SubjectTeacher"], [], NO_FLAGS));
+    expect(teacher).not.toContain("/settings/subjects");
+  });
+
   it("flag off hides a flagged item even when the position qualifies", () => {
     // Principal holds analytics.view_school, but smartReports is off → no Analytics.
     const links = hrefs(nav("Staff", ["Principal"], ["analytics.view_school"], NO_FLAGS));

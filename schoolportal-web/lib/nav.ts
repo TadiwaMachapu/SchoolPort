@@ -98,6 +98,10 @@ export function deriveNav(
     f("saSamsExport") && can("system.data_export") && n("/sasams", "SA-SAMS", "download"),
     can("system.users_manage") && n("/users", "Users", "users"),
     can("system.positions_assign") && n("/positions", "Positions", "idcard"),
+    // Step 9.5 (Fix #5): subject management is gated by academics.manage (HOD + SMT), but the
+    // Settings nav is SMT/IT-only — so an HOD had no way to reach /settings/subjects. Surface it
+    // directly to anyone who can manage academics (redundant-but-harmless for SMT, who also have Settings).
+    can("academics.manage") && n("/settings/subjects", "Subjects", "book"),
     hasAny(SMT) && n("/onboarding", "Setup Wizard", "rocket"),
     hasAny(SETTINGS_POS) && n("/settings", "Settings", "settings"),
   ];

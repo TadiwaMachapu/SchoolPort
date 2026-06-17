@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { api, type Class, type User, type ClassSubject } from "@/lib/api";
+import { api, type Class, type User, type ClassSubject, type TeacherOption } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User as UserIcon, BookOpen } from "lucide-react";
+import { usePermission } from "@/lib/auth-context";
+import { useToastStore } from "@/stores/toast.store";
+import { User as UserIcon, BookOpen, Pencil, Check, X, Loader2 } from "lucide-react";
 
 export default function ClassDetailPage() {
   const { id }  = useParams<{ id: string }>();
@@ -17,6 +19,10 @@ export default function ClassDetailPage() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState("");
   const [tab,      setTab]      = useState<"students" | "subjects">("students");
+
+  // Step 9.5 (Build #6b): admins/HOD (academics.manage) can assign a teacher per class-subject.
+  const canManage = usePermission("academics.manage");
+  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
 
   useEffect(() => {
     Promise.allSettled([
@@ -31,6 +37,16 @@ export default function ClassDetailPage() {
     }).catch(e => setError(String(e)))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Load the assignable teacher roster only for users who can manage (others would get a 403).
+  useEffect(() => {
+    if (!canManage) return;
+    api.classSubjects.teachers().then(setTeachers).catch(() => {});
+  }, [canManage]);
+
+  // Lets the caller distinguish a save failure from a post-save refresh failure (M1) — does not swallow.
+  const reloadSubjects = () =>
+    api.classes.subjects(id).then(s => setSubjects(s as ClassSubject[]));
 
   if (loading) return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -180,9 +196,15 @@ export default function ClassDetailPage() {
                   <div className="h-10 w-10 rounded-lg bg-indigo-100 text-indigo-700 text-lg font-bold flex items-center justify-center shrink-0">
                     {sub.subjectName[0]}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-gray-900">{sub.subjectName}</p>
-                    <p className="text-sm mt-0.5 text-gray-500">{sub.teacherName ?? <span className="italic text-gray-400">No teacher assigned</span>}</p>
+                    <TeacherCell
+                      sub={sub}
+                      teachers={teachers}
+                      canManage={canManage}
+                      classId={id}
+                      onAssigned={reloadSubjects}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -190,6 +212,118 @@ export default function ClassDetailPage() {
           </div>
         )
       )}
+    </div>
+  );
+}
+
+/* ─── Per-class-subject teacher assignment (Build #6b) ─────────────────
+   Read-only viewers see just the teacher name. Managers (academics.manage) get an inline
+   edit affordance → native <select> of teachers → save (POST /class-subjects/bulk) → refresh.
+   Assign/reassign only; the bulk endpoint can't clear a teacher (logged as a follow-up). */
+function TeacherCell({
+  sub, teachers, canManage, classId, onAssigned,
+}: {
+  sub: ClassSubject;
+  teachers: TeacherOption[];
+  canManage: boolean;
+  classId: string;
+  onAssigned: () => Promise<void> | void;
+}) {
+  const toast = useToastStore();
+  const [editing, setEditing] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [sel,     setSel]     = useState(sub.teacherId ?? "");
+
+  const nameOrEmpty = sub.teacherName
+    ? <span className="text-gray-500">{sub.teacherName}</span>
+    : <span className="italic text-gray-400">No teacher assigned</span>;
+
+  if (!canManage) return <p className="text-sm mt-0.5">{nameOrEmpty}</p>;
+
+  // A3: the pencil cue reveals on hover AND keyboard focus (focus-visible), not hover-only.
+  if (!editing) {
+    return (
+      <button
+        onClick={() => { setSel(sub.teacherId ?? ""); setEditing(true); }}
+        aria-label={`${sub.teacherName ? "Change" : "Assign"} teacher for ${sub.subjectName}`}
+        className="group/edit mt-0.5 inline-flex items-center gap-1.5 text-sm hover:text-blue-600 transition-colors"
+      >
+        {nameOrEmpty}
+        <Pencil className="h-3.5 w-3.5 text-gray-400 opacity-0 transition-opacity group-hover/edit:opacity-100 group-focus-visible/edit:opacity-100" />
+      </button>
+    );
+  }
+
+  // M2: no teachers to choose from — explain why instead of showing an empty dropdown.
+  if (teachers.length === 0) {
+    return (
+      <div className="mt-1 flex items-center gap-2">
+        <span className="text-sm italic text-gray-400">No teachers found — add staff first</span>
+        <button
+          onClick={() => setEditing(false)}
+          aria-label="Cancel"
+          className="shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
+
+  async function save() {
+    if (!sel) return;
+    setSaving(true);
+    // Phase 1: the assignment itself. A failure here means nothing was saved — stay in edit.
+    try {
+      await api.classSubjects.bulkAssign([{ classId, subjectId: sub.subjectId, teacherId: sel }]);
+    } catch (e) {
+      toast.error("Could not assign teacher", e instanceof Error ? e.message : "");
+      setSaving(false);
+      return;
+    }
+    // Phase 2: assignment succeeded. A refresh failure is a DIFFERENT, non-destructive condition (M1) —
+    // the teacher IS saved; we just couldn't repaint, so say exactly that rather than "assign failed".
+    setEditing(false);
+    toast.success("Teacher assigned", `${sub.subjectName} updated`);
+    try {
+      await onAssigned();
+    } catch {
+      toast.error("List didn't refresh", "The teacher was saved — reload the page to see it.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <select
+        value={sel}
+        onChange={e => setSel(e.target.value)}
+        disabled={saving}
+        aria-label={`Teacher for ${sub.subjectName}`}
+        className="min-w-0 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+      >
+        <option value="">Select teacher…</option>
+        {teachers.map(t => <option key={t.teacherId} value={t.teacherId}>{t.name}</option>)}
+      </select>
+      <button
+        onClick={save}
+        disabled={saving || !sel}
+        aria-label="Save teacher assignment"
+        title="Save"
+        className="shrink-0 rounded-md p-1 text-green-600 hover:bg-green-50 disabled:opacity-40"
+      >
+        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+      </button>
+      <button
+        onClick={() => setEditing(false)}
+        disabled={saving}
+        aria-label="Cancel"
+        title="Cancel"
+        className="shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 disabled:opacity-40"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }

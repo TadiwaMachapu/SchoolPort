@@ -292,7 +292,9 @@ function TeacherGradebook() {
   const [classLoading, setClassLoading] = useState(true);
 
   useEffect(() => {
-    api.classes.list({ pageSize: 100 })
+    // Step 9.5 (Fix #3): scope the picker to the caller's classes. Rank-and-file teachers lack
+    // academics.manage, so an unscoped list would 403 under the tightened /api/classes anyway.
+    api.classes.list({ pageSize: 100, mine: true })
       .then(r => { setClasses(r.items); if (r.items.length > 0) setClassId(r.items[0].classId); })
       .catch(() => {})
       .finally(() => setClassLoading(false));

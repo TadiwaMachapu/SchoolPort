@@ -17,7 +17,10 @@ export default function ClassesPage() {
   const [showAdd,   setShowAdd]   = useState(false);
   const [editClass, setEditClass] = useState<Class | null>(null);
 
-  const { data, isLoading } = useClassesList({ pageSize: 50 });
+  // Step 9.5 (Fix #1): admins/HOD (academics.manage) get the full school list; other staff get
+  // their scoped classes. The backend enforces this regardless, but asking for the right one
+  // avoids a needlessly broad query and matches what the user is allowed to see.
+  const { data, isLoading } = useClassesList({ pageSize: 50, mine: !isAdmin });
   const classes = data?.items ?? [];
   const total   = data?.total ?? 0;
 

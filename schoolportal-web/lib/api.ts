@@ -455,6 +455,14 @@ export const api = {
     students: (id: string) => request<User[]>(`/api/classes/${id}/students`),
     subjects: (id: string) => request<ClassSubject[]>(`/api/classes/${id}/subjects`),
   },
+  // Step 9.5 (Build #6b): class-subject teacher assignment. Both endpoints require academics.manage.
+  classSubjects: {
+    teachers: () => request<TeacherOption[]>(`/api/class-subjects/teachers`),
+    // The bulk endpoint upserts on (classId, subjectId) and only SETS teacherId (never clears),
+    // so a single item reassigns exactly one class-subject's teacher without touching siblings.
+    bulkAssign: (items: { classId: string; subjectId: string; teacherId: string }[]) =>
+      request<void>(`/api/class-subjects/bulk`, { method: "POST", body: JSON.stringify({ classSubjects: items }) }),
+  },
 };
 
 // Types
@@ -483,6 +491,13 @@ export interface DirectoryUser {
   lastName: string;
   role: string;
   email: string;
+}
+
+// Step 9.5 (Build #6b): a selectable teacher for class-subject assignment. teacherId is the
+// Teacher entity PK (what ClassSubject.teacherId references), NOT the user id.
+export interface TeacherOption {
+  teacherId: string;
+  name: string;
 }
 
 export interface ImportCsvResult {

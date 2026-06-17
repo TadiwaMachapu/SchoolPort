@@ -10,7 +10,7 @@ namespace SchoolPortal.Server.Services;
 
 public interface IClassService
 {
-    Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool mineOnly = false);
+    Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool scopeToAccessible = false);
     Task<ClassDto> GetClassByIdAsync(Guid id);
     Task<ClassDto> CreateClassAsync(CreateClassRequest request);
     Task<ClassDto> UpdateClassAsync(Guid id, UpdateClassRequest request);
@@ -33,15 +33,16 @@ public class ClassService : IClassService
         _scope = scope;
     }
 
-    public async Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool mineOnly = false)
+    public async Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool scopeToAccessible = false)
     {
         var query = _context.Classes
             .AsNoTracking()
             .Where(c => c.SchoolId == _currentUser.SchoolId);
 
-        // Step 7: ?mine=true narrows to the caller's in-scope classes (driven by IScopeService,
-        // not the legacy role string). School-wide oversight (null scope) sees all even with mine.
-        if (mineOnly)
+        // Step 7 / 9.5: narrow to the caller's in-scope classes (driven by IScopeService, not the
+        // legacy role string). The controller sets this for everyone except academics.manage holders
+        // asking for the full list. School-wide oversight (null scope) sees all even when scoped.
+        if (scopeToAccessible)
         {
             var accessible = await _scope.GetAccessibleClassIdsAsync();
             if (accessible is not null)

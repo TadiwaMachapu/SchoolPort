@@ -26,4 +26,14 @@ public class ClassSubjectsController : ControllerBase
         await _subjectService.BulkAssignClassSubjectsAsync(request);
         return NoContent();
     }
+
+    // Step 9.5 (Build #6b): assignable teachers for the class-subject "Assign teacher" UI.
+    // Inherits the class-level academics.manage gate (same as the assignment itself).
+    [HttpGet("teachers")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTeachers()
+    {
+        var teachers = await _subjectService.GetTeachersAsync();
+        return Ok(teachers);
+    }
 }

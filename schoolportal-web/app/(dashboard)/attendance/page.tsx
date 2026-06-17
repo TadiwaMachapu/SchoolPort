@@ -181,7 +181,9 @@ function AttendanceView() {
   const [done, setDone]         = useState(false);
   const saveTimer               = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const { data: classList } = useClasses({ pageSize: 100 });
+  // Step 9.5 (Fix #4): scope the picker to the caller's classes (closes the picker-list leak;
+  // also avoids a 403 for teachers without academics.manage under the tightened /api/classes).
+  const { data: classList } = useClasses({ pageSize: 100, mine: true });
   const classes = classList?.items ?? [];
 
   useEffect(() => {

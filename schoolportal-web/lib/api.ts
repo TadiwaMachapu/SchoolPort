@@ -96,6 +96,9 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ email, password }),
       }),
+    // Refreshes the access token via the refresh-token cookie and rewrites sp_token /
+    // sp_refresh_token. Returns the new access token, or null if refresh failed. (Step 8)
+    refresh: () => refreshTokenOnce(),
   },
   me: {
     get: () => request<MeResponse>("/api/me"),
@@ -114,6 +117,8 @@ export const api = {
       request<void>("/api/schools/settings", { method: "PUT", body: JSON.stringify(body) }),
     seedCapsSubjects: () =>
       request<{ created: number; skipped: number }>("/api/schools/seed-caps-subjects", { method: "POST" }),
+    applySizePreset: (preset: string) =>
+      request<SchoolSettings>("/api/schools/apply-size-preset", { method: "POST", body: JSON.stringify({ preset }) }),
   },
   users: {
     list: (params?: { role?: string; q?: string; page?: number; pageSize?: number }) =>
@@ -138,6 +143,30 @@ export const api = {
         body: form,
       }).then(r => r.ok ? r.json() as Promise<ImportCsvResult> : r.json().then((e: { message?: string; title?: string }) => { throw new Error(e.message ?? e.title ?? r.statusText); }));
     },
+    importStaffCsv: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      const token = typeof document !== "undefined"
+        ? (() => { const m = document.cookie.match(/(?:^|; )sp_token=([^;]*)/); return m ? decodeURIComponent(m[1]) : null; })()
+        : null;
+      return fetch(`${API_URL}/api/users/import-staff-csv`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      }).then(r => r.ok ? r.json() as Promise<StaffImportResult> : r.json().then((e: { message?: string; title?: string }) => { throw new Error(e.message ?? e.title ?? r.statusText); }));
+    },
+  },
+
+  positions: {
+    catalogue: () => request<PositionCatalogueItem[]>("/api/positions/catalogue"),
+    overview: () => request<PositionOverviewItem[]>("/api/positions/overview"),
+    forUser: (userId: string) => request<UserPositions>(`/api/positions/assignments${toQueryString({ userId })}`),
+    assign: (body: AssignPositionRequest) =>
+      request<PositionAssignment>("/api/positions/assign", { method: "POST", body: JSON.stringify(body) }),
+    update: (userPositionId: string, body: UpdateAssignmentRequest) =>
+      request<PositionAssignment>(`/api/positions/assignments/${userPositionId}`, { method: "PUT", body: JSON.stringify(body) }),
+    revoke: (userPositionId: string) =>
+      request<{ revoked: boolean }>(`/api/positions/assignments/${userPositionId}/revoke`, { method: "POST" }),
   },
   subjects: {
     list: () => request<Subject[]>("/api/subjects"),
@@ -192,6 +221,7 @@ export const api = {
   },
   gradebook: {
     myGrades: () => request<GradeEntry[]>("/api/gradebook/my-grades"),
+    myAcademics: () => request<MyAcademics>("/api/gradebook/my-academics"),
     classGradebook: (classId: string, termId?: string) =>
       request<ClassGradebook>(`/api/gradebook/${classId}${termId ? `?termId=${termId}` : ""}`),
   },
@@ -425,6 +455,14 @@ export const api = {
     students: (id: string) => request<User[]>(`/api/classes/${id}/students`),
     subjects: (id: string) => request<ClassSubject[]>(`/api/classes/${id}/subjects`),
   },
+  // Step 9.5 (Build #6b): class-subject teacher assignment. Both endpoints require academics.manage.
+  classSubjects: {
+    teachers: () => request<TeacherOption[]>(`/api/class-subjects/teachers`),
+    // The bulk endpoint upserts on (classId, subjectId) and only SETS teacherId (never clears),
+    // so a single item reassigns exactly one class-subject's teacher without touching siblings.
+    bulkAssign: (items: { classId: string; subjectId: string; teacherId: string }[]) =>
+      request<void>(`/api/class-subjects/bulk`, { method: "POST", body: JSON.stringify({ classSubjects: items }) }),
+  },
 };
 
 // Types
@@ -455,6 +493,13 @@ export interface DirectoryUser {
   email: string;
 }
 
+// Step 9.5 (Build #6b): a selectable teacher for class-subject assignment. teacherId is the
+// Teacher entity PK (what ClassSubject.teacherId references), NOT the user id.
+export interface TeacherOption {
+  teacherId: string;
+  name: string;
+}
+
 export interface ImportCsvResult {
   created: number;
   failed: { row: number; reason: string }[];
@@ -473,10 +518,15 @@ export interface UserInfo {
   firstName: string;
   lastName: string;
   role: string;
+  identity: string;
 }
 export interface MeResponse {
   user: { userId: string; email: string; firstName: string; lastName: string; role: string };
   school: { schoolId: string; name: string; logoUrl?: string; primaryColor?: string };
+  // Step 8: Layer-1 identity, active positions, and the resolved effective permission set.
+  identity: string;
+  positions: { key: string; effectiveFrom: string; effectiveTo?: string; scopes: { scopeType: number; scopeRefId?: string; scopeValue?: string }[] }[];
+  permissions: string[];
 }
 export interface Paginated<T> {
   items: T[];
@@ -860,6 +910,38 @@ export interface QuizAnswer {
   isCorrect?: boolean;
   marksAwarded?: number;
 }
+// Sprint 1.5.0 Step 9 — staff import + position management.
+export interface StaffImportResult { created: number; failed: { row: number; reason: string }[]; }
+
+export interface PositionCatalogueItem {
+  key: string; displayName: string; category: string;
+  scopeType: number; scopeTypeName: string;
+  isExternal: boolean; isSystem: boolean;
+  requiresTimeLimit: boolean; requiresConsent: boolean;
+  defaultDurationHours?: number | null; inPreset: boolean;
+}
+export interface ScopeDto { scopeType: number; scopeRefId?: string | null; scopeValue?: string | null; label: string; }
+export interface PositionAssignment {
+  userPositionId: string; positionKey: string; displayName: string; category: string;
+  scopeType: number; effectiveFrom: string; effectiveTo?: string | null; isActive: boolean; scopes: ScopeDto[];
+}
+export interface UserPositions {
+  userId: string; userName: string; email: string; identity: string; assignments: PositionAssignment[];
+}
+export interface PositionHolder {
+  userPositionId: string; userId: string; userName: string;
+  effectiveFrom: string; effectiveTo?: string | null; scopes: ScopeDto[];
+}
+export interface PositionOverviewItem { positionKey: string; displayName: string; category: string; holders: PositionHolder[]; }
+export interface ScopeInput { scopeType?: number; scopeRefId?: string | null; scopeValue?: string | null; }
+export interface AssignPositionRequest {
+  userId: string; positionKey: string;
+  effectiveFrom?: string | null; effectiveTo?: string | null; consentRecordId?: string | null; scopes: ScopeInput[];
+}
+export interface UpdateAssignmentRequest {
+  effectiveFrom?: string | null; effectiveTo?: string | null; isActive?: boolean; scopes?: ScopeInput[];
+}
+
 export interface GradeEntry {
   gradeId: string;
   score: number;
@@ -870,6 +952,48 @@ export interface GradeEntry {
   class: string;
   feedback?: string;
   gradedAt: string;
+}
+
+// Step 8 — aggregated learner academics payload (My Academics page). Percentages only; CAPS
+// codes derived client-side via getCapsCode. Assignments + quizzes unified in `tasks`.
+export type TaskStatus = "not_submitted" | "submitted" | "graded";
+export type TaskTrend = "up" | "down" | "flat" | "none";
+
+export interface MyAcademicsTerm {
+  termId: string;
+  termNumber: number;
+  isCurrent: boolean;
+}
+export interface MyAcademicsSubject {
+  classSubjectId: string;
+  subjectName: string;
+  teacherName?: string | null;
+  capsPhase?: string | null;
+  termAveragePercent?: number | null;
+  tasksAssessed: number;
+  tasksTotal: number;
+  trend: TaskTrend;
+}
+export interface MyAcademicsTask {
+  taskId: string;
+  source: "assignment" | "quiz";
+  classSubjectId: string;
+  subjectName: string;
+  title: string;
+  type: string;            // TaskType (assignment) or "Quiz"
+  termNumber?: number | null;
+  date?: string | null;
+  dueAt?: string | null;
+  score?: number | null;
+  outOf?: number | null;
+  percent?: number | null;
+  status: TaskStatus;
+}
+export interface MyAcademics {
+  currentTerm?: MyAcademicsTerm | null;
+  terms: MyAcademicsTerm[];
+  subjects: MyAcademicsSubject[];
+  tasks: MyAcademicsTask[];
 }
 export interface ClassGradebook {
   students: {

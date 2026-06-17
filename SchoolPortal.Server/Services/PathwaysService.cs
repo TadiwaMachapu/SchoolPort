@@ -120,6 +120,14 @@ public class PathwaysService : IPathwaysService
     }
 
     public async Task<List<GoalWithTrackingDto>> GetLearnerGoalsAsync(Guid studentId, Guid schoolId)
+        => await GetLearnerGoalsAsync(studentId, schoolId, aps: null);
+
+    // Overload that accepts a pre-computed APS so callers which already have it (e.g. the parent
+    // dashboard) don't recompute the expensive per-subject grade-average query. Pass null to
+    // compute it here. (APS stays a LIVE calculation — NOT vw_matric_aps_summary; the parent
+    // dashboard needs current marks and the matview only refreshes manually. See CLAUDE.md.)
+    private async Task<List<GoalWithTrackingDto>> GetLearnerGoalsAsync(
+        Guid studentId, Guid schoolId, LearnerApsResult? aps)
     {
         var goals = await _context.LearnerCareerGoals
             .AsNoTracking()
@@ -131,7 +139,7 @@ public class PathwaysService : IPathwaysService
 
         if (!goals.Any()) return new List<GoalWithTrackingDto>();
 
-        var aps = await GetLearnerApsAsync(studentId, schoolId);
+        aps ??= await GetLearnerApsAsync(studentId, schoolId);
 
         return goals.Select(g => ToGoalWithTrackingDto(g, aps)).ToList();
     }
@@ -269,8 +277,9 @@ public class PathwaysService : IPathwaysService
         if (student == null)
             return new ParentPathwaysDto(Guid.Empty, "", 0, new List<GoalWithTrackingDto>());
 
-        var goals = await GetLearnerGoalsAsync(student.StudentId, schoolId);
+        // Compute APS ONCE and thread it into the goals builder (was computed twice — Sprint 1.5.0.5).
         var aps = await GetLearnerApsAsync(student.StudentId, schoolId);
+        var goals = await GetLearnerGoalsAsync(student.StudentId, schoolId, aps);
 
         return new ParentPathwaysDto(
             student.StudentId,

@@ -2,45 +2,35 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import {
-  LayoutDashboard,
-  CheckSquare,
-  ClipboardList,
-  Megaphone,
-  Settings,
-  type LucideIcon,
-} from "lucide-react";
-
-interface MobileNavItem {
-  href: string;
-  label: string;
-  Icon: LucideIcon;
-  roles: string[];
-}
-
-const mobileNavItems: MobileNavItem[] = [
-  { href: "/dashboard",     label: "Home",        Icon: LayoutDashboard, roles: ["Admin","Teacher","Student","Parent"] },
-  { href: "/attendance",    label: "Attendance",  Icon: CheckSquare,     roles: ["Admin","Teacher"] },
-  { href: "/assignments",   label: "Assignments", Icon: ClipboardList,   roles: ["Admin","Teacher","Student"] },
-  { href: "/announcements", label: "Updates",     Icon: Megaphone,       roles: ["Admin","Teacher","Student","Parent"] },
-  { href: "/settings",      label: "Settings",    Icon: Settings,        roles: ["Admin"] },
-];
+import { deriveNav, type NavContext } from "@/lib/nav";
+import { NAV_ICONS } from "@/lib/nav-icons";
+import { LayoutDashboard } from "lucide-react";
+import type { SchoolFeatures } from "@/lib/theme";
 
 interface MobileNavProps {
-  role: string;
+  identity: string;
+  positions: string[];
+  permissions: string[];
+  features: Partial<SchoolFeatures>;
+  context?: NavContext;
   primaryColor?: string;
 }
 
-export function MobileNav({ role, primaryColor = "#2563eb" }: MobileNavProps) {
+// Step 8: the bottom bar is derived from the SAME deriveNav source of truth as the desktop sidebar
+// (no hardcoded role strings). It surfaces the first few items in nav order — which are the most
+// important for each identity (Dashboard + the identity's core pages).
+export function MobileNav({ identity, positions, permissions, features, context, primaryColor = "#2563eb" }: MobileNavProps) {
   const pathname = usePathname();
 
-  const items = mobileNavItems.filter((item) => item.roles.includes(role));
+  const items = deriveNav(identity, positions, permissions, features, context ?? {})
+    .flatMap((s) => s.items)
+    .slice(0, 5);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden border-t border-gray-100 bg-white safe-area-bottom">
       {items.map((item) => {
         const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
-        const { Icon } = item;
+        const Icon = NAV_ICONS[item.icon] ?? LayoutDashboard;
         return (
           <Link
             key={item.href}
@@ -50,11 +40,10 @@ export function MobileNav({ role, primaryColor = "#2563eb" }: MobileNavProps) {
               active ? "text-gray-900" : "text-gray-400"
             )}
           >
-            <Icon
-              className="h-5 w-5"
-              style={active ? { color: primaryColor } : undefined}
-            />
-            <span style={active ? { color: primaryColor } : undefined}>{item.label}</span>
+            <Icon className="h-5 w-5" style={active ? { color: primaryColor } : undefined} />
+            <span className="truncate max-w-full px-0.5" style={active ? { color: primaryColor } : undefined}>
+              {item.label}
+            </span>
           </Link>
         );
       })}

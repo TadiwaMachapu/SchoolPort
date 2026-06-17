@@ -1,14 +1,16 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Teacher")]
+// Step 6: was [Authorize(Roles="Admin,Teacher")]. All endpoints call Anthropic → ai.use
+// (teaching + SMT + ITAdministrator). Spend is capped via School.Settings.AiMonthlyCostCapZar.
+[RequirePermission(PermissionKeys.AiUse)]
 public class AiController : ControllerBase
 {
     private readonly IAiService _aiService;

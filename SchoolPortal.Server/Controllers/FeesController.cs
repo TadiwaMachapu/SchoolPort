@@ -1,15 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin")]. Fee operations now map to fine-grained
+// finance permissions (SoD-corrected). Reads → finance.view_all (Sensitive); create/edit/delete
+// fees → finance.create_invoice; record payment → finance.capture_payment; own statement →
+// finance.view_own. Principal/Deputy no longer hold operational fee writes (FIN-5).
 public class FeesController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -21,8 +24,13 @@ public class FeesController : ControllerBase
         _currentUser = currentUser;
     }
 
+    // Step 10 (Finance cluster, H1-class guard): a TermId supplied in a fee body must belong to the
+    // caller's school (the FK resolves across tenants). Nullable — null means no term link.
+    private async Task<bool> TermInSchoolAsync(Guid? termId) =>
+        termId is null || await _context.Terms.AnyAsync(t => t.TermId == termId.Value && t.SchoolId == _currentUser.SchoolId);
+
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceViewAll)]
     public async Task<IActionResult> GetFees()
     {
         var fees = await _context.Fees
@@ -48,9 +56,12 @@ public class FeesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCreateInvoice)]
     public async Task<IActionResult> CreateFee([FromBody] FeeRequest request)
     {
+        if (!await TermInSchoolAsync(request.TermId))
+            return NotFound("Term not found in your school.");
+
         var fee = new Fee
         {
             SchoolId = _currentUser.SchoolId,
@@ -67,7 +78,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceViewAll)]
     public async Task<IActionResult> GetFee(Guid id)
     {
         var fee = await _context.Fees
@@ -80,11 +91,13 @@ public class FeesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCreateInvoice)]
     public async Task<IActionResult> UpdateFee(Guid id, [FromBody] FeeRequest request)
     {
         var fee = await _context.Fees.FirstOrDefaultAsync(f => f.FeeId == id && f.SchoolId == _currentUser.SchoolId);
         if (fee == null) return NotFound();
+        if (!await TermInSchoolAsync(request.TermId))
+            return NotFound("Term not found in your school.");
 
         fee.Name = request.Name;
         fee.Description = request.Description;
@@ -98,7 +111,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCreateInvoice)]
     public async Task<IActionResult> DeleteFee(Guid id)
     {
         var fee = await _context.Fees.FirstOrDefaultAsync(f => f.FeeId == id && f.SchoolId == _currentUser.SchoolId);
@@ -109,7 +122,7 @@ public class FeesController : ControllerBase
     }
 
     [HttpGet("{id}/payments")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceViewAll)]
     public async Task<IActionResult> GetPayments(Guid id)
     {
         var payments = await _context.FeePayments
@@ -135,12 +148,18 @@ public class FeesController : ControllerBase
     }
 
     [HttpPost("{id}/payments")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.FinanceCapturePayment)]
     public async Task<IActionResult> RecordPayment(Guid id, [FromBody] RecordPaymentRequest request)
     {
         var fee = await _context.Fees
             .FirstOrDefaultAsync(f => f.FeeId == id && f.SchoolId == _currentUser.SchoolId);
         if (fee == null) return NotFound();
+
+        // Step 10 (Finance cluster — money crossing tenants, the worst kind): StudentId is a body id.
+        // Recording a payment for a foreign student would attribute money across schools. Validate the
+        // student belongs to the caller's school BEFORE any payment row is written (FK resolves cross-tenant).
+        if (!await _context.Students.AnyAsync(s => s.StudentId == request.StudentId && s.SchoolId == _currentUser.SchoolId))
+            return NotFound("Student not found in your school.");
 
         var payment = new FeePayment
         {
@@ -160,20 +179,20 @@ public class FeesController : ControllerBase
 
     // Student/Parent: view their own outstanding and paid fees
     [HttpGet("my-statement")]
-    [Authorize(Roles = "Student,Parent")]
+    [RequirePermission(PermissionKeys.FinanceViewOwn)]
     public async Task<IActionResult> GetMyStatement()
     {
         var schoolId = _currentUser.SchoolId;
         Guid? studentId = null;
 
-        if (_currentUser.Role == "Student")
+        if (_currentUser.Identity == IdentityKeys.Learner)
         {
             studentId = await _context.Students
                 .Where(s => s.UserId == _currentUser.UserId)
                 .Select(s => (Guid?)s.StudentId)
                 .FirstOrDefaultAsync();
         }
-        else if (_currentUser.Role == "Parent")
+        else if (_currentUser.Identity == IdentityKeys.Parent)
         {
             studentId = await _context.Students
                 .Where(s => s.ParentUserId == _currentUser.UserId && s.SchoolId == schoolId)

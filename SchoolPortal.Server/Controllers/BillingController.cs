@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using Stripe;
 using Stripe.Checkout;
@@ -34,7 +35,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("subscription")]
-    [Authorize]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetSubscription()
     {
         var sub = await _context.Subscriptions
@@ -55,7 +56,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("checkout")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     public async Task<IActionResult> CreateCheckoutSession([FromBody] CreateCheckoutRequest request)
     {
         if (!PriceLookup.ContainsKey(request.Plan))
@@ -99,7 +100,7 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("portal")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     public async Task<IActionResult> CreatePortalSession()
     {
         var sub = await _context.Subscriptions
@@ -124,6 +125,7 @@ public class BillingController : ControllerBase
     // Stripe webhook handler
     [HttpPost("webhook")]
     [AllowAnonymous]
+    [AnonymousJustification("Stripe billing webhook: invoked server-to-server by Stripe with no user JWT; authenticated instead by Stripe signature verification.")]
     public async Task<IActionResult> Webhook()
     {
         var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();

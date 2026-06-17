@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type MatricDashboard, type MatricLearnerRow, type MatricStudentResult, type MatricPastPaper, type MatricQuizQuestion, type Class } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity } from "@/lib/auth-context";
 import MatricTutorCard from "@/components/matric/MatricTutorCard";
 import { Award, Loader2, AlertTriangle, CheckCircle2, AlertCircle, XCircle, BarChart2, FileText, Brain, Sparkles, ExternalLink, ChevronRight } from "lucide-react";
 
@@ -559,9 +559,7 @@ function StudentMatricView() {
 export default function MatricPage() {
   const router = useRouter();
   const hasMatric = useFeature("matricHub");
-  const [role, setRole] = useState("");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  const identity = useIdentity(); // Step 8
 
   if (!hasMatric) {
     return (
@@ -579,12 +577,12 @@ export default function MatricPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Matric Hub</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {role === "Student"
+          {identity === "Learner"
             ? "Track your Grade 12 NSC subject results and readiness."
             : "Monitor Grade 12 learner progress against NSC pass requirements."}
         </p>
       </div>
-      {role === "Student" ? <StudentMatricView /> : role ? <StaffDashboard /> : null}
+      {identity === "Learner" ? <StudentMatricView /> : identity ? <StaffDashboard /> : null}
     </div>
   );
 }

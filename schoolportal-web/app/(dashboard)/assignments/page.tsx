@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 import { useAssignments } from "@/features/assignments/api/hooks";
 import { useToastStore } from "@/stores/toast.store";
 import { AnimatePresence, motion } from "framer-motion";
@@ -26,15 +26,12 @@ function formatDue(dueAt: string) {
 
 export default function AssignmentsPage() {
   const [showCreate, setShowCreate] = useState(false);
-  const [role,       setRole]       = useState("");
   const toast = useToastStore();
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  const canCreate = usePermission("assessment.create"); // Step 8
 
   const { data, isLoading, isError, refetch } = useAssignments({ pageSize: 50 });
   const assignments = data?.items ?? [];
   const total = data?.total ?? 0;
-  const canCreate = role === "Admin" || role === "Teacher";
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">

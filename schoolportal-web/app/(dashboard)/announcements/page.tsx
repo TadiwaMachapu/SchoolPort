@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Megaphone, Trash2 } from "lucide-react";
 import { useAnnouncementsList, useCreateAnnouncement, useDeleteAnnouncement } from "@/features/announcements/api/hooks";
 import { useToastStore } from "@/stores/toast.store";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 
 const AUDIENCE_OPTIONS = ["All", "Teachers", "Students", "Parents", "Class"];
 
@@ -22,8 +22,7 @@ const AUDIENCE_COLORS: Record<string, string> = {
 
 export default function AnnouncementsPage() {
   const toast   = useToastStore();
-  const role    = getClientRole();
-  const canPost = role === "Admin" || role === "Teacher";
+  const canPost = usePermission("announcements.publish"); // Step 8
   const [showNew, setShowNew] = useState(false);
 
   const { data, isLoading } = useAnnouncementsList({ pageSize: 50 });

@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Classes;
 
@@ -7,7 +7,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+// Step 6: was [Authorize(Roles="Admin")]. Bulk roster management → system.users_manage
+// (Principal, ITAdministrator). Sensitive → DB-resolved per request.
+[RequirePermission(PermissionKeys.SystemUsersManage)]
 public class EnrolmentsController : ControllerBase
 {
     private readonly IClassService _classService;

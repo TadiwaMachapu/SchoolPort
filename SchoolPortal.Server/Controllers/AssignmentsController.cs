@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Assignments;
 using SchoolPortal.Shared.DTOs.Common;
@@ -8,7 +8,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] (class) + [Authorize(Roles="Admin,Teacher")] (writes). Views are
+// any-authenticated (platform.access); authoring assessments requires assessment.create.
 public class AssignmentsController : ControllerBase
 {
     private readonly IAssignmentService _assignmentService;
@@ -19,6 +20,7 @@ public class AssignmentsController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(PaginatedResult<AssignmentDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAssignments(
         [FromQuery] Guid? classId,
@@ -33,6 +35,7 @@ public class AssignmentsController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(AssignmentDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAssignment(Guid id)
     {
@@ -41,7 +44,7 @@ public class AssignmentsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AssessmentCreate)]
     [ProducesResponseType(typeof(AssignmentDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateAssignment([FromBody] CreateAssignmentRequest request)
     {
@@ -50,7 +53,7 @@ public class AssignmentsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AssessmentCreate)]
     [ProducesResponseType(typeof(AssignmentDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateAssignment(Guid id, [FromBody] UpdateAssignmentRequest request)
     {

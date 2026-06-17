@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type Class, type Term, type TermReport, type SmartAtRiskStudent } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
+import { usePermission } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { ReportCommentCard } from "@/components/reports/ReportCommentCard";
 import { PrincipalSummaryCard } from "@/components/reports/PrincipalSummaryCard";
@@ -90,7 +91,7 @@ export default function ReportsPage() {
   const router = useRouter();
   const hasReports = useFeature("smartReports");
   const [tab, setTab] = useState<PageTab>("term-report");
-  const [userRole, setUserRole] = useState<string>("");
+  const isAdmin = usePermission("reporting.principal_summary"); // Step 8
 
   const [classes, setClasses] = useState<Class[]>([]);
   const [terms,   setTerms]   = useState<Term[]>([]);
@@ -108,7 +109,6 @@ export default function ReportsPage() {
   const [atRiskError,   setAtRiskError]   = useState("");
 
   useEffect(() => {
-    api.me.get().then(me => setUserRole(me.user.role)).catch(() => {});
     api.classes.list({ pageSize: 100 }).then(r => {
       setClasses(r.items);
       if (r.items.length) setClassId(r.items[0].classId);
@@ -146,7 +146,6 @@ export default function ReportsPage() {
   }
 
   const selectedTerm = terms.find(t => t.termId === termId);
-  const isAdmin = userRole === "Admin";
 
   if (!hasReports) {
     return (

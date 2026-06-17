@@ -12,6 +12,12 @@ function SsoCallback() {
 
     if (token) {
       document.cookie = `sp_token=${encodeURIComponent(token)}; path=/; max-age=${8 * 3600}; SameSite=Lax`;
+      // SSO returns only the raw token (no user payload), so read the identity claim from the
+      // JWT body to set sp_identity, mirroring the email-login path.
+      try {
+        const identity = JSON.parse(atob(token.split(".")[1])).identity;
+        if (identity) document.cookie = `sp_identity=${identity}; path=/; max-age=${8 * 3600}; SameSite=Lax`;
+      } catch { /* malformed token — identity cookie simply not set */ }
       router.replace(redirect);
     } else {
       router.replace("/login?error=sso_failed");

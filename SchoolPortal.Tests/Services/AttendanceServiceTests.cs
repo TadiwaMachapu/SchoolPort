@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Attendance;
 using Xunit;
@@ -20,6 +21,7 @@ public class AttendanceServiceTests
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly Mock<INotificationService> _mockNotifications;
+    private readonly Mock<IScopeService> _mockScope;
     private readonly AttendanceService _service;
 
     public AttendanceServiceTests()
@@ -32,15 +34,21 @@ public class AttendanceServiceTests
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
         _mockNotifications = new Mock<INotificationService>();
+        _mockScope = new Mock<IScopeService>();
 
         _mockCurrentUser.Setup(x => x.SchoolId).Returns(TestSchoolId);
         _mockCurrentUser.Setup(x => x.UserId).Returns(TestUserId);
+        // Permissive scope for these legacy unit tests (unrestricted / all-access).
+        _mockScope.Setup(x => x.CanAccessClassAsync(It.IsAny<Guid>())).ReturnsAsync(true);
+        _mockScope.Setup(x => x.EnsureClassAsync(It.IsAny<Guid>())).Returns(Task.CompletedTask);
+        _mockScope.Setup(x => x.GetAccessibleClassIdsAsync()).ReturnsAsync((IReadOnlySet<Guid>?)null);
 
         _service = new AttendanceService(
             _context,
             _mockCurrentUser.Object,
             _mockLogger.Object,
-            _mockNotifications.Object);
+            _mockNotifications.Object,
+            _mockScope.Object);
 
         SeedTestData();
     }

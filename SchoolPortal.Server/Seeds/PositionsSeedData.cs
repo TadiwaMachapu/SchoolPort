@@ -1,0 +1,424 @@
+using Microsoft.EntityFrameworkCore;
+using SchoolPortal.Data;
+using SchoolPortal.Data.Entities;
+
+namespace SchoolPortal.Server.Seeds;
+
+/// <summary>
+/// Sprint 1.5.0 — seeds the global Permission and Position catalogues and the in-code
+/// position→permission map (STEP 1 §5). This is the authoritative mapping; schools do not
+/// define custom permissions.
+///
+/// SYNC-BY-KEY (STEP 3 Δ1): the seed upserts by key — missing permissions, positions, and
+/// mappings are inserted on every startup; nothing is ever deleted or mutated. This is the
+/// permanent mechanism for catalogue evolution on already-seeded databases. Idempotent:
+/// a re-run with no catalogue changes writes nothing.
+///
+/// Note: identity-implicit permissions (PermissionKeys.IdentityImplicit) are resolved in
+/// code from a user's Identity, not attached to a position — they exist in the catalogue
+/// but appear in no position map.
+/// </summary>
+public static class PositionsSeedData
+{
+    public static async Task SeedAsync(SchoolPortalDbContext db, ILogger logger)
+    {
+
+        // ── Permissions ────────────────────────────────────────────────────────────
+        Permission Perm(string key, string category, string desc) =>
+            new() { Key = key, Category = category, Description = desc };
+
+        var permissions = new[]
+        {
+            // Academic
+            Perm("marks.capture",          "Academic", "Capture marks for in-scope classes"),
+            Perm("marks.view_own",         "Academic", "View own marks (Learner, identity-implicit)"),
+            Perm("marks.view_child",       "Academic", "View linked child's marks (Parent, identity-implicit)"),
+            Perm("marks.view_subject",     "Academic", "View marks for an in-scope subject"),
+            Perm("marks.view_grade",       "Academic", "View marks for an in-scope grade"),
+            Perm("marks.view_phase",       "Academic", "View marks for an in-scope phase"),
+            Perm("marks.view_all",         "Academic", "View all marks school-wide"),
+            Perm("marks.view_class",       "Academic", "View a class's gradebook/marks matrix and submissions for grading"),
+            Perm("assessment.create",      "Academic", "Create assessments"),
+            Perm("assessment.approve_plan","Academic", "Approve assessment plans"),
+            Perm("attendance.capture",     "Academic", "Capture attendance for in-scope classes"),
+            Perm("attendance.view_own",    "Academic", "View own attendance (Learner, identity-implicit)"),
+            Perm("attendance.view_child",  "Academic", "View linked child's attendance (Parent, identity-implicit)"),
+            Perm("attendance.view_class",  "Academic", "View attendance for an in-scope class"),
+            Perm("attendance.view_grade",  "Academic", "View attendance for an in-scope grade"),
+            Perm("assignments.view_assigned","Academic", "View assigned work (Learner, identity-implicit)"),
+            Perm("assignments.submit",     "Academic", "Submit assigned work (Learner, identity-implicit)"),
+            Perm("report.draft",           "Academic", "Draft report comments"),
+            Perm("report.approve",         "Academic", "Approve reports"),
+            // Courses (LMS)
+            Perm("courses.manage",         "Courses", "Create/manage LMS course content (courses, modules, lessons)"),
+            // Communication & social (Step 6)
+            Perm("announcements.publish",  "Communication", "Create/edit/delete announcements"),
+            Perm("calendar.manage",        "Calendar", "Create/delete calendar events"),
+            Perm("timetable.manage",       "Calendar", "Manage the school timetable"),
+            Perm("activities.manage",      "Activities", "Manage sports & cultural activities and their participants"),
+            Perm("skills.endorse",         "Skills", "View and endorse learner skill entries"),
+            // Admin / system (Step 6)
+            Perm("school.manage",          "System", "Manage school profile, branding, settings, and CAPS subject seeding"),
+            Perm("academics.manage",       "System", "Manage academic structure: classes, subjects, class-subject assignments"),
+            Perm("ai.use",                 "System", "Use AI-assisted tools (grade suggestion, question generation, plagiarism check)"),
+            // Pathways
+            Perm("pathways.view_own",      "Pathways", "View own pathways (Learner, identity-implicit)"),
+            Perm("pathways.view_child",    "Pathways", "View linked child's pathways (Parent, identity-implicit)"),
+            Perm("pathways.advise",        "Pathways", "Provide pathways advice"),
+            Perm("pathways.cohort_view",   "Pathways", "View pathways across an in-scope cohort"),
+            // Discipline
+            Perm("discipline.log",         "Discipline", "Log a discipline incident"),
+            Perm("discipline.escalate",    "Discipline", "Escalate a discipline incident"),
+            Perm("discipline.resolve",     "Discipline", "Resolve a discipline incident"),
+            // Finance
+            Perm("finance.view_own",       "Finance", "View own fee statement (Learner/Parent, identity-implicit)"),
+            Perm("finance.pay",            "Finance", "Pay fees for linked children (Parent, identity-implicit)"),
+            Perm("finance.view_all",       "Finance", "View all finance records school-wide"),
+            Perm("finance.create_invoice", "Finance", "Create invoices/fees"),
+            Perm("finance.capture_payment","Finance", "Capture a payment"),
+            Perm("finance.refund",         "Finance", "Issue a refund"),
+            Perm("finance.exempt_initiate","Finance", "Initiate a fee exemption"),
+            Perm("finance.exempt_approve", "Finance", "Approve a fee exemption"),
+            Perm("finance.reports",        "Finance", "Run finance reports"),
+            Perm("finance.year_end",       "Finance", "Perform finance year-end"),
+            Perm("finance.audit_pack",     "Finance", "Generate the finance audit pack"),
+            // Communication
+            Perm("communications.message_class", "Communication", "Message an in-scope class"),
+            Perm("communications.message_grade", "Communication", "Message an in-scope grade"),
+            Perm("communications.message_all",   "Communication", "Message school-wide"),
+            Perm("communications.whatsapp_trigger","Communication", "Trigger a WhatsApp message"),
+            Perm("communications.whatsapp_admin",  "Communication", "Administer WhatsApp integration"),
+            // System
+            Perm("system.users_manage",    "System", "Create/manage users"),
+            Perm("system.positions_assign","System", "Assign/revoke positions"),
+            Perm("system.integrations",    "System", "Manage integrations"),
+            Perm("system.audit_log_view",  "System", "View the audit log"),
+            Perm("system.backup",          "System", "Manage backups"),
+            Perm("system.feature_flags",   "System", "Manage feature flags"),
+            Perm("system.data_export",     "System", "Export school data for SA-SAMS / compliance (bulk PII)"),
+            Perm("system.popia_admin",     "System", "Administer POPIA consents and data-subject requests (bulk PII)"),
+            Perm("system.refresh_views",   "System", "Refresh materialized analytics/reporting views (recomputes over all school data)"),
+            Perm("analytics.view_school",  "Analytics", "View school-wide analytics dashboards"),
+            Perm("reporting.view",         "Reporting", "View/generate class reports, term reports, at-risk lists, AI report comments, and summary views"),
+            Perm("reporting.principal_summary", "Reporting", "Generate the principal's AI class summary (end-of-term, school-wide named data)"),
+            // Platform — identity-implicit for every authenticated identity (no position map)
+            Perm("platform.access",        "Platform", "Baseline access for any authenticated user (identity-implicit, all identities)"),
+        };
+        // Sync by key: insert only what's missing; never delete or mutate existing rows.
+        var existingPermKeys = (await db.Permissions.Select(p => p.Key).ToListAsync()).ToHashSet();
+        var newPerms = permissions.Where(p => !existingPermKeys.Contains(p.Key)).ToList();
+        db.Permissions.AddRange(newPerms);
+
+        // ── Positions ──────────────────────────────────────────────────────────────
+        Position Pos(string key, string name, string category, ScopeType scope,
+                     bool external = false, bool system = false, bool timeLimit = false,
+                     bool consent = false, int? durationHours = null) =>
+            new()
+            {
+                Key = key, DisplayName = name, Category = category, ScopeType = scope,
+                IsExternal = external, IsSystem = system, RequiresTimeLimit = timeLimit,
+                RequiresConsent = consent, DefaultDurationHours = durationHours
+            };
+
+        var positions = new[]
+        {
+            // SMT
+            Pos("Principal",        "Principal",            "SMT", ScopeType.None),
+            Pos("DeputyPrincipal",  "Deputy Principal",     "SMT", ScopeType.None),
+            Pos("HOD",              "Head of Department",   "SMT", ScopeType.Subject),
+            Pos("PhaseHead",        "Phase Head",           "SMT", ScopeType.Phase),
+            Pos("GradeHead",        "Grade Head",           "SMT", ScopeType.Grade),
+            // Teaching
+            Pos("SubjectTeacher",   "Subject Teacher",      "Teaching", ScopeType.Class),
+            Pos("ClassTeacher",     "Class Teacher",        "Teaching", ScopeType.Class),
+            Pos("LOTeacher",        "LO Teacher",           "Teaching", ScopeType.Class),
+            Pos("SportCultureMIC",  "Sport/Culture MIC",    "Teaching", ScopeType.Activity),
+            // Finance
+            Pos("FinanceManager",   "Finance Manager",      "Finance", ScopeType.None),
+            Pos("BursarDebtorsClerk","Bursar/Debtors Clerk","Finance", ScopeType.None),
+            Pos("Cashier",          "Cashier",              "Finance", ScopeType.None),
+            // Operational
+            Pos("ITAdministrator",  "IT Administrator",     "Operational", ScopeType.None),
+            // External (read-only, time-limited)
+            Pos("Auditor",          "Auditor",              "External", ScopeType.None, external: true, timeLimit: true),
+            Pos("DistrictOfficial", "District Official",    "External", ScopeType.None, external: true, timeLimit: true),
+            // System (consent-gated, time-limited, all actions logged)
+            Pos("SystemSupport",    "System Support",       "System", ScopeType.None, system: true, timeLimit: true, consent: true, durationHours: 24),
+        };
+        var existingPosKeys = (await db.Positions.Select(p => p.Key).ToListAsync()).ToHashSet();
+        var newPositions = positions.Where(p => !existingPosKeys.Contains(p.Key)).ToList();
+        db.Positions.AddRange(newPositions);
+
+        if (newPerms.Count > 0 || newPositions.Count > 0)
+            await db.SaveChangesAsync();   // materialise ids before mapping sync
+
+        // ── Position → Permission map (STEP 1 §5) ────────────────────────────────────
+        // Collect the full desired mapping, then insert only the missing pairs.
+        var permIdByKey = await db.Permissions.AsNoTracking().ToDictionaryAsync(p => p.Key, p => p.PermissionId);
+        var posIdByKey = await db.Positions.AsNoTracking().ToDictionaryAsync(p => p.Key, p => p.PositionId);
+        var desired = new List<(string PosKey, string PermKey)>();
+        void Map(string positionKey, params string[] permissionKeys)
+        {
+            foreach (var pk in permissionKeys)
+                desired.Add((positionKey, pk));
+        }
+
+        Map("Principal",
+            "marks.view_all", "attendance.view_grade", "report.approve", "assessment.approve_plan",
+            "pathways.cohort_view", "discipline.escalate", "discipline.resolve",
+            "communications.message_all", "communications.whatsapp_admin",
+            "finance.view_all", "finance.reports", "finance.exempt_approve",
+            "system.users_manage", "system.positions_assign", "system.audit_log_view",
+            // Step 6 widening: Principals authorise integrations + can trigger WhatsApp messages.
+            "system.integrations", "communications.whatsapp_trigger");
+
+        Map("DeputyPrincipal",
+            "marks.view_all", "attendance.view_grade", "report.approve", "assessment.approve_plan",
+            "pathways.cohort_view", "discipline.escalate", "discipline.resolve",
+            "communications.message_all", "communications.whatsapp_admin",
+            "finance.view_all", "finance.reports", "finance.exempt_approve", "system.audit_log_view",
+            // Step 6 widening: Deputies authorise integrations + can trigger WhatsApp messages.
+            "system.integrations", "communications.whatsapp_trigger");
+
+        Map("HOD",
+            "marks.view_subject", "assessment.approve_plan", "report.approve", "attendance.view_class",
+            "communications.message_class", "discipline.log", "discipline.escalate");
+
+        Map("PhaseHead",
+            "marks.view_phase", "attendance.view_grade", "report.approve",
+            "discipline.escalate", "discipline.resolve", "communications.message_grade");
+
+        Map("GradeHead",
+            "marks.view_grade", "attendance.view_grade", "discipline.log", "discipline.escalate",
+            "discipline.resolve", "communications.message_grade", "pathways.cohort_view",
+            "communications.whatsapp_trigger"); // Step 6 widening
+
+        Map("SubjectTeacher",
+            "marks.capture", "marks.view_subject", "assessment.create", "attendance.capture",
+            "attendance.view_class", "report.draft", "communications.message_class", "discipline.log");
+
+        Map("ClassTeacher",
+            "attendance.capture", "attendance.view_class", "report.draft",
+            "discipline.log", "discipline.escalate", "communications.message_class",
+            "communications.whatsapp_trigger"); // Step 6 widening
+
+        Map("LOTeacher",
+            "marks.capture", "attendance.capture", "pathways.advise", "pathways.cohort_view",
+            "communications.message_class", "discipline.log");
+
+        Map("SportCultureMIC",
+            "attendance.capture", "communications.message_class", "discipline.log",
+            "communications.whatsapp_trigger"); // Step 6 widening
+
+        Map("FinanceManager",
+            "finance.view_all", "finance.create_invoice", "finance.capture_payment", "finance.refund",
+            "finance.exempt_initiate", "finance.reports",
+            "finance.year_end", "finance.audit_pack",
+            "communications.whatsapp_trigger"); // Step 6 widening
+            // NOTE: finance.exempt_approve intentionally NOT granted (SoD — FM initiates, SMT approves; FIN-1).
+
+        Map("BursarDebtorsClerk",
+            // Capture-and-chase role only — NOT fee creation or exemption initiation (SoD; FIN-2).
+            "finance.view_all", "finance.capture_payment", "finance.reports");
+
+        Map("Cashier",
+            "finance.view_all", "finance.capture_payment");
+
+        Map("ITAdministrator",
+            "system.users_manage", "system.positions_assign", "system.integrations",
+            "system.audit_log_view", "system.backup", "system.feature_flags",
+            "communications.whatsapp_admin"); // Step 6 widening: IT admins administer the WhatsApp integration
+
+        Map("Auditor",
+            "finance.view_all", "finance.reports", "finance.audit_pack",
+            "system.audit_log_view", "marks.view_all");
+
+        Map("DistrictOfficial",
+            "marks.view_all", "attendance.view_grade", "finance.reports");
+
+        Map("SystemSupport",
+            "system.audit_log_view");
+
+        // SA-SAMS / compliance bulk-PII export (Step 6 #27). Compliance/academic capability —
+        // NOT granted to Finance or teaching positions. Sensitive: DB-resolved per request.
+        Map("Principal",        "system.data_export");
+        Map("DeputyPrincipal",  "system.data_export");
+        Map("ITAdministrator",  "system.data_export");
+        Map("Auditor",          "system.data_export");
+        Map("DistrictOfficial", "system.data_export");
+
+        // POPIA administration (Step 6 #23). Information Officer = head of organisation (Principal),
+        // delegable to a deputy. Governance/legal function — NOT IT or external positions.
+        Map("Principal",        "system.popia_admin");
+        Map("DeputyPrincipal",  "system.popia_admin");
+
+        // School-wide analytics (Step 6 #3). SMT + academic oversight ONLY — intentionally NOT
+        // rank-and-file teachers; scoped teacher analytics come from Gradebook/Attendance.
+        Map("Principal",        "analytics.view_school");
+        Map("DeputyPrincipal",  "analytics.view_school");
+        Map("HOD",              "analytics.view_school");
+        Map("PhaseHead",        "analytics.view_school");
+        Map("GradeHead",        "analytics.view_school");
+
+        // Reporting (Step 6 #26). reporting.view = view/generate class reports, at-risk, AI
+        // comments, and summary views (teaching + academic oversight + SMT). NOTE: report.draft
+        // stays reserved for comment SUBMISSION; AI comment GENERATION is reporting.view (D-R2).
+        Map("SubjectTeacher",   "reporting.view");
+        Map("ClassTeacher",     "reporting.view");
+        Map("LOTeacher",        "reporting.view");
+        Map("HOD",              "reporting.view");
+        Map("PhaseHead",        "reporting.view");
+        Map("GradeHead",        "reporting.view");
+        Map("Principal",        "reporting.view");
+        Map("DeputyPrincipal",  "reporting.view");
+        // Principal's end-of-term AI summary — Principal/Deputy only.
+        Map("Principal",        "reporting.principal_summary");
+        Map("DeputyPrincipal",  "reporting.principal_summary");
+
+        // ── Teaching cluster (Step 6) ────────────────────────────────────────────────
+        // marks.view_class: view a class gradebook/submissions/quiz attempts (teaching + oversight).
+        Map("SubjectTeacher",   "marks.view_class");
+        Map("ClassTeacher",     "marks.view_class");
+        Map("HOD",              "marks.view_class");
+        Map("PhaseHead",        "marks.view_class");
+        Map("GradeHead",        "marks.view_class");
+        Map("Principal",        "marks.view_class");
+        Map("DeputyPrincipal",  "marks.view_class");
+
+        // courses.manage: author/manage LMS course content.
+        Map("SubjectTeacher",   "courses.manage");
+        Map("ClassTeacher",     "courses.manage");
+        Map("LOTeacher",        "courses.manage");
+        Map("HOD",              "courses.manage");
+        Map("Principal",        "courses.manage");
+        Map("DeputyPrincipal",  "courses.manage");
+
+        // attendance.view_class WIDENED to oversight (already held by SubjectTeacher/ClassTeacher/HOD)
+        // so it matches marks.view_class — oversight can view a class's attendance. Semantic
+        // separation kept: attendance endpoints use attendance.view_class, not marks.view_class.
+        Map("PhaseHead",        "attendance.view_class");
+        Map("GradeHead",        "attendance.view_class");
+        Map("Principal",        "attendance.view_class");
+        Map("DeputyPrincipal",  "attendance.view_class");
+
+        // assessment.create WIDENED to LOTeacher (TC-2): LO teachers author assessments too.
+        Map("LOTeacher",        "assessment.create");
+
+        // ── Communication & social cluster (Step 6) ──────────────────────────────────
+        // announcements.publish — teaching + SMT (CS-1).
+        Map("SubjectTeacher",   "announcements.publish");
+        Map("ClassTeacher",     "announcements.publish");
+        Map("LOTeacher",        "announcements.publish");
+        Map("SportCultureMIC",  "announcements.publish");
+        Map("HOD",              "announcements.publish");
+        Map("PhaseHead",        "announcements.publish");
+        Map("GradeHead",        "announcements.publish");
+        Map("Principal",        "announcements.publish");
+        Map("DeputyPrincipal",  "announcements.publish");
+
+        // calendar.manage — teaching + SMT (CS-3). (SportCultureMIC not included.)
+        Map("SubjectTeacher",   "calendar.manage");
+        Map("ClassTeacher",     "calendar.manage");
+        Map("LOTeacher",        "calendar.manage");
+        Map("HOD",              "calendar.manage");
+        Map("PhaseHead",        "calendar.manage");
+        Map("GradeHead",        "calendar.manage");
+        Map("Principal",        "calendar.manage");
+        Map("DeputyPrincipal",  "calendar.manage");
+
+        // timetable.manage — SMT only (CS-4).
+        Map("Principal",        "timetable.manage");
+        Map("DeputyPrincipal",  "timetable.manage");
+
+        // activities.manage — MIC + academic oversight + SMT (CS-5). MIC→own activity in Step 7.
+        Map("SportCultureMIC",  "activities.manage");
+        Map("HOD",              "activities.manage");
+        Map("GradeHead",        "activities.manage");
+        Map("Principal",        "activities.manage");
+        Map("DeputyPrincipal",  "activities.manage");
+
+        // skills.endorse — teaching + SMT (CS-6). Staff trust action; never platform.access.
+        Map("SubjectTeacher",   "skills.endorse");
+        Map("ClassTeacher",     "skills.endorse");
+        Map("LOTeacher",        "skills.endorse");
+        Map("SportCultureMIC",  "skills.endorse");
+        Map("HOD",              "skills.endorse");
+        Map("PhaseHead",        "skills.endorse");
+        Map("GradeHead",        "skills.endorse");
+        Map("Principal",        "skills.endorse");
+        Map("DeputyPrincipal",  "skills.endorse");
+
+        // ── Admin / system cluster (Step 6) ──────────────────────────────────────────
+        // school.manage — Principal/Deputy only (AS-1).
+        Map("Principal",        "school.manage");
+        Map("DeputyPrincipal",  "school.manage");
+
+        // academics.manage — Principal/Deputy/HOD (AS-3). ClassSubjects bulk tightened off Teacher.
+        Map("Principal",        "academics.manage");
+        Map("DeputyPrincipal",  "academics.manage");
+        Map("HOD",              "academics.manage");
+
+        // ai.use — teaching + SMT + ITAdministrator (diagnostics) (AS-5). Cost-capped via School.Settings.
+        Map("SubjectTeacher",   "ai.use");
+        Map("ClassTeacher",     "ai.use");
+        Map("LOTeacher",        "ai.use");
+        Map("HOD",              "ai.use");
+        Map("PhaseHead",        "ai.use");
+        Map("GradeHead",        "ai.use");
+        Map("Principal",        "ai.use");
+        Map("DeputyPrincipal",  "ai.use");
+        Map("ITAdministrator",  "ai.use");
+
+        // system.feature_flags WIDENED to SMT (was ITAdministrator only) so admins can toggle features (AS-2).
+        Map("Principal",        "system.feature_flags");
+        Map("DeputyPrincipal",  "system.feature_flags");
+
+        // ── Sprint 1.5.0.5 ───────────────────────────────────────────────────────────
+        // system.refresh_views — manually refresh the materialized analytics/reporting views
+        // (Sensitive: recomputes over all school data). SMT + IT only; no auto-refresh on grade save.
+        Map("Principal",        "system.refresh_views");
+        Map("DeputyPrincipal",  "system.refresh_views");
+        Map("ITAdministrator",  "system.refresh_views");
+
+        var existingPairs = (await db.PositionPermissions.AsNoTracking()
+                .Select(pp => new { pp.PositionId, pp.PermissionId }).ToListAsync())
+            .Select(x => (x.PositionId, x.PermissionId)).ToHashSet();
+
+        var newMappings = 0;
+        foreach (var (posKey, permKey) in desired)
+        {
+            var pair = (posIdByKey[posKey], permIdByKey[permKey]);
+            if (existingPairs.Contains(pair)) continue;
+            db.PositionPermissions.Add(new PositionPermission { PositionId = pair.Item1, PermissionId = pair.Item2 });
+            newMappings++;
+        }
+        if (newMappings > 0) await db.SaveChangesAsync();
+
+        // ── SoD revocations (Step 6 Finance audit, FIN-1/FIN-2; applied 2026-06-14) ────────
+        // DELIBERATE EXCEPTION to the additive-only sync above: these pairs were seeded
+        // historically but create segregation-of-duties violations, so they must be REMOVED from
+        // already-seeded databases (incl. live) — a fresh install and the live DB must end up with
+        // the same security properties. Idempotent delete-if-present; a no-op on a fresh DB where
+        // the additive sync above never created them. See CLAUDE.md "Permission catalogue widenings".
+        var revocations = new[]
+        {
+            ("FinanceManager",     "finance.exempt_approve"),  // FM initiates; SMT approves (FIN-1)
+            ("BursarDebtorsClerk", "finance.create_invoice"),  // Bursar is capture-and-chase, not fee creation (FIN-2)
+            ("BursarDebtorsClerk", "finance.exempt_initiate"),
+        };
+        var revoked = 0;
+        foreach (var (posKey, permKey) in revocations)
+        {
+            if (!posIdByKey.TryGetValue(posKey, out var posId) ||
+                !permIdByKey.TryGetValue(permKey, out var permId)) continue;
+            var pair = await db.PositionPermissions
+                .FirstOrDefaultAsync(pp => pp.PositionId == posId && pp.PermissionId == permId);
+            if (pair != null) { db.PositionPermissions.Remove(pair); revoked++; }
+        }
+        if (revoked > 0) await db.SaveChangesAsync();
+
+        if (newPerms.Count > 0 || newPositions.Count > 0 || newMappings > 0 || revoked > 0)
+            logger.LogInformation("Catalogue sync: +{Perms} permissions, +{Pos} positions, +{Map} mappings, -{Rev} SoD revocations.",
+                newPerms.Count, newPositions.Count, newMappings, revoked);
+    }
+}

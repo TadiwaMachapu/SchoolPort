@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Schools;
 
@@ -10,7 +10,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+// Step 6: was [Authorize(Roles = "Admin")] — now per-action permissions. Reads/integration
+// administration require whatsapp_admin; sending the absence broadcast requires whatsapp_trigger.
 public class WhatsAppController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -24,6 +25,7 @@ public class WhatsAppController : ControllerBase
 
     // GET /api/whatsapp/settings
     [HttpGet("settings")]
+    [RequirePermission(PermissionKeys.CommunicationsWhatsAppAdmin)]
     public async Task<IActionResult> GetSettings()
     {
         var school = await _context.Schools
@@ -37,6 +39,7 @@ public class WhatsAppController : ControllerBase
 
     // PUT /api/whatsapp/settings
     [HttpPut("settings")]
+    [RequirePermission(PermissionKeys.CommunicationsWhatsAppAdmin)]
     public async Task<IActionResult> UpdateSettings([FromBody] WhatsAppConfig config)
     {
         var school = await _context.Schools
@@ -52,6 +55,7 @@ public class WhatsAppController : ControllerBase
 
     // GET /api/whatsapp/log
     [HttpGet("log")]
+    [RequirePermission(PermissionKeys.CommunicationsWhatsAppAdmin)]
     public async Task<IActionResult> GetLog([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
         var query = _context.WhatsAppLogs
@@ -66,6 +70,7 @@ public class WhatsAppController : ControllerBase
 
     // POST /api/whatsapp/compose — manually compose and queue a message
     [HttpPost("compose")]
+    [RequirePermission(PermissionKeys.CommunicationsWhatsAppAdmin)]
     public async Task<IActionResult> Compose([FromBody] ComposeRequest request)
     {
         var school = await _context.Schools
@@ -95,6 +100,7 @@ public class WhatsAppController : ControllerBase
 
     // POST /api/whatsapp/test — send a test message
     [HttpPost("test")]
+    [RequirePermission(PermissionKeys.CommunicationsWhatsAppAdmin)]
     public async Task<IActionResult> SendTest([FromBody] TestMessageRequest request)
     {
         var school = await _context.Schools
@@ -131,6 +137,7 @@ public class WhatsAppController : ControllerBase
 
     // POST /api/whatsapp/parents/absence-reminders — queue absence alerts for all absent learners today
     [HttpPost("parents/absence-reminders")]
+    [RequirePermission(PermissionKeys.CommunicationsWhatsAppTrigger)]
     public async Task<IActionResult> SendAbsenceReminders([FromQuery] DateTime? date)
     {
         var schoolId = _currentUser.SchoolId;

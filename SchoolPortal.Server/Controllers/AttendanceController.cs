@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Attendance;
 
@@ -7,7 +7,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] (class) + role overrides. Class attendance view (takes classId) →
+// attendance.view_class; learner's own → attendance.view_own; capture → attendance.capture.
 public class AttendanceController : ControllerBase
 {
     private readonly IAttendanceService _attendanceService;
@@ -18,6 +19,7 @@ public class AttendanceController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(PermissionKeys.AttendanceViewClass)]
     [ProducesResponseType(typeof(List<AttendanceDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAttendance([FromQuery] Guid classId, [FromQuery] DateTime date)
     {
@@ -26,7 +28,7 @@ public class AttendanceController : ControllerBase
     }
 
     [HttpGet("mine")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.AttendanceViewOwn)]
     [ProducesResponseType(typeof(List<MyAttendanceSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyAttendance([FromQuery] int? month, [FromQuery] int? year)
     {
@@ -35,7 +37,7 @@ public class AttendanceController : ControllerBase
     }
 
     [HttpPost("bulk")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AttendanceCapture)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> BulkUpsertAttendance([FromBody] BulkAttendanceRequest request)
     {

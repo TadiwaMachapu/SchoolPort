@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Hubs;
 using SchoolPortal.Server.Services;
 
@@ -11,7 +11,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin,Teacher")] on class-discussion creation.
+// Own threads/DMs/sending → platform.access (participant-checked in code); creating a class
+// discussion → communications.message_class (class-teacher function, CS-2).
 public class MessagesController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -26,6 +28,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpGet("threads")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetThreads()
     {
         var userId = _currentUser.UserId;
@@ -64,6 +67,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpGet("threads/{threadId}")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetMessages(Guid threadId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
         var userId = _currentUser.UserId;
@@ -104,6 +108,7 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost("threads/{threadId}/messages")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> SendMessage(Guid threadId, [FromBody] SendMessageRequest request)
     {
         var userId = _currentUser.UserId;
@@ -152,10 +157,16 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost("threads/direct")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> CreateDirectThread([FromBody] CreateDirectThreadRequest request)
     {
         var userId = _currentUser.UserId;
         var schoolId = _currentUser.SchoolId;
+
+        // Step 10 (Comms cluster, H1-class): RecipientUserId is a body id — you must not be able to
+        // open a DM thread with a user from another school (the participant FK resolves cross-tenant).
+        if (!await _context.Users.AnyAsync(u => u.UserId == request.RecipientUserId && u.SchoolId == schoolId))
+            return NotFound("Recipient not found in your school.");
 
         // Check if thread already exists between these two users
         var existing = await _context.MessageThreads
@@ -186,10 +197,16 @@ public class MessagesController : ControllerBase
     }
 
     [HttpPost("threads/class/{classId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CommunicationsMessageClass)]
     public async Task<IActionResult> CreateClassDiscussion(Guid classId, [FromBody] CreateDirectThreadRequest request)
     {
         var schoolId = _currentUser.SchoolId;
+
+        // Step 10 (Comms cluster, H1-class): classId is a route id — without this, a foreign class
+        // would be gathered (its enrolled learners + teachers pulled into a thread), aggregating
+        // another school's users. Validate the class belongs to the caller's school.
+        if (!await _context.Classes.AnyAsync(c => c.ClassId == classId && c.SchoolId == schoolId))
+            return NotFound("Class not found in your school.");
 
         var enrolledUserIds = await _context.Enrollments
             .Where(e => e.ClassId == classId && e.IsActive)

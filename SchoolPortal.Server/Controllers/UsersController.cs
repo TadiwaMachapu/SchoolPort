@@ -1,8 +1,8 @@
 using System.Text;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Common;
 using SchoolPortal.Shared.DTOs.Users;
@@ -11,22 +11,25 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin")]. User management → system.users_manage
+// (Sensitive). The directory lookup stays any-authenticated (platform.access) for recipient search.
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly ICurrentUserService _currentUser;
     private readonly SchoolPortalDbContext _context;
+    private readonly IStaffImportService _staffImport;
 
-    public UsersController(IUserService userService, ICurrentUserService currentUser, SchoolPortalDbContext context)
+    public UsersController(IUserService userService, ICurrentUserService currentUser, SchoolPortalDbContext context, IStaffImportService staffImport)
     {
         _userService = userService;
         _currentUser = currentUser;
         _context = context;
+        _staffImport = staffImport;
     }
 
     [HttpGet]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
     [ProducesResponseType(typeof(PaginatedResult<UserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsers(
         [FromQuery] string? role,
@@ -43,6 +46,7 @@ public class UsersController : ControllerBase
     /// Available to any authenticated user so that Teachers and Students can find message recipients.
     /// </summary>
     [HttpGet("directory")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(IEnumerable<DirectoryUserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDirectory([FromQuery] string? q)
     {
@@ -78,7 +82,7 @@ public class UsersController : ControllerBase
     /// Returns a CSV template with headers for bulk user import.
     /// </summary>
     [HttpGet("import-csv")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
     public IActionResult GetImportCsvTemplate()
     {
         var csv = "FirstName,LastName,Email,Role\n";
@@ -89,8 +93,30 @@ public class UsersController : ControllerBase
     /// <summary>
     /// Accepts a multipart CSV upload and bulk-creates users. Returns a summary of created/failed rows.
     /// </summary>
+    // Sprint 1.5.0 Step 9 — staff import WITH positions + scopes (separate from the simple import-csv).
+    [HttpGet("import-staff-csv")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
+    public IActionResult GetStaffImportTemplate()
+    {
+        var bytes = Encoding.UTF8.GetBytes(_staffImport.TemplateCsv());
+        return File(bytes, "text/csv", "staff_import_template.csv");
+    }
+
+    [HttpPost("import-staff-csv")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
+    public async Task<IActionResult> ImportStaffCsv(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "No file uploaded." });
+        if (!file.ContentType.Contains("csv") && !file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "File must be a CSV." });
+
+        var result = await _staffImport.ImportAsync(file.OpenReadStream());
+        return Ok(new { created = result.Created, failed = result.Failed });
+    }
+
     [HttpPost("import-csv")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ImportCsv(IFormFile file)
@@ -179,7 +205,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
     {
@@ -188,7 +214,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
@@ -198,7 +224,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemUsersManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteUser(Guid id)

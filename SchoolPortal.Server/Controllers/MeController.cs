@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Users;
 
@@ -7,7 +7,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize]. Returns the current user's own profile → platform.access (D1).
+[RequirePermission(PermissionKeys.PlatformAccess)]
 public class MeController : ControllerBase
 {
     private readonly IUserService _userService;

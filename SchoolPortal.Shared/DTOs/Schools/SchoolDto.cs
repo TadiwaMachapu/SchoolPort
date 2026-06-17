@@ -106,6 +106,13 @@ public class SchoolSettings
     public string Locale { get; set; } = "en-US";
     public WhatsAppConfig WhatsApp { get; set; } = new();
     public decimal AiMonthlyCostCapZar { get; set; } = 100.00m;
+
+    // Sprint 1.5.0 Step 9 — onboarding size preset. SizePreset records the chosen starting point;
+    // EnabledPositionKeys is the preset's DEFAULT seeded set (ADVISORY ONLY — the position UI/CSV
+    // may still assign any catalogue position; the preset just drives the suggested set). Stored in
+    // the Settings jsonb (no migration).
+    public string? SizePreset { get; set; }                          // "Compact" | "Standard" | "Large"
+    public List<string> EnabledPositionKeys { get; set; } = new();
 }
 
 public class GradeScaleEntry
@@ -165,6 +172,11 @@ public class UpdateSchoolSettingsRequest
     public StudentIdConfig? StudentIdConfig { get; set; }
     public string? Timezone { get; set; }
     public string? Locale { get; set; }
+}
+
+public class ApplySizePresetRequest
+{
+    public string Preset { get; set; } = null!; // Compact | Standard | Large
 }
 
 public class SchoolSummaryDto

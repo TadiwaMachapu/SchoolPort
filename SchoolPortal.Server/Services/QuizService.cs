@@ -114,6 +114,13 @@ public class QuizService : IQuizService
 
     public async Task<QuizDto> CreateQuizAsync(CreateQuizRequest request)
     {
+        // Step 10 (Teaching cluster, H1-class): a ClassSubjectId supplied in the body must belong to
+        // the caller's school, else a quiz would link to another school's class-subject (the FK
+        // resolves across tenants). Nullable — only validated when a value is supplied.
+        if (request.ClassSubjectId.HasValue &&
+            !await _context.ClassSubjects.AnyAsync(cs => cs.ClassSubjectId == request.ClassSubjectId.Value && cs.SchoolId == _currentUser.SchoolId))
+            throw new KeyNotFoundException("ClassSubject not found");
+
         var quiz = new Quiz
         {
             SchoolId = _currentUser.SchoolId,
@@ -209,10 +216,20 @@ public class QuizService : IQuizService
 
     public async Task<QuizAttemptDto> SubmitAttemptAsync(Guid attemptId, SubmitQuizRequest request)
     {
+        // Step 10 (Teaching cluster, IDOR): the attempt must belong to the CALLER (own student) and
+        // their school — previously it loaded by attemptId alone, so a learner could submit/score
+        // another student's (or another school's) in-progress attempt by guessing its id.
+        var myStudentId = await _context.Students
+            .Where(s => s.UserId == _currentUser.UserId && s.SchoolId == _currentUser.SchoolId)
+            .Select(s => s.StudentId).FirstOrDefaultAsync();
+
         var attempt = await _context.QuizAttempts
             .Include(a => a.Quiz).ThenInclude(q => q.Questions).ThenInclude(q => q.Options)
             .Include(a => a.Student)
-            .FirstOrDefaultAsync(a => a.AttemptId == attemptId && !a.IsCompleted)
+            .FirstOrDefaultAsync(a => a.AttemptId == attemptId
+                && a.SchoolId == _currentUser.SchoolId
+                && a.StudentId == myStudentId
+                && !a.IsCompleted)
             ?? throw new KeyNotFoundException("Attempt not found or already submitted");
 
         decimal totalScore = 0;

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonCards } from "@/components/ui/skeleton";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 import { BookOpen, Layers, PlayCircle } from "lucide-react";
 
 interface Course {
@@ -41,9 +41,7 @@ export default function CoursesPage() {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [role,       setRole]       = useState("");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  const canCreate = usePermission("courses.manage"); // Step 8
 
   if (!hasVirtualClassroom) {
     return (
@@ -71,8 +69,6 @@ export default function CoursesPage() {
   }
 
   useEffect(() => { load(); }, []);
-
-  const canCreate = role === "Admin" || role === "Teacher";
 
   return (
     <div className="p-6 lg:p-8">

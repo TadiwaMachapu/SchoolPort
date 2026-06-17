@@ -13,6 +13,7 @@ public interface ISchoolService
     Task<SchoolDto> UpdateFeaturesAsync(UpdateSchoolFeaturesRequest request);
     Task<SchoolSettings> GetSettingsAsync();
     Task<SchoolSettings> UpdateSettingsAsync(UpdateSchoolSettingsRequest request);
+    Task<SchoolSettings> ApplySizePresetAsync(string preset);
 }
 
 public class SchoolService : ISchoolService
@@ -115,6 +116,28 @@ public class SchoolService : ISchoolService
         if (request.Timezone != null) school.Settings.Timezone = request.Timezone;
         if (request.Locale != null) school.Settings.Locale = request.Locale;
         school.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return school.Settings;
+    }
+
+    public async Task<SchoolSettings> ApplySizePresetAsync(string preset)
+    {
+        if (!Seeds.SizePresets.IsValid(preset))
+            throw new ArgumentException($"Unknown size preset '{preset}'. Expected Compact, Standard, or Large.");
+
+        var school = await _context.Schools
+            .FirstOrDefaultAsync(s => s.SchoolId == _currentUser.SchoolId)
+            ?? throw new KeyNotFoundException("School not found");
+
+        school.Settings ??= new();
+        school.Settings.SizePreset = preset.Trim();
+        // ADVISORY default set (D2) — not a hard gate; the position UI/CSV may assign beyond this.
+        school.Settings.EnabledPositionKeys = Seeds.SizePresets.KeysFor(preset).ToList();
+        school.UpdatedAt = DateTime.UtcNow;
+
+        // jsonb column: force the whole Settings document to persist (in-place nested mutation
+        // isn't always picked up by change tracking).
+        _context.Entry(school).Property(s => s.Settings).IsModified = true;
         await _context.SaveChangesAsync();
         return school.Settings;
     }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Assignments;
 using SchoolPortal.Shared.DTOs.Common;
 
@@ -12,14 +13,16 @@ public class AssignmentService : IAssignmentService
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<AssignmentService> _logger;
     private readonly INotificationService _notifications;
+    private readonly IScopeService _scope;
 
     public AssignmentService(SchoolPortalDbContext context, ICurrentUserService currentUser,
-        ILogger<AssignmentService> logger, INotificationService notifications)
+        ILogger<AssignmentService> logger, INotificationService notifications, IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
         _logger = logger;
         _notifications = notifications;
+        _scope = scope;
     }
 
     public async Task<PaginatedResult<AssignmentDto>> GetAssignmentsAsync(Guid? classId, DateTime? dueFrom, DateTime? dueTo, string? status, int page, int pageSize)
@@ -49,22 +52,11 @@ public class AssignmentService : IAssignmentService
             query = query.Where(a => a.DueAt <= dueTo.Value);
         }
 
-        // Filter by role
-        if (_currentUser.Role == "Student")
-        {
-            // Students only see assignments for their enrolled classes
-            var studentId = await _context.Students
-                .Where(s => s.UserId == _currentUser.UserId)
-                .Select(s => s.StudentId)
-                .FirstOrDefaultAsync();
-
-            var enrolledClassIds = await _context.Enrollments
-                .Where(e => e.StudentId == studentId && e.IsActive)
-                .Select(e => e.ClassId)
-                .ToListAsync();
-
-            query = query.Where(a => enrolledClassIds.Contains(a.ClassSubject.ClassId));
-        }
+        // Step 7: scope to the caller's accessible classes (Learner → enrolled, Teacher → taught,
+        // Parent → children's classes, oversight → all). Explicit classId filter still applies below.
+        var accessibleClassIds = await _scope.GetAccessibleClassIdsAsync();
+        if (accessibleClassIds is not null)
+            query = query.Where(a => accessibleClassIds.Contains(a.ClassSubject.ClassId));
 
         var total = await query.CountAsync();
         var items = await query

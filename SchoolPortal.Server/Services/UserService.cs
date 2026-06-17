@@ -162,6 +162,19 @@ public class UserService : IUserService
             throw new KeyNotFoundException("User not found");
         }
 
+        // Grade context for the sidebar Matric Hub gate (Step 8). A learner's grade is their own
+        // Student row; a parent's gate is "has any linked child in Grade 12". Both are cheap
+        // keyed lookups and return the no-row default (null / false) for identities they don't apply to.
+        var gradeLevel = await _context.Students
+            .AsNoTracking()
+            .Where(s => s.UserId == userId)
+            .Select(s => s.GradeLevel)
+            .FirstOrDefaultAsync();
+
+        var hasGrade12Child = await _context.Students
+            .AsNoTracking()
+            .AnyAsync(s => s.ParentUserId == userId && s.GradeLevel == 12);
+
         return new MeResponse
         {
             User = new UserProfile
@@ -178,7 +191,25 @@ public class UserService : IUserService
                 Name = user.School.Name,
                 LogoUrl = user.School.BrandingLogoUrl,
                 PrimaryColor = user.School.BrandingPrimaryColor
-            }
+            },
+            // Step 8: Layer-1 identity, active positions, and the RESOLVED effective permission set
+            // (CurrentUserService — not recomputed) for client-side UX gating.
+            Identity = _currentUser.Identity,
+            Permissions = _currentUser.GetEffectivePermissions().ToList(),
+            Positions = _currentUser.GetActivePositions().Select(p => new MePosition
+            {
+                Key = p.Key,
+                EffectiveFrom = p.EffectiveFrom,
+                EffectiveTo = p.EffectiveTo,
+                Scopes = p.Scopes.Select(s => new MeScope
+                {
+                    ScopeType = (int)s.ScopeType,
+                    ScopeRefId = s.ScopeRefId,
+                    ScopeValue = s.ScopeValue,
+                }).ToList(),
+            }).ToList(),
+            GradeLevel = gradeLevel,
+            HasGrade12Child = hasGrade12Child,
         };
     }
 }

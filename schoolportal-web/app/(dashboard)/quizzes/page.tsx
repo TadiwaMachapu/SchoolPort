@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { SkeletonCards } from "@/components/ui/skeleton";
-import { getClientRole } from "@/lib/utils";
+import { usePermission, useIdentity } from "@/lib/auth-context";
 import {
   Brain, FileQuestion, Clock, RefreshCw, Plus, Trash2,
   ChevronLeft, ChevronRight, Eye, EyeOff, BarChart2, X,
@@ -511,9 +511,8 @@ function TakeQuizModal({ quiz, onClose }: { quiz: Quiz; onClose: () => void }) {
 }
 
 // ── Quiz card ──────────────────────────────────────────────────────
-function QuizCard({ quiz, role, onPublishToggle, onDelete, onShowResults }: {
+function QuizCard({ quiz, onPublishToggle, onDelete, onShowResults }: {
   quiz: Quiz;
-  role: Role;
   onPublishToggle: (q: Quiz) => void;
   onDelete: (id: string) => void;
   onShowResults: (q: Quiz) => void;
@@ -521,7 +520,8 @@ function QuizCard({ quiz, role, onPublishToggle, onDelete, onShowResults }: {
   const [activeQuiz, setActiveQuiz] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const canManage = role === "Admin" || role === "Teacher";
+  const canManage = usePermission("assessment.create"); // Step 8
+  const isLearner = useIdentity() === "Learner";
 
   async function togglePublish() {
     setToggling(true);
@@ -579,7 +579,7 @@ function QuizCard({ quiz, role, onPublishToggle, onDelete, onShowResults }: {
                   </button>
                 </>
               )}
-              {(role === "Student") && quiz.isPublished && (
+              {isLearner && quiz.isPublished && (
                 <Button size="sm" onClick={() => setActiveQuiz(true)}>Take Quiz</Button>
               )}
             </div>
@@ -598,13 +598,9 @@ export default function QuizzesPage() {
   const [total,        setTotal]        = useState(0);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState("");
-  const [role,         setRole]         = useState<Role>("");
   const [showBuilder,  setShowBuilder]  = useState(false);
   const [resultsQuiz,  setResultsQuiz]  = useState<Quiz | null>(null);
-
-  useEffect(() => { setRole(getClientRole()); }, []);
-
-  const canManage = role === "Admin" || role === "Teacher";
+  const canManage = usePermission("assessment.create"); // Step 8
 
   async function load() {
     setLoading(true); setError("");
@@ -618,9 +614,8 @@ export default function QuizzesPage() {
   }
 
   useEffect(() => {
-    if (!role) return;
     load();
-  }, [role]);
+  }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handlePublishToggle(updated: Quiz) {
     setQuizzes(prev => prev.map(q => q.quizId === updated.quizId ? updated : q));
@@ -672,7 +667,6 @@ export default function QuizzesPage() {
             <QuizCard
               key={q.quizId}
               quiz={q}
-              role={role}
               onPublishToggle={handlePublishToggle}
               onDelete={handleDelete}
               onShowResults={setResultsQuiz}

@@ -81,6 +81,12 @@ public class CourseService : ICourseService
 
     public async Task<CourseDto> CreateCourseAsync(CreateCourseRequest request)
     {
+        // Step 10 (Courses burn-down, H1-class): ClassSubjectId is a nullable body id — validate it
+        // belongs to the caller's school so a course can't be linked to a foreign class-subject.
+        if (request.ClassSubjectId.HasValue &&
+            !await _context.ClassSubjects.AnyAsync(cs => cs.ClassSubjectId == request.ClassSubjectId.Value && cs.SchoolId == _currentUser.SchoolId))
+            throw new KeyNotFoundException("ClassSubject not found");
+
         var course = new Course
         {
             SchoolId = _currentUser.SchoolId,
@@ -224,6 +230,11 @@ public class CourseService : ICourseService
 
     public async Task ReorderModulesAsync(Guid courseId, List<Guid> orderedModuleIds)
     {
+        // Step 10 (Courses burn-down, IDOR): the course must belong to the caller's school — otherwise
+        // a foreign courseId would let you reorder another school's modules.
+        if (!await _context.Courses.AnyAsync(c => c.CourseId == courseId && c.SchoolId == _currentUser.SchoolId))
+            throw new KeyNotFoundException("Course not found");
+
         var modules = await _context.CourseModules
             .Where(m => m.CourseId == courseId)
             .ToListAsync();
@@ -239,6 +250,11 @@ public class CourseService : ICourseService
 
     public async Task ReorderLessonsAsync(Guid moduleId, List<Guid> orderedLessonIds)
     {
+        // Step 10 (Courses burn-down, IDOR): the module's course must belong to the caller's school —
+        // otherwise a foreign moduleId would let you reorder another school's lessons.
+        if (!await _context.CourseModules.AnyAsync(m => m.ModuleId == moduleId && m.Course.SchoolId == _currentUser.SchoolId))
+            throw new KeyNotFoundException("Module not found");
+
         var lessons = await _context.Lessons
             .Where(l => l.ModuleId == moduleId)
             .ToListAsync();

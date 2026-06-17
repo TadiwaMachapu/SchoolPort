@@ -1,14 +1,15 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize]. Both endpoints are read-only term lookups → platform.access.
+[RequirePermission(PermissionKeys.PlatformAccess)]
 public class TermsController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;

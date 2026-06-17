@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Common;
 using SchoolPortal.Shared.DTOs.Quizzes;
@@ -8,7 +8,9 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Views → platform.access; authoring (create/publish/
+// delete) → assessment.create; student attempts → assignments.submit/view_assigned (implicit);
+// teacher attempt lists → marks.view_class.
 public class QuizzesController : ControllerBase
 {
     private readonly IQuizService _quizService;
@@ -19,6 +21,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(PaginatedResult<QuizDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetQuizzes(
         [FromQuery] int page = 1,
@@ -30,6 +33,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(QuizDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetQuiz(Guid id, [FromQuery] bool teacherView = false)
     {
@@ -38,7 +42,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AssessmentCreate)]
     [ProducesResponseType(typeof(QuizDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateQuiz([FromBody] CreateQuizRequest request)
     {
@@ -47,7 +51,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpPut("{id}/publish")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AssessmentCreate)]
     [ProducesResponseType(typeof(QuizDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> PublishQuiz(Guid id, [FromQuery] bool publish = true)
     {
@@ -56,7 +60,7 @@ public class QuizzesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.AssessmentCreate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteQuiz(Guid id)
     {
@@ -66,7 +70,7 @@ public class QuizzesController : ControllerBase
 
     // Student: start attempt
     [HttpPost("{id}/attempts")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.AssignmentsSubmit)]
     [ProducesResponseType(typeof(QuizAttemptDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> StartAttempt(Guid id)
     {
@@ -76,7 +80,7 @@ public class QuizzesController : ControllerBase
 
     // Student: submit attempt
     [HttpPost("attempts/{attemptId}/submit")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.AssignmentsSubmit)]
     [ProducesResponseType(typeof(QuizAttemptDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SubmitAttempt(Guid attemptId, [FromBody] SubmitQuizRequest request)
     {
@@ -86,7 +90,7 @@ public class QuizzesController : ControllerBase
 
     // Student: get my attempts
     [HttpGet("{id}/attempts/mine")]
-    [Authorize(Roles = "Student")]
+    [RequirePermission(PermissionKeys.AssignmentsViewAssigned)]
     [ProducesResponseType(typeof(List<QuizAttemptDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyAttempts(Guid id)
     {
@@ -96,7 +100,7 @@ public class QuizzesController : ControllerBase
 
     // Teacher/Admin: get all attempts
     [HttpGet("{id}/attempts")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
     [ProducesResponseType(typeof(List<QuizAttemptDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllAttempts(Guid id)
     {

@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Schools;
 using SchoolPortal.Shared.DTOs.Subjects;
@@ -8,7 +8,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin")]. Read current school → platform.access;
+// profile/branding/settings/CAPS-seed → school.manage; feature-flag toggles → system.feature_flags.
 public class SchoolsController : ControllerBase
 {
     private readonly ISchoolService _schoolService;
@@ -21,6 +22,7 @@ public class SchoolsController : ControllerBase
     }
 
     [HttpGet("current")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(SchoolDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCurrentSchool()
     {
@@ -29,7 +31,7 @@ public class SchoolsController : ControllerBase
     }
 
     [HttpPut("info")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     [ProducesResponseType(typeof(SchoolDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateInfo([FromBody] UpdateSchoolInfoRequest request)
     {
@@ -38,7 +40,7 @@ public class SchoolsController : ControllerBase
     }
 
     [HttpPut("theme")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     [ProducesResponseType(typeof(SchoolDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateTheme([FromBody] UpdateSchoolThemeRequest request)
     {
@@ -47,7 +49,7 @@ public class SchoolsController : ControllerBase
     }
 
     [HttpPut("features")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemFeatureFlags)]
     [ProducesResponseType(typeof(SchoolDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateFeatures([FromBody] UpdateSchoolFeaturesRequest request)
     {
@@ -56,7 +58,7 @@ public class SchoolsController : ControllerBase
     }
 
     [HttpGet("settings")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     public async Task<IActionResult> GetSettings()
     {
         var settings = await _schoolService.GetSettingsAsync();
@@ -64,15 +66,30 @@ public class SchoolsController : ControllerBase
     }
 
     [HttpPut("settings")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     public async Task<IActionResult> UpdateSettings([FromBody] UpdateSchoolSettingsRequest request)
     {
         var settings = await _schoolService.UpdateSettingsAsync(request);
         return Ok(settings);
     }
 
+    [HttpPost("apply-size-preset")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
+    public async Task<IActionResult> ApplySizePreset([FromBody] ApplySizePresetRequest request)
+    {
+        try
+        {
+            var settings = await _schoolService.ApplySizePresetAsync(request.Preset);
+            return Ok(settings);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("seed-caps-subjects")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SchoolManage)]
     [ProducesResponseType(typeof(CapsSeedException), StatusCodes.Status200OK)]
     public async Task<IActionResult> SeedCapsSubjects()
     {

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity } from "@/lib/auth-context";
 import { useFeature } from "@/lib/use-feature";
 import { BarChart2, Download, Users } from "lucide-react";
 
@@ -149,13 +149,10 @@ function classGradebookHtml(gradebook: ClassGradebook, className: string) {
 }
 
 export default function GradebookPage() {
-  const [role, setRole] = useState("");
+  const identity = useIdentity(); // Step 8
   const router = useRouter();
   const hasGradebook = useFeature("gradebook");
 
-  useEffect(() => { setRole(getClientRole()); }, []);
-
-  if (!role) return null;
   if (!hasGradebook) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
@@ -166,7 +163,7 @@ export default function GradebookPage() {
       </div>
     );
   }
-  if (role === "Student") return <StudentGradebook />;
+  if (identity === "Learner") return <StudentGradebook />;
   return <TeacherGradebook />;
 }
 
@@ -295,7 +292,9 @@ function TeacherGradebook() {
   const [classLoading, setClassLoading] = useState(true);
 
   useEffect(() => {
-    api.classes.list({ pageSize: 100 })
+    // Step 9.5 (Fix #3): scope the picker to the caller's classes. Rank-and-file teachers lack
+    // academics.manage, so an unscoped list would 403 under the tightened /api/classes anyway.
+    api.classes.list({ pageSize: 100, mine: true })
       .then(r => { setClasses(r.items); if (r.items.length > 0) setClassId(r.items[0].classId); })
       .catch(() => {})
       .finally(() => setClassLoading(false));

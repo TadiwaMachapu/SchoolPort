@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Grades;
 using SchoolPortal.Shared.DTOs.Submissions;
 
@@ -18,11 +19,13 @@ public class SubmissionService : ISubmissionService
 {
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IScopeService _scope;
 
-    public SubmissionService(SchoolPortalDbContext context, ICurrentUserService currentUser)
+    public SubmissionService(SchoolPortalDbContext context, ICurrentUserService currentUser, IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
+        _scope = scope;
     }
 
     public async Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? fileUrl = null, string? fileName = null)
@@ -34,6 +37,12 @@ public class SubmissionService : ISubmissionService
 
         if (studentId == Guid.Empty)
             throw new InvalidOperationException("Student not found");
+
+        // Step 10 (Teaching cluster, H1-class): assignmentId is a body id — it must belong to the
+        // caller's school, else a learner could create a submission linked to another school's
+        // assignment (the FK resolves across tenants; SchoolId alone would silently mislink).
+        if (!await _context.Assignments.AnyAsync(a => a.AssignmentId == assignmentId && a.SchoolId == _currentUser.SchoolId))
+            throw new KeyNotFoundException("Assignment not found");
 
         var submission = new Submission
         {
@@ -54,6 +63,13 @@ public class SubmissionService : ISubmissionService
 
     public async Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(Guid assignmentId)
     {
+        // Step 7 IDOR: only return submissions if the assignment's class is in the caller's scope.
+        var classId = await _context.Assignments.AsNoTracking()
+            .Where(a => a.AssignmentId == assignmentId && a.SchoolId == _currentUser.SchoolId)
+            .Select(a => (Guid?)a.ClassSubject.ClassId).FirstOrDefaultAsync();
+        if (classId is null || !await _scope.CanAccessClassAsync(classId.Value))
+            return new List<SubmissionDto>();
+
         return await _context.Submissions
             .AsNoTracking()
             .Where(s => s.AssignmentId == assignmentId && s.SchoolId == _currentUser.SchoolId)
@@ -125,17 +141,10 @@ public class SubmissionService : ISubmissionService
             .AsNoTracking()
             .Where(s => s.SchoolId == schoolId && s.Grade == null);
 
-        // Teachers only see submissions for their own assignments
-        if (_currentUser.Role == "Teacher")
-        {
-            var teacherId = await _context.Teachers
-                .Where(t => t.UserId == _currentUser.UserId)
-                .Select(t => t.TeacherId)
-                .FirstOrDefaultAsync();
-            query = query.Where(s =>
-                s.Assignment.ClassSubject.TeacherId == teacherId ||
-                s.Assignment.ClassSubject.Class.TeacherId == teacherId);
-        }
+        // Step 7: scope to the caller's accessible classes (teacher → own classes; oversight → all).
+        var accessibleClassIds = await _scope.GetAccessibleClassIdsAsync();
+        if (accessibleClassIds is not null)
+            query = query.Where(s => accessibleClassIds.Contains(s.Assignment.ClassSubject.ClassId));
 
         return await query
             .OrderBy(s => s.SubmittedAt)

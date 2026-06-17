@@ -1,14 +1,17 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Parent")]
+// Step 6: was [Authorize(Roles="Parent")]. Child-data reads use the Parent identity-implicit
+// perms (marks.view_child / attendance.view_child / pathways.view_child); the children list +
+// child assignments/announcements → platform.access (scoped to the parent's own children by the
+// ParentUserId / IsMyChild filters in code; deep scope enforcement is Step 7).
 public class ParentController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -23,6 +26,7 @@ public class ParentController : ControllerBase
     }
 
     [HttpGet("children")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetChildren()
     {
         var children = await _context.Students
@@ -43,6 +47,7 @@ public class ParentController : ControllerBase
     }
 
     [HttpGet("children/{studentId}/grades")]
+    [RequirePermission(PermissionKeys.MarksViewChild)]
     public async Task<IActionResult> GetChildGrades(Guid studentId)
     {
         if (!await IsMyChild(studentId)) return Forbid();
@@ -71,6 +76,7 @@ public class ParentController : ControllerBase
     }
 
     [HttpGet("children/{studentId}/attendance")]
+    [RequirePermission(PermissionKeys.AttendanceViewChild)]
     public async Task<IActionResult> GetChildAttendance(Guid studentId, [FromQuery] int? month, [FromQuery] int? year)
     {
         if (!await IsMyChild(studentId)) return Forbid();
@@ -112,6 +118,7 @@ public class ParentController : ControllerBase
     }
 
     [HttpGet("children/{studentId}/assignments")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetChildAssignments(Guid studentId)
     {
         if (!await IsMyChild(studentId)) return Forbid();
@@ -145,6 +152,7 @@ public class ParentController : ControllerBase
     }
 
     [HttpGet("children/{studentId}/announcements")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetSchoolAnnouncements(Guid studentId)
     {
         if (!await IsMyChild(studentId)) return Forbid();
@@ -170,6 +178,7 @@ public class ParentController : ControllerBase
     }
 
     [HttpGet("pathways")]
+    [RequirePermission(PermissionKeys.PathwaysViewChild)]
     public async Task<IActionResult> GetPathways()
     {
         var result = await _pathways.GetParentPathwaysAsync(_currentUser.UserId, _currentUser.SchoolId);

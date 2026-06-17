@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Classes;
 using SchoolPortal.Shared.DTOs.Common;
 using SchoolPortal.Shared.DTOs.Subjects;
@@ -9,7 +10,7 @@ namespace SchoolPortal.Server.Services;
 
 public interface IClassService
 {
-    Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool mineOnly = false);
+    Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool scopeToAccessible = false);
     Task<ClassDto> GetClassByIdAsync(Guid id);
     Task<ClassDto> CreateClassAsync(CreateClassRequest request);
     Task<ClassDto> UpdateClassAsync(Guid id, UpdateClassRequest request);
@@ -23,27 +24,29 @@ public class ClassService : IClassService
 {
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly IScopeService _scope;
 
-    public ClassService(SchoolPortalDbContext context, ICurrentUserService currentUser)
+    public ClassService(SchoolPortalDbContext context, ICurrentUserService currentUser, IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
+        _scope = scope;
     }
 
-    public async Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool mineOnly = false)
+    public async Task<PaginatedResult<ClassDto>> GetClassesAsync(int? year, string? q, int page, int pageSize, bool scopeToAccessible = false)
     {
         var query = _context.Classes
             .AsNoTracking()
             .Where(c => c.SchoolId == _currentUser.SchoolId);
 
-        if (mineOnly && _currentUser.Role == "Teacher")
+        // Step 7 / 9.5: narrow to the caller's in-scope classes (driven by IScopeService, not the
+        // legacy role string). The controller sets this for everyone except academics.manage holders
+        // asking for the full list. School-wide oversight (null scope) sees all even when scoped.
+        if (scopeToAccessible)
         {
-            var teacherId = await _context.Teachers
-                .Where(t => t.UserId == _currentUser.UserId)
-                .Select(t => t.TeacherId)
-                .FirstOrDefaultAsync();
-            if (teacherId != Guid.Empty)
-                query = query.Where(c => c.TeacherId == teacherId);
+            var accessible = await _scope.GetAccessibleClassIdsAsync();
+            if (accessible is not null)
+                query = query.Where(c => accessible.Contains(c.ClassId));
         }
 
         if (year.HasValue)
@@ -114,8 +117,21 @@ public class ClassService : IClassService
         };
     }
 
+    // Step 10 (Academics cluster, H1-class guard): a TeacherId supplied in a create/update body must
+    // belong to the caller's school. Without this, a cross-tenant Teacher PK would link to the class
+    // (the FK to teachers resolves regardless of school — the same gap H1 closed on class-subjects).
+    private async Task EnsureTeacherInSchoolAsync(Guid? teacherId)
+    {
+        if (teacherId is null) return;
+        var ok = await _context.Teachers.AsNoTracking()
+            .AnyAsync(t => t.TeacherId == teacherId.Value && t.SchoolId == _currentUser.SchoolId);
+        if (!ok) throw new KeyNotFoundException("Teacher not found in your school.");
+    }
+
     public async Task<ClassDto> CreateClassAsync(CreateClassRequest request)
     {
+        await EnsureTeacherInSchoolAsync(request.TeacherId);
+
         var classEntity = new Class
         {
             SchoolId = _currentUser.SchoolId,
@@ -150,6 +166,8 @@ public class ClassService : IClassService
 
         if (classEntity == null)
             throw new KeyNotFoundException("Class not found");
+
+        await EnsureTeacherInSchoolAsync(request.TeacherId);
 
         classEntity.Name = request.Name;
         classEntity.GradeLevel = request.GradeLevel;
@@ -187,11 +205,27 @@ public class ClassService : IClassService
 
     public async Task BulkEnrollAsync(BulkEnrollmentRequest request)
     {
-        var classIds = request.Enrollments.Select(e => e.ClassId).ToList();
-        var studentIds = request.Enrollments.Select(e => e.StudentId).ToList();
+        var schoolId = _currentUser.SchoolId;
+        var classIds = request.Enrollments.Select(e => e.ClassId).Distinct().ToList();
+        var studentIds = request.Enrollments.Select(e => e.StudentId).Distinct().ToList();
+
+        // Step 10 (Teaching cluster, H1-class): every class AND student must belong to the caller's
+        // school before enrolling. Guards BOTH directions — a foreign student into a local class, and
+        // a local student into a foreign class — neither of which any FK prevents on its own.
+        var validClassIds = (await _context.Classes.AsNoTracking()
+            .Where(c => c.SchoolId == schoolId && classIds.Contains(c.ClassId))
+            .Select(c => c.ClassId).ToListAsync()).ToHashSet();
+        if (classIds.Any(id => !validClassIds.Contains(id)))
+            throw new KeyNotFoundException("One or more classes were not found in your school.");
+
+        var validStudentIds = (await _context.Students.AsNoTracking()
+            .Where(s => s.SchoolId == schoolId && studentIds.Contains(s.StudentId))
+            .Select(s => s.StudentId).ToListAsync()).ToHashSet();
+        if (studentIds.Any(id => !validStudentIds.Contains(id)))
+            throw new KeyNotFoundException("One or more students were not found in your school.");
 
         var existing = await _context.Enrollments
-            .Where(e => classIds.Contains(e.ClassId) && studentIds.Contains(e.StudentId))
+            .Where(e => e.SchoolId == schoolId && classIds.Contains(e.ClassId) && studentIds.Contains(e.StudentId))
             .ToListAsync();
 
         var existingLookup = existing.ToDictionary(e => (e.ClassId, e.StudentId));

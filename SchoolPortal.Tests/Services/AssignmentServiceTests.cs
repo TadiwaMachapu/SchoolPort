@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Assignments;
 using Xunit;
@@ -21,6 +22,7 @@ public class AssignmentServiceTests
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<ILogger<AssignmentService>> _mockLogger;
     private readonly Mock<INotificationService> _mockNotifications;
+    private readonly Mock<IScopeService> _mockScope;
     private readonly AssignmentService _service;
 
     public AssignmentServiceTests()
@@ -33,11 +35,14 @@ public class AssignmentServiceTests
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockLogger = new Mock<ILogger<AssignmentService>>();
         _mockNotifications = new Mock<INotificationService>();
-        _service = new AssignmentService(_context, _mockCurrentUser.Object, _mockLogger.Object, _mockNotifications.Object);
+        _mockScope = new Mock<IScopeService>();
+        _service = new AssignmentService(_context, _mockCurrentUser.Object, _mockLogger.Object, _mockNotifications.Object, _mockScope.Object);
 
         _mockCurrentUser.Setup(x => x.SchoolId).Returns(TestSchoolId);
         _mockCurrentUser.Setup(x => x.UserId).Returns(TestUserId);
-        _mockCurrentUser.Setup(x => x.Role).Returns("Teacher");
+        _mockCurrentUser.Setup(x => x.Identity).Returns(IdentityKeys.Staff);
+        // Unrestricted scope (null) so existing assertions over seeded assignments hold.
+        _mockScope.Setup(x => x.GetAccessibleClassIdsAsync()).ReturnsAsync((IReadOnlySet<Guid>?)null);
 
         SeedTestData();
     }

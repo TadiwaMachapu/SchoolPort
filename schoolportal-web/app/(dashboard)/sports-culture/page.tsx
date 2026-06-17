@@ -5,7 +5,7 @@ import { api, type ActivityItem, type ActivityParticipantItem, type MyActivityIt
 import { useFeature } from "@/lib/use-feature";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity, usePermission } from "@/lib/auth-context";
 import { Trophy, Plus, Trash2, Users, ChevronDown, ChevronUp, Loader2, AlertTriangle, X, UserMinus } from "lucide-react";
 
 const ACTIVITY_TYPES = ["Sport", "Cultural", "Academic", "Community", "Other"];
@@ -30,11 +30,11 @@ function TypeBadge({ type }: { type: string }) {
 
 function AdminActivityRow({
   activity,
-  role,
+  canManage,
   onDelete,
 }: {
   activity: ActivityItem;
-  role: string;
+  canManage: boolean;
   onDelete: (id: string) => void;
 }) {
   const [expanded,     setExpanded]     = useState(false);
@@ -117,7 +117,7 @@ function AdminActivityRow({
             <Users className="h-4 w-4" />
             {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
-          {role === "Admin" && (
+          {canManage && (
             <button onClick={() => onDelete(activity.activityId)}
               className="text-gray-300 hover:text-red-400 transition-colors ml-2">
               <Trash2 className="h-4 w-4" />
@@ -187,7 +187,8 @@ function AdminActivityRow({
   );
 }
 
-function StaffActivitiesView({ role }: { role: string }) {
+function StaffActivitiesView() {
+  const canManage = usePermission("activities.manage"); // Step 8
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState("");
@@ -246,7 +247,7 @@ function StaffActivitiesView({ role }: { role: string }) {
         </div>
       )}
 
-      {role === "Admin" && (
+      {canManage && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">{activities.length} activit{activities.length !== 1 ? "ies" : "y"}</p>
           <Button onClick={() => setShowForm(v => !v)} variant={showForm ? "outline" : "default"} className="gap-2">
@@ -290,12 +291,12 @@ function StaffActivitiesView({ role }: { role: string }) {
         <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
           <Trophy className="h-10 w-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-500">No activities yet.</p>
-          {role === "Admin" && <p className="text-gray-400 text-sm mt-1">Create the first activity to get started.</p>}
+          {canManage && <p className="text-gray-400 text-sm mt-1">Create the first activity to get started.</p>}
         </div>
       ) : (
         <div className="space-y-3">
           {activities.map(a => (
-            <AdminActivityRow key={a.activityId} activity={a} role={role} onDelete={remove} />
+            <AdminActivityRow key={a.activityId} activity={a} canManage={canManage} onDelete={remove} />
           ))}
         </div>
       )}
@@ -359,9 +360,7 @@ function StudentActivitiesView() {
 export default function ActivitiesPage() {
   const router = useRouter();
   const hasSportsCulture = useFeature("sportsCulture");
-  const [role, setRole] = useState("");
-
-  useEffect(() => { setRole(getClientRole()); }, []);
+  const identity = useIdentity(); // Step 8
 
   if (!hasSportsCulture) {
     return (
@@ -379,10 +378,10 @@ export default function ActivitiesPage() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Sports & Culture</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {role === "Student" ? "Your sporting and cultural activity record." : "Manage school activities and learner participation."}
+          {identity === "Learner" ? "Your sporting and cultural activity record." : "Manage school activities and learner participation."}
         </p>
       </div>
-      {role === "Student" ? <StudentActivitiesView /> : role ? <StaffActivitiesView role={role} /> : null}
+      {identity === "Learner" ? <StudentActivitiesView /> : identity ? <StaffActivitiesView /> : null}
     </div>
   );
 }

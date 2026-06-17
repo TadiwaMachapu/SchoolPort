@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Grades;
 
 namespace SchoolPortal.Server.Services;
@@ -16,22 +17,27 @@ public class GradeService : IGradeService
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly INotificationService _notifications;
+    private readonly IScopeService _scope;
 
-    public GradeService(SchoolPortalDbContext context, ICurrentUserService currentUser, INotificationService notifications)
+    public GradeService(SchoolPortalDbContext context, ICurrentUserService currentUser, INotificationService notifications, IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
         _notifications = notifications;
+        _scope = scope;
     }
 
     public async Task CreateGradeAsync(CreateGradeRequest request)
     {
         var submission = await _context.Submissions
-            .Include(s => s.Assignment)
+            .Include(s => s.Assignment).ThenInclude(a => a.ClassSubject)
             .FirstOrDefaultAsync(s => s.SubmissionId == request.SubmissionId && s.SchoolId == _currentUser.SchoolId);
 
         if (submission == null)
             throw new KeyNotFoundException("Submission not found");
+
+        // Step 7 IDOR (write): can only grade submissions in your in-scope classes → 403 otherwise.
+        await _scope.EnsureClassAsync(submission.Assignment.ClassSubject.ClassId);
 
         if (request.Score < 0 || request.Score > submission.Assignment.MaxMarks)
             throw new ArgumentException($"Score must be between 0 and {submission.Assignment.MaxMarks}");
@@ -69,9 +75,13 @@ public class GradeService : IGradeService
         var submissionIds = request.Grades.Select(g => g.SubmissionId).ToList();
 
         var submissions = await _context.Submissions
-            .Include(s => s.Assignment)
+            .Include(s => s.Assignment).ThenInclude(a => a.ClassSubject)
             .Where(s => submissionIds.Contains(s.SubmissionId) && s.SchoolId == _currentUser.SchoolId)
             .ToListAsync();
+
+        // Step 7 IDOR (write): every submission's class must be in the caller's scope → 403 otherwise.
+        foreach (var classId in submissions.Select(s => s.Assignment.ClassSubject.ClassId).Distinct())
+            await _scope.EnsureClassAsync(classId);
 
         var existingGrades = await _context.Grades
             .Where(g => submissionIds.Contains(g.SubmissionId))

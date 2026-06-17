@@ -1,15 +1,16 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + role overrides. Calendar/timetable views → platform.access;
+// event create/delete → calendar.manage; timetable management → timetable.manage (SMT only).
 public class CalendarController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -22,6 +23,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpGet("events")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetEvents([FromQuery] DateTime? from, [FromQuery] DateTime? to)
     {
         var schoolId = _currentUser.SchoolId;
@@ -67,9 +69,15 @@ public class CalendarController : ControllerBase
     }
 
     [HttpPost("events")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CalendarManage)]
     public async Task<IActionResult> CreateEvent([FromBody] CreateEventRequest request)
     {
+        // Step 10 (Comms cluster, H1-class): ClassId is a nullable body id — validate it belongs to
+        // the caller's school so an event can't be linked to a foreign class.
+        if (request.ClassId.HasValue &&
+            !await _context.Classes.AnyAsync(c => c.ClassId == request.ClassId.Value && c.SchoolId == _currentUser.SchoolId))
+            return NotFound("Class not found in your school.");
+
         var ev = new CalendarEvent
         {
             SchoolId = _currentUser.SchoolId,
@@ -90,7 +98,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpDelete("events/{id}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CalendarManage)]
     public async Task<IActionResult> DeleteEvent(Guid id)
     {
         var ev = await _context.CalendarEvents
@@ -103,6 +111,7 @@ public class CalendarController : ControllerBase
     }
 
     [HttpGet("timetable")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetTimetable([FromQuery] Guid? classId)
     {
         var query = _context.TimetableSlots
@@ -136,9 +145,14 @@ public class CalendarController : ControllerBase
     }
 
     [HttpPost("timetable")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.TimetableManage)]
     public async Task<IActionResult> AddTimetableSlot([FromBody] CreateTimetableSlotRequest request)
     {
+        // Step 10 (Comms cluster, H1-class): ClassSubjectId is a body id — validate it belongs to the
+        // caller's school so a timetable slot can't be attached to a foreign class-subject.
+        if (!await _context.ClassSubjects.AnyAsync(cs => cs.ClassSubjectId == request.ClassSubjectId && cs.SchoolId == _currentUser.SchoolId))
+            return NotFound("Class-subject not found in your school.");
+
         var slot = new TimetableSlot
         {
             SchoolId = _currentUser.SchoolId,

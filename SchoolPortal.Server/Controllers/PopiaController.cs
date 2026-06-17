@@ -1,15 +1,16 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 
 namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] (class) + [Authorize(Roles="Admin")] (admin methods). Self-service
+// POPIA rights (own consent/DSRs) → platform.access; compliance administration → system.popia_admin.
 public class PopiaController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -23,6 +24,7 @@ public class PopiaController : ControllerBase
 
     // GET /api/popia/consents/mine
     [HttpGet("consents/mine")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetMyConsents()
     {
         var record = await _context.ConsentRecords
@@ -43,6 +45,7 @@ public class PopiaController : ControllerBase
 
     // PUT /api/popia/consents
     [HttpPut("consents")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> UpdateConsents([FromBody] ConsentUpdateRequest request)
     {
         var existing = await _context.ConsentRecords
@@ -70,6 +73,7 @@ public class PopiaController : ControllerBase
 
     // GET /api/popia/requests/mine
     [HttpGet("requests/mine")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> GetMyRequests()
     {
         var requests = await _context.DataSubjectRequests
@@ -93,6 +97,7 @@ public class PopiaController : ControllerBase
 
     // POST /api/popia/requests
     [HttpPost("requests")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     public async Task<IActionResult> SubmitRequest([FromBody] DataSubjectRequestCreate request)
     {
         var dsr = new DataSubjectRequest
@@ -109,9 +114,9 @@ public class PopiaController : ControllerBase
         return Ok(new { dsr.RequestId });
     }
 
-    // GET /api/popia/admin/consents [Admin]
+    // GET /api/popia/admin/consents
     [HttpGet("admin/consents")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemPopiaAdmin)]
     public async Task<IActionResult> AdminGetConsents()
     {
         var consents = await _context.ConsentRecords
@@ -137,9 +142,9 @@ public class PopiaController : ControllerBase
         return Ok(consents);
     }
 
-    // GET /api/popia/admin/requests [Admin]
+    // GET /api/popia/admin/requests
     [HttpGet("admin/requests")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemPopiaAdmin)]
     public async Task<IActionResult> AdminGetRequests([FromQuery] string? status)
     {
         var query = _context.DataSubjectRequests
@@ -171,9 +176,9 @@ public class PopiaController : ControllerBase
         return Ok(requests);
     }
 
-    // PUT /api/popia/admin/requests/{id} [Admin]
+    // PUT /api/popia/admin/requests/{id}
     [HttpPut("admin/requests/{id}")]
-    [Authorize(Roles = "Admin")]
+    [RequirePermission(PermissionKeys.SystemPopiaAdmin)]
     public async Task<IActionResult> AdminUpdateRequest(Guid id, [FromBody] RequestStatusUpdate update)
     {
         var request = await _context.DataSubjectRequests

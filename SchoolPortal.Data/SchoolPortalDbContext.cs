@@ -26,6 +26,14 @@ public class SchoolPortalDbContext : DbContext
     public DbSet<Attendance> Attendances { get; set; }
     public DbSet<Announcement> Announcements { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+
+    // Sprint 1.5.0 — Identity / Positions / Permissions
+    public DbSet<Position> Positions { get; set; }
+    public DbSet<Permission> Permissions { get; set; }
+    public DbSet<PositionPermission> PositionPermissions { get; set; }
+    public DbSet<UserPosition> UserPositions { get; set; }
+    public DbSet<UserPositionScope> UserPositionScopes { get; set; }
 
     // Course / LMS
     public DbSet<Course> Courses { get; set; }
@@ -113,6 +121,10 @@ public class SchoolPortalDbContext : DbContext
     // View entities
     public DbSet<AttendanceSummaryView> AttendanceSummaryView { get; set; }
     public DbSet<GradebookSimpleView> GradebookSimpleView { get; set; }
+    // Sprint 1.5.0.5 — materialized views (refreshed manually via the refresh-views admin endpoint)
+    public DbSet<SubjectTermAverageView> SubjectTermAverages { get; set; }
+    public DbSet<MatricApsSummaryView> MatricApsSummaries { get; set; }
+    public DbSet<SchoolPerformanceSummaryView> SchoolPerformanceSummaries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -208,6 +220,7 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Identity).HasMaxLength(50);
             entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
             entity.HasIndex(e => e.Email);
             entity.HasIndex(e => new { e.SchoolId, e.Email }).IsUnique();
@@ -317,6 +330,7 @@ public class SchoolPortalDbContext : DbContext
             entity.HasKey(e => e.AssignmentId);
             entity.Property(e => e.AssignmentId).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.TaskType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(TaskType.Assignment);
             entity.Property(e => e.MaxMarks).HasPrecision(10, 2);
             entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
             entity.HasIndex(e => e.SchoolId);
@@ -399,12 +413,28 @@ public class SchoolPortalDbContext : DbContext
         {
             entity.ToTable("audit_logs");
             entity.HasKey(e => e.AuditLogId);
+            // AuditLogId is now Guid, matching the gen_random_uuid() default (was long — inserts failed)
             entity.Property(e => e.AuditLogId).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Action).IsRequired().HasMaxLength(50);
             entity.Property(e => e.EntityType).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AuthorizingPositionKey).HasMaxLength(50);
+            entity.Property(e => e.PermissionUsed).HasMaxLength(100);
             entity.Property(e => e.IpAddress).HasMaxLength(50);
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.SchoolId, e.UserId });
+        });
+
+        // RefreshToken (Sprint 1.5.0 Step 5 — persisted, hashed, rotated)
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("refresh_tokens");
+            entity.HasKey(e => e.RefreshTokenId);
+            entity.Property(e => e.RefreshTokenId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // Course
@@ -729,7 +759,9 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.ActivityType).IsRequired().HasMaxLength(50);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("now()");
             entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.OwnerUserId);
             entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.OwnerUser).WithMany().HasForeignKey(e => e.OwnerUserId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<ActivityParticipant>(entity =>
@@ -974,6 +1006,75 @@ public class SchoolPortalDbContext : DbContext
             entity.HasIndex(e => new { e.ClassId, e.TermId, e.InputFingerprint });
         });
 
+        // ── Sprint 1.5.0 — Identity / Positions / Permissions ──────────────────────
+
+        // Position catalogue (global reference data — no SchoolId; seeded in code)
+        modelBuilder.Entity<Position>(entity =>
+        {
+            entity.ToTable("positions");
+            entity.HasKey(e => e.PositionId);
+            entity.Property(e => e.PositionId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.ScopeType).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(e => e.Key).IsUnique();
+        });
+
+        // Permission catalogue (global reference data — no SchoolId; seeded in code)
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.ToTable("permissions");
+            entity.HasKey(e => e.PermissionId);
+            entity.Property(e => e.PermissionId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(80);
+            entity.Property(e => e.Category).IsRequired().HasMaxLength(30);
+            entity.Property(e => e.Description).HasMaxLength(300);
+            entity.HasIndex(e => e.Key).IsUnique();
+        });
+
+        // Position→Permission map (seeded in code — the authoritative mapping)
+        modelBuilder.Entity<PositionPermission>(entity =>
+        {
+            entity.ToTable("position_permissions");
+            entity.HasKey(e => e.PositionPermissionId);
+            entity.Property(e => e.PositionPermissionId).HasDefaultValueSql("gen_random_uuid()");
+            entity.HasIndex(e => new { e.PositionId, e.PermissionId }).IsUnique();
+            entity.HasIndex(e => e.PermissionId);
+            entity.HasOne(e => e.Position).WithMany(p => p.PositionPermissions).HasForeignKey(e => e.PositionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Permission).WithMany(p => p.PositionPermissions).HasForeignKey(e => e.PermissionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // UserPosition — appointment (tenant-scoped)
+        modelBuilder.Entity<UserPosition>(entity =>
+        {
+            entity.ToTable("user_positions");
+            entity.HasKey(e => e.UserPositionId);
+            entity.Property(e => e.UserPositionId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => new { e.SchoolId, e.UserId, e.IsActive });
+            entity.HasIndex(e => e.PositionId);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Position).WithMany().HasForeignKey(e => e.PositionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.GrantedByUser).WithMany().HasForeignKey(e => e.GrantedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ConsentRecord).WithMany().HasForeignKey(e => e.ConsentRecordId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // UserPositionScope — 0..n scope entries per appointment
+        modelBuilder.Entity<UserPositionScope>(entity =>
+        {
+            entity.ToTable("user_position_scopes");
+            entity.HasKey(e => e.UserPositionScopeId);
+            entity.Property(e => e.UserPositionScopeId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.ScopeType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.ScopeValue).HasMaxLength(100);
+            entity.HasIndex(e => e.UserPositionId);
+            entity.HasIndex(e => new { e.ScopeType, e.ScopeRefId });   // polymorphic ref — indexed, not a FK
+            entity.HasOne(e => e.UserPosition).WithMany(up => up.Scopes).HasForeignKey(e => e.UserPositionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         // Configure views (read-only)
         modelBuilder.Entity<AttendanceSummaryView>(entity =>
         {
@@ -985,6 +1086,29 @@ public class SchoolPortalDbContext : DbContext
         {
             entity.ToView("vw_gradebook_simple");
             entity.HasNoKey();
+        });
+
+        // Sprint 1.5.0.5 — materialized views (created in migration AddMaterializedViews). Mapped
+        // view-ONLY: the global snake_case loop above sets a table name on every entity, so we null
+        // it out here to avoid scaffolding a redundant empty physical table (the older two views
+        // carry that pre-existing quirk; these don't).
+        modelBuilder.Entity<SubjectTermAverageView>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_subject_term_averages");
+            entity.Metadata.SetTableName(null);
+        });
+        modelBuilder.Entity<MatricApsSummaryView>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_matric_aps_summary");
+            entity.Metadata.SetTableName(null);
+        });
+        modelBuilder.Entity<SchoolPerformanceSummaryView>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_school_performance_summary");
+            entity.Metadata.SetTableName(null);
         });
     }
 

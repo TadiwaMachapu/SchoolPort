@@ -14,6 +14,7 @@ public interface ISubjectService
     Task<SubjectDto> UpdateSubjectAsync(Guid id, UpdateSubjectRequest request);
     Task DeleteSubjectAsync(Guid id);
     Task BulkAssignClassSubjectsAsync(BulkClassSubjectRequest request);
+    Task<List<TeacherOptionDto>> GetTeachersAsync();
     Task<CapsSeedException> SeedCapsSubjectsAsync();
 }
 
@@ -220,11 +221,40 @@ public class SubjectService : ISubjectService
 
     public async Task BulkAssignClassSubjectsAsync(BulkClassSubjectRequest request)
     {
-        var classIds = request.ClassSubjects.Select(cs => cs.ClassId).ToList();
-        var subjectIds = request.ClassSubjects.Select(cs => cs.SubjectId).ToList();
+        var schoolId = _currentUser.SchoolId;
+        var classIds = request.ClassSubjects.Select(cs => cs.ClassId).Distinct().ToList();
+        var subjectIds = request.ClassSubjects.Select(cs => cs.SubjectId).Distinct().ToList();
+        var teacherIds = request.ClassSubjects
+            .Where(cs => cs.TeacherId.HasValue).Select(cs => cs.TeacherId!.Value).Distinct().ToList();
+
+        // Step 9.5 (H1 — tenant isolation): every referenced resource must belong to the caller's
+        // school before any mutate/insert. Mirrors the Step 7 IDOR pattern — a cross-tenant id is
+        // "not found in your school" (404), never silently mutated or linked. Without this, an
+        // academics.manage holder could reassign another school's class-subject or attach a foreign
+        // teacher by supplying its GUID (no FK prevents the cross-tenant linkage).
+        var validClassIds = (await _context.Classes.AsNoTracking()
+            .Where(c => c.SchoolId == schoolId && classIds.Contains(c.ClassId))
+            .Select(c => c.ClassId).ToListAsync()).ToHashSet();
+        if (classIds.Any(id => !validClassIds.Contains(id)))
+            throw new KeyNotFoundException("One or more classes were not found in your school.");
+
+        var validSubjectIds = (await _context.Subjects.AsNoTracking()
+            .Where(s => s.SchoolId == schoolId && subjectIds.Contains(s.SubjectId))
+            .Select(s => s.SubjectId).ToListAsync()).ToHashSet();
+        if (subjectIds.Any(id => !validSubjectIds.Contains(id)))
+            throw new KeyNotFoundException("One or more subjects were not found in your school.");
+
+        if (teacherIds.Count > 0)
+        {
+            var validTeacherIds = (await _context.Teachers.AsNoTracking()
+                .Where(t => t.SchoolId == schoolId && teacherIds.Contains(t.TeacherId))
+                .Select(t => t.TeacherId).ToListAsync()).ToHashSet();
+            if (teacherIds.Any(id => !validTeacherIds.Contains(id)))
+                throw new KeyNotFoundException("One or more teachers were not found in your school.");
+        }
 
         var existing = await _context.ClassSubjects
-            .Where(cs => classIds.Contains(cs.ClassId) && subjectIds.Contains(cs.SubjectId))
+            .Where(cs => cs.SchoolId == schoolId && classIds.Contains(cs.ClassId) && subjectIds.Contains(cs.SubjectId))
             .ToListAsync();
 
         var existingLookup = existing.ToDictionary(cs => (cs.ClassId, cs.SubjectId));
@@ -250,5 +280,22 @@ public class SubjectService : ISubjectService
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    // Step 9.5 (Build #6b): the school's teachers as assignable options for class-subject teacher
+    // assignment. Returns the Teacher PK (what ClassSubject.TeacherId references), not the User id.
+    public async Task<List<TeacherOptionDto>> GetTeachersAsync()
+    {
+        return await _context.Teachers
+            .AsNoTracking()
+            .Where(t => t.SchoolId == _currentUser.SchoolId)
+            .Include(t => t.User)
+            .OrderBy(t => t.User.LastName).ThenBy(t => t.User.FirstName)
+            .Select(t => new TeacherOptionDto
+            {
+                TeacherId = t.TeacherId,
+                Name = $"{t.User.FirstName} {t.User.LastName}"
+            })
+            .ToListAsync();
     }
 }

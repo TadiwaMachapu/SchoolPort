@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // Explicitly opt into Turbopack (default in Next.js 16)
   turbopack: {},
+  // Step 8: "Activities" was renamed to "Sports & Culture". Keep old links/bookmarks working.
+  async redirects() {
+    return [
+      { source: "/activities", destination: "/sports-culture", permanent: true },
+      { source: "/activities/:path*", destination: "/sports-culture/:path*", permanent: true },
+    ];
+  },
 };
 
 // next-pwa uses webpack — only apply it during production builds.

@@ -7,7 +7,7 @@ import { useAttendanceSession, useClasses, useBulkUpsertAttendance } from "@/fea
 import { useToastStore } from "@/stores/toast.store";
 import { AnimatePresence, motion } from "framer-motion";
 import { api, MyAttendanceSummary } from "@/lib/api";
-import { getClientRole } from "@/lib/utils";
+import { useIdentity } from "@/lib/auth-context";
 
 const S = {
   1: { label: "Present", icon: CheckCircle2, card: "bg-emerald-50 border-emerald-300", avatar: "bg-emerald-500", badge: "text-emerald-700", ring: "ring-emerald-200" },
@@ -146,13 +146,13 @@ function StudentAttendanceView() {
 }
 
 export default function AttendancePage() {
-  const role = getClientRole();
+  const identity = useIdentity(); // Step 8
 
-  if (role === "Student") {
+  if (identity === "Learner") {
     return <StudentAttendanceView />;
   }
 
-  if (role === "Parent") {
+  if (identity === "Parent") {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
         <CalendarDays className="h-12 w-12 text-gray-200 mb-4" />
@@ -181,7 +181,9 @@ function AttendanceView() {
   const [done, setDone]         = useState(false);
   const saveTimer               = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const { data: classList } = useClasses({ pageSize: 100 });
+  // Step 9.5 (Fix #4): scope the picker to the caller's classes (closes the picker-list leak;
+  // also avoids a 403 for teachers without academics.manage under the tightened /api/classes).
+  const { data: classList } = useClasses({ pageSize: 100, mine: true });
   const classes = classList?.items ?? [];
 
   useEffect(() => {

@@ -11,32 +11,48 @@ import {
 import {
   useMe, useAdminOverview, useMyClasses, usePendingSubmissions,
   useMyAssignments, useMyGrades, useMyCourses, useParentChildren,
-  useRecentAnnouncements, useCreateAnnouncement,
+  useRecentAnnouncements, useCreateAnnouncement, useMyAcademics,
 } from "@/features/dashboard/api/hooks";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useIdentity, usePosition, useAnyPosition, useAuthUser } from "@/lib/auth-context";
 
 export default function DashboardPage() {
   const { data: me, isLoading } = useMe();
+  const router = useRouter();
+
+  // Step 8 (P-1): route by identity + positions, not a role string. Finance/IT get a home redirect.
+  const identity  = useIdentity();
+  const authUser  = useAuthUser(); // server-sourced name (same as the header) — never a stale cache
+  const isSMT     = useAnyPosition(["Principal", "DeputyPrincipal"]);
+  const isFinance = useAnyPosition(["FinanceManager", "BursarDebtorsClerk", "Cashier"]);
+  const isIT      = usePosition("ITAdministrator");
+
+  useEffect(() => {
+    if (isFinance) router.replace("/school-pay"); // Finance home
+    else if (isIT) router.replace("/users");      // System home
+  }, [isFinance, isIT, router]);
 
   if (isLoading) return <div className="p-8 text-gray-400 text-center py-16">Loading…</div>;
   if (!me) return null;
 
-  const role = (me as { user: { role: string; firstName: string; lastName: string; userId: string }; school: { name: string } }).user.role;
-  const user = (me as { user: { role: string; firstName: string; lastName: string; userId: string }; school: { name: string } }).user;
-  const school = (me as { user: { role: string; firstName: string; lastName: string; userId: string }; school: { name: string } }).school;
+  const user = (me as { user: { firstName: string }; school: { name: string } }).user;
+  const school = (me as { user: { firstName: string }; school: { name: string } }).school;
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-5 md:mb-6">
         <h1 className="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight">
-          Welcome back, {user.firstName}
+          Welcome back, {authUser.firstName || user.firstName}
         </h1>
         <p className="text-xs md:text-sm text-gray-500 mt-0.5">{school.name}</p>
       </div>
-      {role === "Admin"   && <AdminDashboard />}
-      {role === "Teacher" && <TeacherDashboard />}
-      {role === "Student" && <StudentDashboard />}
-      {role === "Parent"  && <ParentDashboardHome />}
+      {isFinance || isIT ? null /* redirecting to workspace home */
+        : isSMT               ? <AdminDashboard />
+        : identity === "Staff"   ? <TeacherDashboard />
+        : identity === "Learner" ? <StudentDashboard />
+        : identity === "Parent"  ? <ParentDashboardHome />
+        : null}
     </div>
   );
 }
@@ -284,20 +300,25 @@ function TeacherDashboard() {
 
 /* ─── Student ────────────────────────────────────────────────── */
 function StudentDashboard() {
-  const { data: assignData }       = useMyAssignments();
+  const { data: academics }        = useMyAcademics();
   const { data: grades = [] }      = useMyGrades();
   const { data: courseData }       = useMyCourses();
   const { data: annData }          = useRecentAnnouncements(3);
 
-  const assignments   = assignData?.items ?? [];
+  const tasks         = academics?.tasks ?? [];
   const courses       = courseData?.items ?? [];
   const announcements = annData?.items ?? [];
 
-  const upcoming = assignments
-    .filter(a => new Date(a.dueAt) > new Date())
-    .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())
+  // Overdue/Upcoming count only OUTSTANDING (not-yet-submitted) tasks — submitted/graded tasks are
+  // done, not overdue. Same status-aware source as the My Academics Assignments tab, so the two
+  // views always agree.
+  const now = Date.now();
+  const outstanding = tasks.filter(t => t.status === "not_submitted" && t.dueAt);
+  const overdue = outstanding.filter(t => new Date(t.dueAt!).getTime() < now);
+  const upcoming = outstanding
+    .filter(t => new Date(t.dueAt!).getTime() >= now)
+    .sort((a, b) => new Date(a.dueAt!).getTime() - new Date(b.dueAt!).getTime())
     .slice(0, 5);
-  const overdue = assignments.filter(a => new Date(a.dueAt) < new Date());
   const avg = grades.length > 0
     ? Math.round(grades.reduce((s, g) => s + ((g as { percentage?: number }).percentage ?? 0), 0) / grades.length)
     : null;
@@ -327,14 +348,14 @@ function StudentDashboard() {
             )}
             {upcoming.length === 0 ? (
               <p className="text-sm text-gray-400">No upcoming assignments</p>
-            ) : upcoming.map((a) => {
-              const days = Math.ceil((new Date(a.dueAt).getTime() - Date.now()) / 86400000);
+            ) : upcoming.map((t) => {
+              const days = Math.ceil((new Date(t.dueAt!).getTime() - Date.now()) / 86400000);
               return (
-                <Link key={a.assignmentId} href={`/assignments/${a.assignmentId}`}
+                <Link key={`${t.source}-${t.taskId}`} href={t.source === "assignment" ? `/assignments/${t.taskId}` : "/quizzes"}
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 active:scale-98 transition-all">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{a.title}</p>
-                    <p className="text-xs text-gray-400">{a.className} · {a.subjectName}</p>
+                    <p className="text-sm font-medium text-gray-900">{t.title}</p>
+                    <p className="text-xs text-gray-400">{t.subjectName}</p>
                   </div>
                   <Badge variant={days <= 2 ? "destructive" : days <= 5 ? "warning" : "outline"} className="text-xs shrink-0">
                     {days === 0 ? "Today" : days === 1 ? "Tomorrow" : `${days}d`}

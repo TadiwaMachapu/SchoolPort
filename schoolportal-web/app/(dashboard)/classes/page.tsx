@@ -4,21 +4,23 @@ import { type Class } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { getClientRole } from "@/lib/utils";
+import { usePermission } from "@/lib/auth-context";
 import { GraduationCap, BookOpen, Users, ChevronRight } from "lucide-react";
 import { useClassesList, useCreateClass, useUpdateClass } from "@/features/classes/api/hooks";
 import { useToastStore } from "@/stores/toast.store";
 import { useState } from "react";
 
 export default function ClassesPage() {
-  const role    = getClientRole();
-  const isAdmin = role === "Admin";
+  const isAdmin = usePermission("academics.manage"); // Step 8: class management
   const toast   = useToastStore();
 
   const [showAdd,   setShowAdd]   = useState(false);
   const [editClass, setEditClass] = useState<Class | null>(null);
 
-  const { data, isLoading } = useClassesList({ pageSize: 50 });
+  // Step 9.5 (Fix #1): admins/HOD (academics.manage) get the full school list; other staff get
+  // their scoped classes. The backend enforces this regardless, but asking for the right one
+  // avoids a needlessly broad query and matches what the user is allowed to see.
+  const { data, isLoading } = useClassesList({ pageSize: 50, mine: !isAdmin });
   const classes = data?.items ?? [];
   const total   = data?.total ?? 0;
 

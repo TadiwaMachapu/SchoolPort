@@ -8,7 +8,8 @@ public class User
     public string PasswordHash { get; set; } = null!;
     public string FirstName { get; set; } = null!;
     public string LastName { get; set; } = null!;
-    public string Role { get; set; } = null!; // Admin, Teacher, Student, Parent
+    public string Role { get; set; } = null!; // Admin, Teacher, Student, Parent — legacy; kept readable during Sprint 1.5.0 transition
+    public string? Identity { get; set; }      // Staff, Learner, Parent, External, System — Layer 1 boundary (nullable until backfilled)
     public string? PhoneNumber { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }

@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Auth;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -15,6 +17,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/auth/sso")]
+[AllowAnonymous]
+[AnonymousJustification("SSO sign-in: the OAuth challenge and the Google/Microsoft callbacks run before any SchoolPort JWT exists.")]
 public class SsoController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;

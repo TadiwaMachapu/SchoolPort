@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Shared.DTOs.Attendance;
 using System.Text;
 
@@ -12,22 +13,29 @@ public class AttendanceService : IAttendanceService
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<AttendanceService> _logger;
     private readonly INotificationService _notifications;
+    private readonly IScopeService _scope;
     private const int BatchSize = 100;
 
     public AttendanceService(
         SchoolPortalDbContext context,
         ICurrentUserService currentUser,
         ILogger<AttendanceService> logger,
-        INotificationService notifications)
+        INotificationService notifications,
+        IScopeService scope)
     {
         _context = context;
         _currentUser = currentUser;
         _logger = logger;
         _notifications = notifications;
+        _scope = scope;
     }
 
     public async Task<List<AttendanceDto>> GetAttendanceAsync(Guid classId, DateTime date)
     {
+        // Step 7 IDOR: a class outside the caller's scope returns empty, never another class's data.
+        if (!await _scope.CanAccessClassAsync(classId))
+            return new List<AttendanceDto>();
+
         var attendances = await _context.Attendances
             .AsNoTracking()
             .Where(a => a.ClassId == classId && a.SchoolId == _currentUser.SchoolId && a.Date.Date == date.Date)
@@ -144,7 +152,21 @@ public class AttendanceService : IAttendanceService
             }
         }
 
+        // Step 7 IDOR (write): every class being captured must be in the caller's scope → 403 otherwise.
+        foreach (var classId in request.Attendances.Select(a => a.ClassId).Distinct())
+            await _scope.EnsureClassAsync(classId);
+
         var schoolId = _currentUser.SchoolId;
+
+        // Step 10 (Teaching cluster, H1-class): the class is scope-checked above, but the studentId in
+        // each row is a body id — validate every student belongs to the caller's school, else a foreign
+        // learner could be attached to a local class's attendance (the FK resolves across tenants).
+        var studentIds = request.Attendances.Select(a => a.StudentId).Distinct().ToList();
+        var validStudentIds = (await _context.Students.AsNoTracking()
+            .Where(s => s.SchoolId == schoolId && studentIds.Contains(s.StudentId))
+            .Select(s => s.StudentId).ToListAsync()).ToHashSet();
+        if (studentIds.Any(id => !validStudentIds.Contains(id)))
+            throw new KeyNotFoundException("One or more students were not found in your school.");
         var totalRecords = request.Attendances.Count;
         var processedRecords = 0;
 

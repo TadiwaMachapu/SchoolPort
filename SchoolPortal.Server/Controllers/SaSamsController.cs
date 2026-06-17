@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using System.Text;
 
@@ -9,7 +9,10 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+// Step 6: was [Authorize(Roles = "Admin")]. All three endpoints are school-wide bulk PII
+// exports for SA-SAMS, so they share one permission. system.data_export is Sensitive →
+// the handler re-resolves from the DB per request (never trusts cached JWT claims).
+[RequirePermission(PermissionKeys.SystemDataExport)]
 public class SaSamsController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;

@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Common;
 using SchoolPortal.Shared.DTOs.Courses;
@@ -8,7 +8,8 @@ namespace SchoolPortal.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+// Step 6: was [Authorize] + [Authorize(Roles="Admin,Teacher")] writes. Course views →
+// platform.access; all content management (courses/modules/lessons) → courses.manage.
 public class CoursesController : ControllerBase
 {
     private readonly ICourseService _courseService;
@@ -19,6 +20,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(PaginatedResult<CourseDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCourses(
         [FromQuery] int page = 1,
@@ -30,6 +32,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpGet("{id}")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
     [ProducesResponseType(typeof(CourseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCourse(Guid id)
     {
@@ -38,7 +41,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(typeof(CourseDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequest request)
     {
@@ -47,7 +50,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPut("{id}/publish")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(typeof(CourseDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> PublishCourse(Guid id, [FromQuery] bool publish = true)
     {
@@ -56,7 +59,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteCourse(Guid id)
     {
@@ -66,7 +69,7 @@ public class CoursesController : ControllerBase
 
     // Modules
     [HttpPost("{courseId}/modules")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(typeof(CourseModuleDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> AddModule(Guid courseId, [FromBody] CreateModuleRequest request)
     {
@@ -75,7 +78,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpDelete("modules/{moduleId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteModule(Guid moduleId)
     {
@@ -84,7 +87,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPut("{courseId}/modules/reorder")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ReorderModules(Guid courseId, [FromBody] List<Guid> orderedIds)
     {
@@ -94,7 +97,7 @@ public class CoursesController : ControllerBase
 
     // Lessons
     [HttpPost("modules/{moduleId}/lessons")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(typeof(LessonDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> AddLesson(Guid moduleId, [FromBody] CreateLessonRequest request)
     {
@@ -103,7 +106,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPut("lessons/{lessonId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(typeof(LessonDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateLesson(Guid lessonId, [FromBody] CreateLessonRequest request)
     {
@@ -112,7 +115,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpDelete("lessons/{lessonId}")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteLesson(Guid lessonId)
     {
@@ -121,7 +124,7 @@ public class CoursesController : ControllerBase
     }
 
     [HttpPut("modules/{moduleId}/lessons/reorder")]
-    [Authorize(Roles = "Admin,Teacher")]
+    [RequirePermission(PermissionKeys.CoursesManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ReorderLessons(Guid moduleId, [FromBody] List<Guid> orderedIds)
     {

@@ -157,6 +157,49 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return new SeededUser(userId, schoolId, email, login.AccessToken, login.ExpiresAt);
     }
 
+    /// <summary>
+    /// Mints a Parent holder AND seeds a real child (a Student whose <c>ParentUserId</c> is the parent)
+    /// in the same school, returning both. Lets the parent-child read endpoints be exercised against an
+    /// OWNED child id — proving the true holder contract (own child → 2xx) instead of accidentally
+    /// tripping the <c>IsMyChild</c> ownership guard with a random id.
+    /// </summary>
+    public async Task<(SeededUser Parent, Guid ChildStudentId)> MintParentWithChildAsync()
+    {
+        var schoolId = Guid.NewGuid();
+        var parent = await MintTokenAsync(schoolId, "Parent");
+
+        var childStudentId = Guid.NewGuid();
+        await WithScopeAsync(async db =>
+        {
+            var childUserId = Guid.NewGuid();
+            db.Users.Add(new User
+            {
+                UserId = childUserId,
+                SchoolId = schoolId,
+                Email = $"child_{childUserId:N}@test.local",
+                PasswordHash = "x",
+                FirstName = "Child",
+                LastName = "Of" + parent.UserId.ToString("N")[..6],
+                Role = "Student",
+                Identity = "Learner",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+            });
+            db.Students.Add(new Student
+            {
+                StudentId = childStudentId,
+                SchoolId = schoolId,
+                UserId = childUserId,
+                ParentUserId = parent.UserId,
+                StudentNumber = "N" + childUserId.ToString("N")[..6],
+                CreatedAt = DateTime.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        });
+
+        return (parent, childStudentId);
+    }
+
     /// <summary>An <see cref="HttpClient"/> with the Bearer token preset (no auto-redirect, so we see 401/403/3xx as-is).</summary>
     public HttpClient ClientFor(SeededUser user)
     {

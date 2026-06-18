@@ -35,11 +35,11 @@ public class PermissionBehavioralTests
         Row("attendance.view_class",           "GET",  "/api/attendance?classId={g}&date=2026-01-01", "Staff", "SubjectTeacher","Learner",""),
         Row("attendance.view_own",             "GET",  "/api/attendance/mine",                 "Learner", "",                  "Staff",  ""),
         Row("attendance.capture",              "POST", "/api/attendance/bulk",                 "Staff",   "SubjectTeacher",    "Learner",""),
-        Row("attendance.view_child",           "GET",  "/api/parent/children/{g}/attendance",  "Parent",  "",                  "Staff",  ""),
-        Row("marks.view_child",                "GET",  "/api/parent/children/{g}/grades",      "Parent",  "",                  "Staff",  ""),
+        // marks.view_child / attendance.view_child / assignments.submit are resource- or form-shaped and
+        // can't be modelled by the generic "{g}=random guid + JSON body" matrix — they have dedicated
+        // facts below (ParentChild* and AssignmentsSubmit_*). See those for the reasoning.
         Row("pathways.view_own",               "GET",  "/api/pathways/mine",                   "Learner", "",                  "Staff",  ""),
         Row("pathways.view_child",             "GET",  "/api/parent/pathways",                 "Parent",  "",                  "Staff",  ""),
-        Row("assignments.submit",             "POST", "/api/submissions",                     "Learner", "",                  "Staff",  ""),
         Row("assignments.view_assigned",       "GET",  "/api/submissions/by-assignment/{g}/mine","Learner","",                 "Staff",  ""),
         Row("courses.manage",                  "POST", "/api/courses",                         "Staff",   "SubjectTeacher",    "Learner",""),
         Row("announcements.publish",           "POST", "/api/announcements",                   "Staff",   "SubjectTeacher",    "Learner",""),
@@ -112,6 +112,70 @@ public class PermissionBehavioralTests
         var anon = await Send(_api.AnonymousClient(), "GET", "/api/super/stats");
         Assert.True(anon.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized);
     }
+
+    // marks.view_child / attendance.view_child are resource-scoped on the child id (IsMyChild). The
+    // generic matrix substitutes a random GUID for {g}, which trips the ownership guard (403) before the
+    // permission is what's under test. These seed a REAL parent→child link so the holder leg exercises
+    // the true contract — a parent reading their OWN child → 200 — while a non-holder (Staff, lacking the
+    // Parent identity-implicit perm) → 403 and no token → 401.
+    [Fact]
+    public async Task MarksViewChild_OwnChildAllowed_NonHolderForbidden_NoTokenUnauthorized()
+    {
+        var (parent, childId) = await _api.MintParentWithChildAsync();
+        await AssertParentChildReadContract($"/api/parent/children/{childId}/grades", parent);
+    }
+
+    [Fact]
+    public async Task AttendanceViewChild_OwnChildAllowed_NonHolderForbidden_NoTokenUnauthorized()
+    {
+        var (parent, childId) = await _api.MintParentWithChildAsync();
+        await AssertParentChildReadContract($"/api/parent/children/{childId}/attendance", parent);
+    }
+
+    private async Task AssertParentChildReadContract(string url, SeededUser parent)
+    {
+        // Holder: the parent owns this child → passes both the permission gate and IsMyChild → 200.
+        var holder = await Send(_api.ClientFor(parent), "GET", url);
+        Assert.Equal(HttpStatusCode.OK, holder.StatusCode);
+
+        // No token → 401.
+        var anon = await Send(_api.AnonymousClient(), "GET", url);
+        Assert.Equal(HttpStatusCode.Unauthorized, anon.StatusCode);
+
+        // Non-holder: a Staff does not hold the Parent identity-implicit perm → 403 at the gate.
+        var staff = await _api.MintTokenAsync(Guid.NewGuid(), "Staff");
+        var nonHolder = await Send(_api.ClientFor(staff), "GET", url);
+        Assert.Equal(HttpStatusCode.Forbidden, nonHolder.StatusCode);
+    }
+
+    // assignments.submit is a multipart/form-data endpoint (file upload). The generic JSON sender is
+    // rejected with 415 by content negotiation before auth runs, so it must be hit with the real content
+    // type to exercise the gate. Holder (Learner, identity-implicit) passes the gate — the action then
+    // 404s on the random assignment id (cross-tenant guard), which is NOT 401/403, so the gate let it
+    // through; non-holder (Staff) → 403; no token → 401.
+    [Fact]
+    public async Task AssignmentsSubmit_HolderPassesGate_NonHolderForbidden_NoTokenUnauthorized()
+    {
+        const string url = "/api/submissions";
+
+        var learner = await _api.MintTokenAsync(Guid.NewGuid(), "Learner");
+        var hResp = await _api.ClientFor(learner).SendAsync(SubmitForm(url));
+        Assert.False(hResp.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden,
+            $"holder (Learner) was denied with {(int)hResp.StatusCode} — the gate over-denies a holder.");
+
+        var anonResp = await _api.AnonymousClient().SendAsync(SubmitForm(url));
+        Assert.Equal(HttpStatusCode.Unauthorized, anonResp.StatusCode);
+
+        var staff = await _api.MintTokenAsync(Guid.NewGuid(), "Staff");
+        var nhResp = await _api.ClientFor(staff).SendAsync(SubmitForm(url));
+        Assert.Equal(HttpStatusCode.Forbidden, nhResp.StatusCode);
+    }
+
+    // Fresh multipart request per call — MultipartFormDataContent is consumed once it's sent.
+    private static HttpRequestMessage SubmitForm(string url) => new(HttpMethod.Post, url)
+    {
+        Content = new MultipartFormDataContent { { new StringContent(Guid.NewGuid().ToString()), "assignmentId" } },
+    };
 
     private static string[] Split(string csv) =>
         string.IsNullOrEmpty(csv) ? Array.Empty<string>() : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

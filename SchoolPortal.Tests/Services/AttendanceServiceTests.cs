@@ -1,36 +1,44 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Moq;
+using Microsoft.Extensions.Logging;
+using Npgsql;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
 using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Attendance;
+using SchoolPortal.Tests.Integration;
 using Xunit;
 
 namespace SchoolPortal.Tests.Services;
 
-public class AttendanceServiceTests
+/// <summary>
+/// AttendanceService unit tests on REAL Postgres. Previously used the EF in-memory provider, which
+/// cannot map the jsonb POCO columns (School.Features/Theme/Settings) and so failed at SeedTestData —
+/// a pre-existing baseline-red (see [[test-suite-baseline-red]]). Now each test gets a fresh isolated
+/// database from the shared <see cref="PostgresFixture"/>. Scope is mocked permissive (all-access),
+/// matching the original service-layer unit-test intent.
+/// </summary>
+[Collection("Postgres")]
+public class AttendanceServiceTests : IAsyncLifetime
 {
     private static readonly Guid TestSchoolId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
     private static readonly Guid TestClassId = Guid.Parse("00000000-0000-0000-0000-000000000003");
     private static readonly Guid TestStudentId = Guid.Parse("00000000-0000-0000-0000-000000000004");
 
-    private readonly SchoolPortalDbContext _context;
+    private readonly PostgresFixture _pg;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<ILogger<AttendanceService>> _mockLogger;
     private readonly Mock<INotificationService> _mockNotifications;
     private readonly Mock<IScopeService> _mockScope;
-    private readonly AttendanceService _service;
 
-    public AttendanceServiceTests()
+    private SchoolPortalDbContext _context = null!;
+    private NpgsqlDataSource _source = null!;
+    private AttendanceService _service = null!;
+
+    public AttendanceServiceTests(PostgresFixture pg)
     {
-        var options = new DbContextOptionsBuilder<SchoolPortalDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
-        _context = new SchoolPortalDbContext(options);
+        _pg = pg;
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockLogger = new Mock<ILogger<AttendanceService>>();
         _mockNotifications = new Mock<INotificationService>();
@@ -42,18 +50,27 @@ public class AttendanceServiceTests
         _mockScope.Setup(x => x.CanAccessClassAsync(It.IsAny<Guid>())).ReturnsAsync(true);
         _mockScope.Setup(x => x.EnsureClassAsync(It.IsAny<Guid>())).Returns(Task.CompletedTask);
         _mockScope.Setup(x => x.GetAccessibleClassIdsAsync()).ReturnsAsync((IReadOnlySet<Guid>?)null);
+    }
 
+    public async Task InitializeAsync()
+    {
+        (_context, _source) = await _pg.CreateIsolatedDatabaseAsync();
         _service = new AttendanceService(
             _context,
             _mockCurrentUser.Object,
             _mockLogger.Object,
             _mockNotifications.Object,
             _mockScope.Object);
-
-        SeedTestData();
+        await SeedTestDataAsync();
     }
 
-    private void SeedTestData()
+    public async Task DisposeAsync()
+    {
+        await _context.DisposeAsync();
+        await _source.DisposeAsync();
+    }
+
+    private async Task SeedTestDataAsync()
     {
         var school = new School
         {
@@ -97,7 +114,7 @@ public class AttendanceServiceTests
         _context.Classes.Add(classEntity);
         _context.Users.Add(user);
         _context.Students.Add(student);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
     }
 
     [Fact]

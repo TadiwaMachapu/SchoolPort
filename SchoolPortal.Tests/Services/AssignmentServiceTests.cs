@@ -1,16 +1,25 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Npgsql;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
 using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Assignments;
+using SchoolPortal.Tests.Integration;
 using Xunit;
 
 namespace SchoolPortal.Tests.Services;
 
-public class AssignmentServiceTests
+/// <summary>
+/// AssignmentService unit tests on REAL Postgres. Previously used the EF in-memory provider, which
+/// cannot map the jsonb POCO columns (School.Features/Theme/Settings) and so failed at SeedTestData —
+/// a pre-existing baseline-red (see [[test-suite-baseline-red]]). Now each test gets a fresh isolated
+/// database from the shared <see cref="PostgresFixture"/>. The HTTP auth pipeline is not exercised
+/// here (scope is mocked unrestricted) — this is a service-layer unit test, unchanged in intent.
+/// </summary>
+[Collection("Postgres")]
+public class AssignmentServiceTests : IAsyncLifetime
 {
     private static readonly Guid TestSchoolId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
@@ -18,36 +27,45 @@ public class AssignmentServiceTests
     private static readonly Guid TestSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000004");
     private static readonly Guid TestClassSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000005");
 
-    private readonly SchoolPortalDbContext _context;
+    private readonly PostgresFixture _pg;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<ILogger<AssignmentService>> _mockLogger;
     private readonly Mock<INotificationService> _mockNotifications;
     private readonly Mock<IScopeService> _mockScope;
-    private readonly AssignmentService _service;
 
-    public AssignmentServiceTests()
+    private SchoolPortalDbContext _context = null!;
+    private NpgsqlDataSource _source = null!;
+    private AssignmentService _service = null!;
+
+    public AssignmentServiceTests(PostgresFixture pg)
     {
-        var options = new DbContextOptionsBuilder<SchoolPortalDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-
-        _context = new SchoolPortalDbContext(options);
+        _pg = pg;
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockLogger = new Mock<ILogger<AssignmentService>>();
         _mockNotifications = new Mock<INotificationService>();
         _mockScope = new Mock<IScopeService>();
-        _service = new AssignmentService(_context, _mockCurrentUser.Object, _mockLogger.Object, _mockNotifications.Object, _mockScope.Object);
 
         _mockCurrentUser.Setup(x => x.SchoolId).Returns(TestSchoolId);
         _mockCurrentUser.Setup(x => x.UserId).Returns(TestUserId);
         _mockCurrentUser.Setup(x => x.Identity).Returns(IdentityKeys.Staff);
         // Unrestricted scope (null) so existing assertions over seeded assignments hold.
         _mockScope.Setup(x => x.GetAccessibleClassIdsAsync()).ReturnsAsync((IReadOnlySet<Guid>?)null);
-
-        SeedTestData();
     }
 
-    private void SeedTestData()
+    public async Task InitializeAsync()
+    {
+        (_context, _source) = await _pg.CreateIsolatedDatabaseAsync();
+        _service = new AssignmentService(_context, _mockCurrentUser.Object, _mockLogger.Object, _mockNotifications.Object, _mockScope.Object);
+        await SeedTestDataAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _context.DisposeAsync();
+        await _source.DisposeAsync();
+    }
+
+    private async Task SeedTestDataAsync()
     {
         var school = new School
         {
@@ -102,7 +120,7 @@ public class AssignmentServiceTests
         _context.Classes.Add(classEntity);
         _context.Subjects.Add(subject);
         _context.ClassSubjects.Add(classSubject);
-        _context.SaveChanges();
+        await _context.SaveChangesAsync();
     }
 
     [Fact]

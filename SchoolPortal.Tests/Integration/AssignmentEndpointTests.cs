@@ -1,200 +1,98 @@
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using SchoolPortal.Data;
-using SchoolPortal.Data.Entities;
-using SchoolPortal.Shared.DTOs.Assignments;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using SchoolPortal.Shared.DTOs.Assignments;
+using SchoolPortal.Tests.Security.Infrastructure;
 using Xunit;
 
 namespace SchoolPortal.Tests.Integration;
 
-public class AssignmentEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+/// <summary>
+/// Assignment HTTP endpoint tests on the REAL pipeline. Previously a bespoke WebApplicationFactory over
+/// the EF in-memory provider, which couldn't map the jsonb POCO columns and so failed at SeedTestData —
+/// a pre-existing baseline-red (see [[test-suite-baseline-red]]). Rebuilt on the Step 10
+/// <see cref="ApiFactory"/> harness: real Postgres + full auth/permission pipeline + production token
+/// issuing. Under the permission model a bare authenticated user no longer suffices — POST
+/// /api/assignments requires <c>assessment.create</c> (a SubjectTeacher position), GET requires
+/// <c>platform.access</c> (any identity) — so the caller is minted as Staff + SubjectTeacher.
+/// </summary>
+[Collection("SecurityApi")]
+public class AssignmentEndpointTests
 {
-    private static readonly Guid TestSchoolId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-    private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
-    private static readonly Guid TestClassId = Guid.Parse("00000000-0000-0000-0000-000000000003");
-    private static readonly Guid TestSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000004");
-    private static readonly Guid TestClassSubjectId = Guid.Parse("00000000-0000-0000-0000-000000000005");
+    private readonly ApiFactory _api;
+    public AssignmentEndpointTests(ApiFactory api) => _api = api;
 
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly HttpClient _client;
-
-    public AssignmentEndpointTests(WebApplicationFactory<Program> factory)
+    // A Staff + SubjectTeacher client (holds assessment.create + platform.access) plus a class-subject
+    // in the same school for the assignment to attach to.
+    private async Task<(HttpClient Client, Guid ClassSubjectId)> AuthedTeacherAsync()
     {
-        _factory = factory.WithWebHostBuilder(builder =>
+        var schoolId = Guid.NewGuid();
+        var teacher = await _api.MintTokenAsync(schoolId, "Staff", "SubjectTeacher");
+
+        var classSubjectId = Guid.Empty;
+        await _api.WithScopeAsync(async db =>
         {
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType == typeof(DbContextOptions<SchoolPortalDbContext>));
-
-                if (descriptor != null)
-                {
-                    services.Remove(descriptor);
-                }
-
-                services.AddDbContext<SchoolPortalDbContext>(options =>
-                {
-                    options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid());
-                });
-
-                var sp = services.BuildServiceProvider();
-                using var scope = sp.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<SchoolPortalDbContext>();
-                SeedTestData(db);
-            });
+            classSubjectId = Seed.ClassSubject(db, schoolId);
+            await db.SaveChangesAsync();
         });
 
-        _client = _factory.CreateClient();
-    }
-
-    private static void SeedTestData(SchoolPortalDbContext db)
-    {
-        var school = new School
-        {
-            SchoolId = TestSchoolId,
-            Name = "Test School",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var user = new User
-        {
-            UserId = TestUserId,
-            SchoolId = TestSchoolId,
-            Email = "test@school.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password123"),
-            FirstName = "Test",
-            LastName = "Teacher",
-            Role = "Teacher",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var classEntity = new Class
-        {
-            ClassId = TestClassId,
-            SchoolId = TestSchoolId,
-            Name = "Grade 10A",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var subject = new Subject
-        {
-            SubjectId = TestSubjectId,
-            SchoolId = TestSchoolId,
-            Name = "Mathematics",
-            Code = "MATH",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var classSubject = new ClassSubject
-        {
-            ClassSubjectId = TestClassSubjectId,
-            ClassId = TestClassId,
-            SubjectId = TestSubjectId,
-            SchoolId = TestSchoolId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        db.Schools.Add(school);
-        db.Users.Add(user);
-        db.Classes.Add(classEntity);
-        db.Subjects.Add(subject);
-        db.ClassSubjects.Add(classSubject);
-        db.SaveChanges();
-    }
-
-    private async Task<string> GetAuthTokenAsync()
-    {
-        var loginRequest = new
-        {
-            email = "test@school.com",
-            password = "Password123"
-        };
-
-        var response = await _client.PostAsJsonAsync("/api/auth/login", loginRequest);
-        response.EnsureSuccessStatusCode();
-
-        var content = await response.Content.ReadAsStringAsync();
-        var loginResponse = JsonSerializer.Deserialize<JsonElement>(content);
-        return loginResponse.GetProperty("accessToken").GetString()!;
+        return (_api.ClientFor(teacher), classSubjectId);
     }
 
     [Fact]
     public async Task CreateAssignment_ValidRequest_ReturnsCreated()
     {
-        // Arrange
-        var token = await GetAuthTokenAsync();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var (client, classSubjectId) = await AuthedTeacherAsync();
 
         var request = new CreateAssignmentRequest
         {
-            ClassSubjectId = TestClassSubjectId,
+            ClassSubjectId = classSubjectId,
             Title = "Integration Test Assignment",
             Description = "Test Description",
             DueAt = DateTime.UtcNow.AddDays(7),
             MaxMarks = 100
         };
 
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/assignments", request);
+        var response = await client.PostAsJsonAsync("/api/assignments", request);
 
-        // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-        var content = await response.Content.ReadAsStringAsync();
-        var assignment = JsonSerializer.Deserialize<JsonElement>(content);
+        var assignment = JsonSerializer.Deserialize<JsonElement>(await response.Content.ReadAsStringAsync());
         Assert.Equal("Integration Test Assignment", assignment.GetProperty("title").GetString());
     }
 
     [Fact]
     public async Task GetAssignments_WithAuth_ReturnsOk()
     {
-        // Arrange
-        var token = await GetAuthTokenAsync();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var (client, _) = await AuthedTeacherAsync();
 
-        // Act
-        var response = await _client.GetAsync("/api/assignments?page=1&pageSize=20");
+        var response = await client.GetAsync("/api/assignments?page=1&pageSize=20");
 
-        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
     public async Task GetAssignments_WithoutAuth_ReturnsUnauthorized()
     {
-        // Act
-        var response = await _client.GetAsync("/api/assignments");
+        var response = await _api.AnonymousClient().GetAsync("/api/assignments");
 
-        // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task CreateAssignment_InvalidDueDate_ReturnsBadRequest()
     {
-        // Arrange
-        var token = await GetAuthTokenAsync();
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var (client, classSubjectId) = await AuthedTeacherAsync();
 
         var request = new CreateAssignmentRequest
         {
-            ClassSubjectId = TestClassSubjectId,
+            ClassSubjectId = classSubjectId,
             Title = "Test Assignment",
             DueAt = DateTime.UtcNow.AddDays(-1),
             MaxMarks = 100
         };
 
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/assignments", request);
+        var response = await client.PostAsJsonAsync("/api/assignments", request);
 
-        // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

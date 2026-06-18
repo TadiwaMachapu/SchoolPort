@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 using SchoolPortal.Data;
 using Xunit;
@@ -51,9 +52,17 @@ public sealed class PostgresFixture : IAsyncLifetime
     {
         var options = new DbContextOptionsBuilder<SchoolPortalDbContext>()
             .UseNpgsql(DataSource)
+            .ConfigureWarnings(SuppressManyServiceProviders)
             .Options;
         return new SchoolPortalDbContext(options);
     }
+
+    // Each isolated database needs its own NpgsqlDataSource (distinct connection string), and EF
+    // builds a separate internal service provider per data source. With enough isolated-DB tests the
+    // count crosses 20 and EF escalates ManyServiceProvidersCreatedWarning to an error — a false alarm
+    // here, since the many providers are intentional per-test isolation, not a leaked singleton.
+    private static void SuppressManyServiceProviders(WarningsConfigurationBuilder w) =>
+        w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning);
 
     /// <summary>
     /// Creates a brand-new, isolated database in the container with a fresh schema, so a
@@ -73,7 +82,8 @@ public sealed class PostgresFixture : IAsyncLifetime
 
         var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = dbName };
         var source = new NpgsqlDataSourceBuilder(csb.ConnectionString).EnableDynamicJson().Build();
-        var options = new DbContextOptionsBuilder<SchoolPortalDbContext>().UseNpgsql(source).Options;
+        var options = new DbContextOptionsBuilder<SchoolPortalDbContext>().UseNpgsql(source)
+            .ConfigureWarnings(SuppressManyServiceProviders).Options;
         var ctx = new SchoolPortalDbContext(options);
         await ctx.Database.EnsureCreatedAsync();
         return (ctx, source);

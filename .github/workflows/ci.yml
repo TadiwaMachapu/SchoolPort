@@ -57,7 +57,6 @@ jobs:
         run: dotnet build SchoolPortal.sln --configuration Release --no-restore
       - name: Test
         run: dotnet test SchoolPortal.sln --configuration Release --no-build
-          --filter "FullyQualifiedName!~AssignmentServiceTests&FullyQualifiedName!~AttendanceServiceTests&FullyQualifiedName!~AssignmentEndpointTests"
           --logger "console;verbosity=normal"
 
   # Catches a broken frontend build on every PR (the .NET side is covered above).

@@ -35,6 +35,10 @@ public class SubmissionsController : ControllerBase
         [FromForm] string? comments,
         IFormFile? file)
     {
+        // Step 11 QA M-1: validate the assignment belongs to the caller's school BEFORE uploading,
+        // so a foreign/invalid id (which 404s) can't leave an orphan file in the storage bucket.
+        await _submissionService.EnsureAssignmentInSchoolAsync(assignmentId);
+
         string? fileUrl = null;
         string? fileName = null;
 

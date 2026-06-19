@@ -207,8 +207,12 @@ public static class PositionsSeedData
             "communications.message_class", "discipline.log");
 
         Map("SportCultureMIC",
-            "attendance.capture", "communications.message_class", "discipline.log",
+            "communications.message_class", "discipline.log",
             "communications.whatsapp_trigger"); // Step 6 widening
+            // NOTE: attendance.capture was REMOVED (Step 11 QA H-1). It was non-functional for a pure
+            // MIC: the only endpoint requiring it (AttendanceController.BulkUpsertAttendance) needs a
+            // CLASS scope, but an MIC resolves scope from Activity ownership only → guaranteed 403.
+            // MIC attendance is activity participation (activities.manage). Revoked below for live.
 
         Map("FinanceManager",
             "finance.view_all", "finance.create_invoice", "finance.capture_payment", "finance.refund",
@@ -405,6 +409,9 @@ public static class PositionsSeedData
             ("FinanceManager",     "finance.exempt_approve"),  // FM initiates; SMT approves (FIN-1)
             ("BursarDebtorsClerk", "finance.create_invoice"),  // Bursar is capture-and-chase, not fee creation (FIN-2)
             ("BursarDebtorsClerk", "finance.exempt_initiate"),
+            // Step 11 QA H-1: non-functional grant — MIC has Activity scope, but attendance.capture's
+            // only endpoint (class register) needs class scope → always 403. Remove for live convergence.
+            ("SportCultureMIC",    "attendance.capture"),
         };
         var revoked = 0;
         foreach (var (posKey, permKey) in revocations)

@@ -95,6 +95,10 @@ public class SeedSyncTests
             Assert.False(await Holds(db, "Principal", "finance.create_invoice"));
             Assert.False(await Holds(db, "DeputyPrincipal", "finance.create_invoice"));
 
+            // Step 11 QA H-1: SportCultureMIC must NOT hold attendance.capture (non-functional grant —
+            // MIC has Activity scope, the only attendance.capture endpoint needs class scope → 403).
+            Assert.False(await Holds(db, "SportCultureMIC", "attendance.capture"));
+
             // Revocation is delete-if-present: re-introduce a violating grant (as a legacy DB had),
             // re-seed, and confirm it is removed again.
             var fmId = (await db.Positions.SingleAsync(p => p.Key == "FinanceManager")).PositionId;

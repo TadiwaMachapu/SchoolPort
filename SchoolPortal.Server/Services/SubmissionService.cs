@@ -9,6 +9,9 @@ namespace SchoolPortal.Server.Services;
 
 public interface ISubmissionService
 {
+    /// <summary>Validates the assignment belongs to the caller's school (throws KeyNotFound → 404).
+    /// Call BEFORE any file upload so a foreign/invalid id can't leave an orphan object in storage.</summary>
+    Task EnsureAssignmentInSchoolAsync(Guid assignmentId);
     Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? fileUrl = null, string? fileName = null);
     Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(Guid assignmentId);
     Task<SubmissionDto?> GetMySubmissionAsync(Guid assignmentId);
@@ -28,6 +31,15 @@ public class SubmissionService : ISubmissionService
         _scope = scope;
     }
 
+    // Step 10 (Teaching cluster, H1-class): assignmentId is a body id — it must belong to the
+    // caller's school, else a learner could create a submission linked to another school's
+    // assignment (the FK resolves across tenants; SchoolId alone would silently mislink).
+    public async Task EnsureAssignmentInSchoolAsync(Guid assignmentId)
+    {
+        if (!await _context.Assignments.AnyAsync(a => a.AssignmentId == assignmentId && a.SchoolId == _currentUser.SchoolId))
+            throw new KeyNotFoundException("Assignment not found");
+    }
+
     public async Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? fileUrl = null, string? fileName = null)
     {
         var studentId = await _context.Students
@@ -38,11 +50,8 @@ public class SubmissionService : ISubmissionService
         if (studentId == Guid.Empty)
             throw new InvalidOperationException("Student not found");
 
-        // Step 10 (Teaching cluster, H1-class): assignmentId is a body id — it must belong to the
-        // caller's school, else a learner could create a submission linked to another school's
-        // assignment (the FK resolves across tenants; SchoolId alone would silently mislink).
-        if (!await _context.Assignments.AnyAsync(a => a.AssignmentId == assignmentId && a.SchoolId == _currentUser.SchoolId))
-            throw new KeyNotFoundException("Assignment not found");
+        // Defense-in-depth (also enforced pre-upload in the controller via EnsureAssignmentInSchoolAsync).
+        await EnsureAssignmentInSchoolAsync(assignmentId);
 
         var submission = new Submission
         {

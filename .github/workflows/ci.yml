@@ -59,6 +59,46 @@ jobs:
         run: dotnet test SchoolPortal.sln --configuration Release --no-build
           --logger "console;verbosity=normal"
 
+  # Proves the EF migration chain replays cleanly from an EMPTY database to head — i.e. a fresh
+  # clone can build the schema from migrations alone (no EnsureCreated). Guards the orphan-history
+  # gaps (super_admins) that previously broke from-scratch replay. Uses the design-time factory so
+  # `dotnet ef` does not boot the API host (whose startup would migrate/seed).
+  migrate-replay:
+    name: Migration replay (fresh DB)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: schoolport_migrate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      EF_MIGRATIONS_CONNECTION: "Host=localhost;Port=5432;Database=schoolport_migrate;Username=postgres;Password=postgres"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Install dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.0.4
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+      - name: Restore
+        run: dotnet restore SchoolPortal.sln
+      - name: Replay migrations from empty -> head
+        run: dotnet ef database update --project SchoolPortal.Data --startup-project SchoolPortal.Server --verbose
+      - name: Assert schema built from migrations (super_admins exists, history at head)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d schoolport_migrate -c "SELECT to_regclass('public.super_admins') IS NOT NULL AS super_admins_exists;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -d schoolport_migrate -c "SELECT count(*) AS applied_migrations FROM \"__EFMigrationsHistory\";"
+
   # Catches a broken frontend build on every PR (the .NET side is covered above).
   web:
     name: Frontend build

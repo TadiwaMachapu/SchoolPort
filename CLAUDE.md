@@ -32,8 +32,8 @@ Flag names are camelCase strings, matched exactly in `School.Features` jsonb, `S
 
 ## Phased Roadmap
 
-### Phase 0 — Foundation (2 weeks) ✅ In progress
-Lays groundwork. No new user-facing features shipped.
+### Phase 0 — Foundation — ✅ foundational items shipped (across Sprints 1.5.0–1.5.0.5)
+Lays groundwork. Onboarding wizard, feature-flag enforcement, academic calendar, CAPS subject seeding, and the sidebar audit are done. **Item 6 (service-file split) is partial** — `AdditionalServices.cs` still hosts multiple service classes (see the pitfall note under Service pattern).
 
 1. School onboarding wizard — guided setup (school details, branding, pillar toggles, CSV import).
 2. Feature flag enforcement — `useFeature(name)` hook; sidebar + route audit per role.
@@ -189,7 +189,13 @@ Or set env var `CONNECTIONSTRINGS__DEFAULTCONNECTION` at runtime.
 ## Backend Architecture
 
 ### Multi-tenancy
-Every authenticated request carries a `schoolId` JWT claim. `TenantMiddleware` (runs after auth, before authorization) reads this claim and stores it in `HttpContext.Items["SchoolId"]`. All services use `ICurrentUserService` to get `SchoolId`, `UserId`, and `Role` — never pass tenant IDs through request parameters.
+Every authenticated request carries a `schoolId` JWT claim. `TenantMiddleware` (runs after auth, before authorization) reads this claim and stores it in `HttpContext.Items["SchoolId"]`. All services use `ICurrentUserService` to get `SchoolId`, `UserId`, and identity/permissions (note: `ICurrentUserService.Role` was **removed** in Step 7 — use identity/`HasPermission`) — never pass tenant IDs through request parameters.
+
+**Tenant isolation is application-layer only (deliberate, pilot decision — Option A).** The app connects to Postgres as `postgres` (bypasses RLS), so DB-layer RLS is not in force; the tested controls are the 19 cross-tenant/IDOR guards, `IScopeService`, the `CrossTenantGuardScannerTests` scanner, and 170 tests. Full RLS defense-in-depth is a **pre-scale** item. See `SECURITY.md` §5. **Mutating-endpoint rule:** any write taking a tenant-owned id (body or route) MUST validate it belongs to the caller's school before writing (the FK resolves cross-tenant) — the scanner enforces a guard test for every such endpoint.
+
+**Supabase Data API (`/rest/v1/`) is locked down** (`migrations/006_restrict_data_api.sql`, applied live 2026-06-19): anon/authenticated have no access to the `public` schema. This closed a cross-school leak where aggregate views/matviews were readable with the public anon key. Nothing in the app uses the Data API (frontend has no supabase-js; backend uses Npgsql/EF + the Storage API).
+
+**PRE-PILOT FOLLOW-UP (open, needs its own go-ahead):** the `submissions` storage bucket is **public** — student work files are readable by anyone with the exact GUID-path URL (obscurity, **not POPIA-clean** for minors' submissions). The bulk-listing exposure was removed in migration 006, but the proper fix is a **private bucket + `StorageService` minting short-lived signed URLs + DTO changes** (the returned `Url` must become a signed URL). Scoped, separate change — do not bundle without approval.
 
 ### Service pattern
 Controllers are thin. Business logic lives in services injected by interface. Services are in `SchoolPortal.Server/Services/`:
@@ -199,13 +205,14 @@ Controllers are thin. Business logic lives in services injected by interface. Se
 **Critical pitfall with `AdditionalServices.cs`:** When adding a method to an existing service class (e.g. `SubmissionService`), the method must be placed *inside* that class's closing `}`. The file contains many back-to-back classes; accidentally placing a method after a closing brace compiles as a top-level function and causes `CS1519`. Always verify the surrounding class context before editing.
 
 ### Authorization model
-- `[Authorize]` — any authenticated user
-- `[Authorize(Roles = "Admin")]` — school admin only
-- `[Authorize(Roles = "Admin,Teacher")]` — admin or teacher
-- `[Authorize(Roles = "Student")]` — student only
-- `[Authorize(Roles = "Parent")]` — parent only
+**Current model (Sprint 1.5.0, Step 6 onward): three layers — Identity → Positions → Permissions.** See `SECURITY.md` for the full model and `Authorization/PermissionKeys.cs` + `Seeds/PositionsSeedData.cs` for the catalogue (source of truth, synced on startup). In short:
+- Endpoints declare `[RequirePermission("perm.key")]`; genuinely-anonymous ones carry `[AllowAnonymous]` + `[AnonymousJustification]`; SuperAdmin uses `[RequireSuperAdmin]`. The `EndpointAuthorizationContractTests` governance test **fails the build** if any endpoint omits an explicit decision.
+- Deny-by-default: `FallbackPolicy = RequireAuthenticatedUser`.
+- Resource scope (which class/student/child) is enforced by `IScopeService` (IDOR → 403), not by the permission alone.
+- Sensitive permissions (`PermissionKeys.Sensitive`) re-resolve from the DB per request (ignore the cached JWT set).
+- The JWT carries `schoolId` (Guid), `email`, identity, and position claims.
 
-The JWT token contains `schoolId`, `email`, `role` claims. `schoolId` is a `Guid`.
+**Legacy note:** bare `[Authorize]` / `[Authorize(Roles = "Admin,Teacher")]` etc. are **removed** and **banned** — the governance test's legacy allowlist is empty. Do not reintroduce them.
 
 #### Permission catalogue widenings (Sprint 1.5.0 Step 6)
 Deliberate, reviewed additions to the position→permission map in `PositionsSeedData` (applied to live via sync-by-key on next server start). Recorded here so the catalogue's evolution is auditable:

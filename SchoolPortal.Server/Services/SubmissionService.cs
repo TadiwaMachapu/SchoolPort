@@ -12,7 +12,9 @@ public interface ISubmissionService
     /// <summary>Validates the assignment belongs to the caller's school (throws KeyNotFound → 404).
     /// Call BEFORE any file upload so a foreign/invalid id can't leave an orphan object in storage.</summary>
     Task EnsureAssignmentInSchoolAsync(Guid assignmentId);
-    Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? fileUrl = null, string? fileName = null);
+    /// <summary>filePath is the bucket-relative storage object path (private bucket,
+    /// Sprint 1.5.0.6) — stored in Submission.FileUrl; reads mint signed URLs from it.</summary>
+    Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? filePath = null, string? fileName = null);
     Task<List<SubmissionDto>> GetSubmissionsByAssignmentAsync(Guid assignmentId);
     Task<SubmissionDto?> GetMySubmissionAsync(Guid assignmentId);
     Task<List<PendingSubmissionDto>> GetPendingSubmissionsAsync(int limit = 20);
@@ -23,12 +25,14 @@ public class SubmissionService : ISubmissionService
     private readonly SchoolPortalDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly IScopeService _scope;
+    private readonly IStorageService _storage;
 
-    public SubmissionService(SchoolPortalDbContext context, ICurrentUserService currentUser, IScopeService scope)
+    public SubmissionService(SchoolPortalDbContext context, ICurrentUserService currentUser, IScopeService scope, IStorageService storage)
     {
         _context = context;
         _currentUser = currentUser;
         _scope = scope;
+        _storage = storage;
     }
 
     // Step 10 (Teaching cluster, H1-class): assignmentId is a body id — it must belong to the
@@ -40,7 +44,7 @@ public class SubmissionService : ISubmissionService
             throw new KeyNotFoundException("Assignment not found");
     }
 
-    public async Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? fileUrl = null, string? fileName = null)
+    public async Task<Guid> CreateSubmissionAsync(Guid assignmentId, string? comments, string? filePath = null, string? fileName = null)
     {
         var studentId = await _context.Students
             .Where(s => s.UserId == _currentUser.UserId)
@@ -60,7 +64,7 @@ public class SubmissionService : ISubmissionService
             SchoolId = _currentUser.SchoolId,
             SubmittedAt = DateTime.UtcNow,
             Comments = comments,
-            FileUrl = fileUrl,
+            FileUrl = filePath,
             FileName = fileName
         };
 
@@ -79,7 +83,7 @@ public class SubmissionService : ISubmissionService
         if (classId is null || !await _scope.CanAccessClassAsync(classId.Value))
             return new List<SubmissionDto>();
 
-        return await _context.Submissions
+        var dtos = await _context.Submissions
             .AsNoTracking()
             .Where(s => s.AssignmentId == assignmentId && s.SchoolId == _currentUser.SchoolId)
             .Include(s => s.Student).ThenInclude(st => st.User)
@@ -105,6 +109,19 @@ public class SubmissionService : ISubmissionService
                 } : null
             })
             .ToListAsync();
+
+        // Sprint 1.5.0.6: the bucket is private — FileUrl holds an object path (or a legacy
+        // public URL); replace with short-lived signed URLs, one bulk call for the whole class.
+        var filePaths = dtos.Where(d => d.FileUrl != null).Select(d => d.FileUrl!).ToList();
+        if (filePaths.Count > 0)
+        {
+            var signed = await _storage.GetSignedUrlsAsync(filePaths);
+            foreach (var dto in dtos)
+                if (dto.FileUrl != null)
+                    dto.FileUrl = signed.GetValueOrDefault(dto.FileUrl); // unsignable → null, never a raw path
+        }
+
+        return dtos;
     }
 
     public async Task<SubmissionDto?> GetMySubmissionAsync(Guid assignmentId)
@@ -116,7 +133,7 @@ public class SubmissionService : ISubmissionService
 
         if (studentId == Guid.Empty) return null;
 
-        return await _context.Submissions
+        var dto = await _context.Submissions
             .AsNoTracking()
             .Where(s => s.AssignmentId == assignmentId && s.StudentId == studentId)
             .Include(s => s.Student).ThenInclude(st => st.User)
@@ -141,6 +158,12 @@ public class SubmissionService : ISubmissionService
                 } : null
             })
             .FirstOrDefaultAsync();
+
+        // Sprint 1.5.0.6: private bucket — mint a signed URL for the learner's own file.
+        if (dto?.FileUrl != null)
+            dto.FileUrl = await _storage.GetSignedUrlAsync(dto.FileUrl);
+
+        return dto;
     }
 
     public async Task<List<PendingSubmissionDto>> GetPendingSubmissionsAsync(int limit = 20)

@@ -39,16 +39,18 @@ public class SubmissionsController : ControllerBase
         // so a foreign/invalid id (which 404s) can't leave an orphan file in the storage bucket.
         await _submissionService.EnsureAssignmentInSchoolAsync(assignmentId);
 
-        string? fileUrl = null;
+        // Sprint 1.5.0.6: the bucket is private — filePath is the bucket-relative object path
+        // (stored in Submission.FileUrl); reads mint short-lived signed URLs from it.
+        string? filePath = null;
         string? fileName = null;
 
         if (file != null && file.Length > 0)
         {
-            (fileUrl, fileName) = await _storageService.UploadSubmissionFileAsync(
+            (filePath, fileName) = await _storageService.UploadSubmissionFileAsync(
                 _currentUser.SchoolId, assignmentId, _currentUser.UserId, file);
         }
 
-        var submissionId = await _submissionService.CreateSubmissionAsync(assignmentId, comments, fileUrl, fileName);
+        var submissionId = await _submissionService.CreateSubmissionAsync(assignmentId, comments, filePath, fileName);
         return CreatedAtAction(nameof(CreateSubmission), new { }, new { submissionId });
     }
 

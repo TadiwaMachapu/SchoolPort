@@ -34,4 +34,9 @@
     <ProjectReference Include="..\SchoolPortal.Shared\SchoolPortal.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Sprint 1.5.0.6: unit tests exercise StorageService.ExtractObjectPath (internal) -->
+    <InternalsVisibleTo Include="SchoolPortal.Tests" />
+  </ItemGroup>
+
 </Project>

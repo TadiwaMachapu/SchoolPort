@@ -74,17 +74,27 @@ public record ParentPathwaysDto(
 public class PathwaysService : IPathwaysService
 {
     private readonly SchoolPortalDbContext _context;
+    private readonly ILogger<PathwaysService> _logger;
 
-    public PathwaysService(SchoolPortalDbContext context)
+    public PathwaysService(SchoolPortalDbContext context, ILogger<PathwaysService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     public async Task<LearnerApsResult> GetLearnerApsAsync(Guid studentId, Guid schoolId)
     {
+        // Sprint 1.5.1 Gap 2: APS is a CURRENT-year calculation. Unscoped, the query averaged
+        // every grade ever recorded AND duplicated subjects enrolled across years (LearnerSubjects
+        // is per-year). No academic year configured → fail closed with an empty result.
+        var currentYear = await GetCurrentAcademicYearAsync(schoolId);
+        if (currentYear == null)
+            return new LearnerApsResult(0, 0, new List<SubjectScoreDto>());
+
         var subjectAverages = await (
             from ls in _context.LearnerSubjects
             where ls.StudentId == studentId && ls.SchoolId == schoolId
+                  && ls.AcademicYearId == currentYear.AcademicYearId
             join s in _context.Subjects on ls.SubjectId equals s.SubjectId
             select new
             {
@@ -96,7 +106,9 @@ public class PathwaysService : IPathwaysService
                         g.SchoolId == schoolId &&
                         g.Submission.StudentId == studentId &&
                         g.Submission.Assignment.ClassSubject.SubjectId == ls.SubjectId &&
-                        g.Submission.Assignment.MaxMarks > 0)
+                        g.Submission.Assignment.MaxMarks > 0 &&
+                        g.Submission.Assignment.DueAt >= currentYear.StartDate &&
+                        g.Submission.Assignment.DueAt <= currentYear.EndDate)
                     .Average(g => (double?)((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100))
             }
         ).ToListAsync();
@@ -234,8 +246,10 @@ public class PathwaysService : IPathwaysService
             .Where(r => r.IsRequired && r.MinimumPercent.HasValue)
             .Select(req =>
             {
+                // Gap 3: CAPS-aware matching — a school subject renamed "Maths" still matches
+                // a "Mathematics" requirement (normalisation + alias/code, never fuzzy).
                 var score = aps.SubjectScores.FirstOrDefault(s =>
-                    string.Equals(s.SubjectName, req.SubjectName, StringComparison.OrdinalIgnoreCase));
+                    CapsSubjects.Matches(s.SubjectName, req.SubjectName));
                 var current = score?.AveragePercent;
                 var gap = current.HasValue ? req.MinimumPercent!.Value - current.Value : (double)req.MinimumPercent!.Value;
                 return new SubjectGapDto(
@@ -247,6 +261,11 @@ public class PathwaysService : IPathwaysService
                 );
             })
             .ToList();
+
+        // Gap 3: distinguish "learner isn't enrolled" from "school subject names don't match the
+        // CAPS requirement name at all" — the latter is a configuration bug and must be ops-visible.
+        await WarnOnSchoolLevelNameMismatchAsync(schoolId,
+            subjectGaps.Where(g => g.CurrentPercent == null).Select(g => g.SubjectName));
 
         var status = DetermineStatus(aps.StandardAps, course.MinimumAps, subjectGaps);
 
@@ -291,6 +310,54 @@ public class PathwaysService : IPathwaysService
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
 
+    /// <summary>Gap 3 ops signal: for requirement names where the learner has no matching mark,
+    /// checks whether ANY subject in the school matches the name. None → a subject-naming
+    /// configuration bug (school renamed a subject beyond alias coverage), logged as a structured
+    /// warning with the school, the requirement name, and its canonical CAPS resolution. Also
+    /// surfaced on demand by GET /api/pathways/subject-match-report.</summary>
+    private async Task WarnOnSchoolLevelNameMismatchAsync(Guid schoolId, IEnumerable<string> unmatchedRequirementNames)
+    {
+        var names = unmatchedRequirementNames.Distinct().ToList();
+        if (names.Count == 0) return;
+
+        var schoolSubjectNames = await _context.Subjects
+            .AsNoTracking()
+            .Where(s => s.SchoolId == schoolId)
+            .Select(s => s.Name)
+            .ToListAsync();
+
+        foreach (var requirementName in names)
+        {
+            if (schoolSubjectNames.Any(n => CapsSubjects.Matches(n, requirementName))) continue;
+            _logger.LogWarning(
+                "Pathways subject-name mismatch: school {SchoolId} has no subject matching requirement '{RequirementName}' (canonical CAPS name: '{CanonicalName}'). Goal tracking cannot find marks for it; see /api/pathways/subject-match-report.",
+                schoolId, requirementName, CapsSubjects.FindCanonical(requirementName) ?? "<none>");
+        }
+    }
+
+    private sealed record AcademicYearWindow(Guid AcademicYearId, DateTime StartDate, DateTime EndDate);
+
+    /// <summary>"Current academic year" = the year of the school's IsCurrent term (exactly one per
+    /// school by domain rule); fallback = latest year by Year (the GetClassMatrix rule) for schools
+    /// without a current term set. Null when the school has no academic years at all.</summary>
+    private async Task<AcademicYearWindow?> GetCurrentAcademicYearAsync(Guid schoolId)
+    {
+        var fromCurrentTerm = await _context.Terms
+            .AsNoTracking()
+            .Where(t => t.SchoolId == schoolId && t.IsCurrent)
+            .Select(t => new AcademicYearWindow(
+                t.AcademicYear.AcademicYearId, t.AcademicYear.StartDate, t.AcademicYear.EndDate))
+            .FirstOrDefaultAsync();
+        if (fromCurrentTerm != null) return fromCurrentTerm;
+
+        return await _context.AcademicYears
+            .AsNoTracking()
+            .Where(y => y.SchoolId == schoolId)
+            .OrderByDescending(y => y.Year)
+            .Select(y => new AcademicYearWindow(y.AcademicYearId, y.StartDate, y.EndDate))
+            .FirstOrDefaultAsync();
+    }
+
     private GoalWithTrackingDto ToGoalWithTrackingDto(LearnerCareerGoal goal, LearnerApsResult aps)
     {
         var course = goal.UniversityCourse;
@@ -298,8 +365,11 @@ public class PathwaysService : IPathwaysService
             .Where(r => r.IsRequired && r.MinimumPercent.HasValue)
             .Select(req =>
             {
+                // Gap 3: CAPS-aware matching (see GetGoalTrackingAsync). This sync list-path
+                // builder does not do the school-level mismatch check — the detail read and the
+                // subject-match report carry the ops signal.
                 var score = aps.SubjectScores.FirstOrDefault(s =>
-                    string.Equals(s.SubjectName, req.SubjectName, StringComparison.OrdinalIgnoreCase));
+                    CapsSubjects.Matches(s.SubjectName, req.SubjectName));
                 var current = score?.AveragePercent;
                 var gap = current.HasValue ? req.MinimumPercent!.Value - current.Value : (double)req.MinimumPercent!.Value;
                 return new SubjectGapDto(req.SubjectName, current, req.MinimumPercent!.Value, Math.Max(0, gap), current.HasValue && current.Value >= req.MinimumPercent!.Value);

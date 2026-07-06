@@ -125,9 +125,18 @@ public class Gr9AdvisorService : IGr9AdvisorService
 
         // Build eligibility for each FET subject
         var eligibility = new List<FetSubjectEligibilityDto>();
+        // Gap 3: CAPS-aware name matching throughout (was ordinal / case-sensitive on the FET-name
+        // line — "Engineering Graphics & Design" in FetSubjects silently missed the seeded
+        // "Engineering Graphics and Design" requirement). School subject names for the mismatch check.
+        var schoolSubjectNames = await _context.Subjects
+            .AsNoTracking()
+            .Where(s => s.SchoolId == schoolId)
+            .Select(s => s.Name)
+            .ToListAsync();
+
         foreach (var fetSubject in FetSubjects)
         {
-            var req = requirements.FirstOrDefault(r => r.FetSubjectName == fetSubject);
+            var req = requirements.FirstOrDefault(r => CapsSubjects.Matches(r.FetSubjectName, fetSubject));
             var careers = careerMap.TryGetValue(fetSubject, out var c) ? c : new List<string>();
 
             if (req == null)
@@ -138,10 +147,16 @@ public class Gr9AdvisorService : IGr9AdvisorService
             }
 
             var studentMark = marksBySubject
-                .FirstOrDefault(m => m.SubjectName.Equals(req.RequiredSeniorPhaseSubjectName, StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(m => CapsSubjects.Matches(m.SubjectName, req.RequiredSeniorPhaseSubjectName));
 
             if (studentMark == null)
             {
+                if (!schoolSubjectNames.Any(n => CapsSubjects.Matches(n, req.RequiredSeniorPhaseSubjectName)))
+                    _logger.LogWarning(
+                        "Pathways subject-name mismatch: school {SchoolId} has no subject matching Gr9 prerequisite '{RequirementName}' (canonical CAPS name: '{CanonicalName}'). Gr9 advice shows NoData for {FetSubject}; see /api/pathways/subject-match-report.",
+                        schoolId, req.RequiredSeniorPhaseSubjectName,
+                        CapsSubjects.FindCanonical(req.RequiredSeniorPhaseSubjectName) ?? "<none>", fetSubject);
+
                 eligibility.Add(new FetSubjectEligibilityDto(
                     fetSubject, "NoData", req.RequiredSeniorPhaseSubjectName, req.RecommendedMinPercent, null, careers));
                 continue;

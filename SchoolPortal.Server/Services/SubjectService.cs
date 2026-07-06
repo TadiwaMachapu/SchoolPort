@@ -162,62 +162,10 @@ public class SubjectService : ISubjectService
         return new CapsSeedException(toCreate.Count, capsSubjects.Count - toCreate.Count);
     }
 
+    // Sprint 1.5.1 Gap 3: the CAPS list moved to CapsSubjects (single source of truth shared
+    // with subject-name matching). Seeding behavior is unchanged.
     private static List<(string Name, string? Code, string? CapsPhase)> BuildCapsSubjectList()
-    {
-        var languages = new[]
-        {
-            "Afrikaans", "English", "IsiZulu", "IsiXhosa", "Sesotho", "Setswana",
-            "Sepedi", "SiSwati", "IsiNdebele", "Tshivenda", "Xitsonga"
-        };
-
-        var subjects = new List<(string Name, string? Code, string? CapsPhase)>();
-
-        foreach (var lang in languages)
-        {
-            subjects.Add(($"{lang} Home Language", null, null));
-            subjects.Add(($"{lang} First Additional Language", null, null));
-        }
-
-        subjects.AddRange(new (string Name, string? Code, string? CapsPhase)[]
-        {
-            // Senior Phase (Gr 7–9)
-            ("Mathematics", "MATH", "SeniorPhase"),
-            ("Natural Sciences", "NSC", "SeniorPhase"),
-            ("Social Sciences", "SS", "SeniorPhase"),
-            ("Technology", "TECH", "SeniorPhase"),
-            ("Economic and Management Sciences", "EMS", "SeniorPhase"),
-            ("Life Orientation", "LO", "SeniorPhase"),
-            ("Creative Arts", "CA", "SeniorPhase"),
-            ("Physical Education", "PE", "SeniorPhase"),
-
-            // FET Phase (Gr 10–12)
-            ("Mathematics", "MATH", "FET"),
-            ("Mathematical Literacy", "ML", "FET"),
-            ("Life Sciences", "LS", "FET"),
-            ("Physical Sciences", "PS", "FET"),
-            ("Geography", "GEO", "FET"),
-            ("History", "HIST", "FET"),
-            ("Accounting", "ACC", "FET"),
-            ("Business Studies", "BS", "FET"),
-            ("Economics", "ECO", "FET"),
-            ("Life Orientation", "LO", "FET"),
-            ("Visual Arts", "VA", "FET"),
-            ("Dramatic Arts", "DA", "FET"),
-            ("Music", "MUS", "FET"),
-            ("Consumer Studies", "CS", "FET"),
-            ("Hospitality Studies", "HS", "FET"),
-            ("Tourism", "TRM", "FET"),
-            ("Agricultural Sciences", "AGR", "FET"),
-            ("Computer Applications Technology", "CAT", "FET"),
-            ("Information Technology", "IT", "FET"),
-            ("Engineering Graphics and Design", "EGD", "FET"),
-            ("Electrical Technology", "ELT", "FET"),
-            ("Mechanical Technology", "MT", "FET"),
-            ("Civil Technology", "CT", "FET"),
-        });
-
-        return subjects;
-    }
+        => CapsSubjects.All.ToList();
 
     public async Task BulkAssignClassSubjectsAsync(BulkClassSubjectRequest request)
     {

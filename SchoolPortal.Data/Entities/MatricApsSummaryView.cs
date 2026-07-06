@@ -1,10 +1,12 @@
 namespace SchoolPortal.Data.Entities;
 
 /// <summary>
-/// Sprint 1.5.0.5 — read-only projection over <c>vw_matric_aps_summary</c>: a PROJECTED APS per
-/// Grade-12 learner per academic year. <see cref="ProjectedAps"/> is a flat sum of CAPS-code points
-/// from each subject's year-average — NOT an official APS (which weights promotion/final marks).
-/// Sprint 1.5.1 adds proper promotion-mark weighting; downstream must treat this as a projection.
+/// Read-only projection over <c>vw_matric_aps_summary</c>: PROJECTED APS per Grade-12 learner per
+/// academic year. Sprint 1.5.1 (FixMatricApsWeighting): <see cref="ProjectedAps"/> is the STANDARD
+/// APS — best 6 subjects excluding Life Orientation — and <see cref="TotalAps"/> is all subjects
+/// with LO capped at 4 points, matching PathwaysService.GetLearnerApsAsync semantics exactly.
+/// Still a projection from year-averages (no promotion-mark weighting) and only as fresh as the
+/// last manual refresh — dashboards needing current marks use the live calculator instead.
 /// </summary>
 public class MatricApsSummaryView
 {
@@ -12,5 +14,6 @@ public class MatricApsSummaryView
     public Guid StudentId { get; set; }
     public Guid AcademicYearId { get; set; }
     public int ProjectedAps { get; set; }
+    public int TotalAps { get; set; }
     public int SubjectCount { get; set; }
 }

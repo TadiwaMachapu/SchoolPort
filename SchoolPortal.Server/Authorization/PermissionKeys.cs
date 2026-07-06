@@ -90,6 +90,9 @@ public static class PermissionKeys
     // Admin / system (Step 6 admin cluster)
     public const string SchoolManage = "school.manage";
     public const string AcademicsManage = "academics.manage";
+    // Sprint 1.5.1 Gap 3: read-only academic-configuration diagnostics (subject-match report).
+    // Separate from academics.manage so ITAdministrator gets the diagnostic without structure writes.
+    public const string AcademicsDiagnostics = "academics.diagnostics";
     public const string AiUse = "ai.use";
 
     // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)

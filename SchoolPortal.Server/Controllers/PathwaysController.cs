@@ -399,6 +399,69 @@ public class PathwaysController : ControllerBase
         return Ok(new { available = true, analysis = result });
     }
 
+    // ── Subject-name match diagnostics (Sprint 1.5.1 Gap 3) ─────────────────────
+
+    // GET /api/pathways/subject-match-report — academic-configuration diagnostic: which school
+    // subject names fail to resolve to CAPS standard names, and which CAPS names referenced by
+    // Pathways seed data (course requirements, Gr9 prerequisites) no school subject satisfies.
+    // academics.diagnostics = Principal/Deputy/HOD + ITAdministrator (onboarding configuration).
+    [HttpGet("subject-match-report")]
+    [RequirePermission(PermissionKeys.AcademicsDiagnostics)]
+    public async Task<IActionResult> GetSubjectMatchReport()
+    {
+        var schoolId = _currentUser.SchoolId;
+
+        var schoolSubjects = await _context.Subjects
+            .AsNoTracking()
+            .Where(s => s.SchoolId == schoolId)
+            .Select(s => new { s.SubjectId, s.Name })
+            .ToListAsync();
+
+        var unmatchedSchoolSubjects = schoolSubjects
+            .Where(s => CapsSubjects.FindCanonical(s.Name) == null)
+            .Select(s => new
+            {
+                s.SubjectId,
+                s.Name,
+                Impact = "Not recognised as a CAPS subject — excluded from Pathways requirement matching."
+            })
+            .ToList();
+
+        // CAPS names referenced by seed data: course subject requirements + Gr9 prerequisites.
+        var courseReqNames = await _context.CourseSubjectRequirements
+            .AsNoTracking()
+            .Where(r => r.IsRequired)
+            .GroupBy(r => r.SubjectName)
+            .Select(g => new { Name = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var gr9ReqNames = await _context.SeniorPhaseRequirements
+            .AsNoTracking()
+            .GroupBy(r => r.RequiredSeniorPhaseSubjectName)
+            .Select(g => new { Name = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var unresolvedRequirementNames = courseReqNames
+            .Select(r => new { r.Name, Source = $"{r.Count} university course requirement(s)" })
+            .Concat(gr9ReqNames.Select(r => new { r.Name, Source = $"{r.Count} Grade 9 prerequisite(s)" }))
+            .GroupBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(g => !schoolSubjects.Any(s => CapsSubjects.Matches(s.Name, g.Key)))
+            .Select(g => new
+            {
+                Name = g.Key,
+                ReferencedBy = string.Join(", ", g.Select(x => x.Source)),
+                Impact = "No subject in your school matches this name — learners' marks for it cannot be found; affected goals and Gr9 advice show missing marks."
+            })
+            .OrderBy(r => r.Name)
+            .ToList();
+
+        return Ok(new
+        {
+            unmatchedSchoolSubjects,
+            unresolvedRequirementNames,
+            healthy = unmatchedSchoolSubjects.Count == 0 && unresolvedRequirementNames.Count == 0
+        });
+    }
+
     // ── Grade 9 Subject Advisor ──────────────────────────────────────────────────
 
     // GET /api/pathways/gr9-profile [Student]

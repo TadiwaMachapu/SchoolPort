@@ -60,6 +60,7 @@ public static class PositionsSeedData
             // Admin / system (Step 6)
             Perm("school.manage",          "System", "Manage school profile, branding, settings, and CAPS subject seeding"),
             Perm("academics.manage",       "System", "Manage academic structure: classes, subjects, class-subject assignments"),
+            Perm("academics.diagnostics",  "System", "View academic-configuration diagnostics (subject-name match report)"),
             Perm("ai.use",                 "System", "Use AI-assisted tools (grade suggestion, question generation, plagiarism check)"),
             // Pathways
             Perm("pathways.view_own",      "Pathways", "View own pathways (Learner, identity-implicit)"),
@@ -361,6 +362,13 @@ public static class PositionsSeedData
         Map("Principal",        "academics.manage");
         Map("DeputyPrincipal",  "academics.manage");
         Map("HOD",              "academics.manage");
+        // academics.diagnostics — Sprint 1.5.1 Gap 3: the academics.manage holders PLUS
+        // ITAdministrator (they configure subject names during onboarding and need the
+        // subject-match report; deliberately NOT academics.manage — no structure writes).
+        Map("Principal",        "academics.diagnostics");
+        Map("DeputyPrincipal",  "academics.diagnostics");
+        Map("HOD",              "academics.diagnostics");
+        Map("ITAdministrator",  "academics.diagnostics");
 
         // ai.use — teaching + SMT + ITAdministrator (diagnostics) (AS-5). Cost-capped via School.Settings.
         Map("SubjectTeacher",   "ai.use");

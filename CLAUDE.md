@@ -130,7 +130,7 @@ These caps are hard limits enforced in the sidebar. Anything beyond the cap must
 
 ```
 SchoolPort/
-├── SchoolPortal.Server/     ASP.NET Core 8 Web API
+├── SchoolPortal.Server/     ASP.NET Core 10 Web API
 ├── SchoolPortal.Data/       EF Core entities, DbContext, migrations
 ├── SchoolPortal.Shared/     DTOs shared between server and (Blazor) client
 ├── SchoolPortal.Client/     Blazor WebAssembly (legacy, largely unused)
@@ -138,6 +138,16 @@ SchoolPort/
 ├── schoolportal-web/        Next.js 16 + Tailwind primary frontend
 └── PostgresSetup.sql        Supabase Postgres schema + seed data
 ```
+
+## Runtime & Framework — .NET 10 (LTS)
+
+Upgraded from .NET 8 pre-Sprint-1.5.1 (branch `chore/dotnet10-upgrade`). All solution projects target `net10.0`; CI pins `dotnet-version: 10.0.x` and `dotnet-ef 10.0.9`. Key package lines: ASP.NET Core / EF Core packages at 10.0.x, `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.2 (must track the EF major), Swashbuckle 10.x, Serilog.AspNetCore 10.x. netstandard2.0 packages (BCrypt.Net-Next, Stripe.net, Supabase, Moq, Blazored.LocalStorage, AspNetCore.HealthChecks.Npgsql 9.0.0 — no 10.x line) are unchanged and fine on .NET 10.
+
+**HTTP QUERY method:** complex filter endpoints (gradebook filters, at-risk queries, Pathways cohort views — anywhere the filter is too complex for a query string) should use the **`MapQuery` extension** (`SchoolPortal.Server/Extensions/EndpointRouteBuilderExtensions.cs`) — QUERY is safe/idempotent like GET but carries a request body. .NET 10 ships only the primitives (no built-in MapQuery/[HttpQuery]); the extension wraps `MapMethods`. A Testing-env-only smoke endpoint (`/api/_smoke/query`) + `QueryMethodSmokeTests` prove the method end-to-end through the auth pipeline.
+
+**Future improvements unlocked by .NET 10 (logged, deliberately NOT done in the upgrade):**
+- **EF Core 10 JSON complex types** — `School.Features`/`School.Theme`/`School.Settings` are jsonb POCOs mapped via `.EnableDynamicJson()`; EF 10's first-class JSON complex-type mapping would give change-tracked, queryable JSON columns without the dynamic-JSON opt-in. Migration-affecting; needs its own sprint.
+- Re-audit hot LINQ queries (gradebook matrix, roster reads) for EF 10's improved translations before hand-optimising anything new.
 
 ## Backend Commands (run from repo root)
 
@@ -264,7 +274,7 @@ The Step 10 audit hardened **19 id-bearing write endpoints** (`fix` commit `aed1
 | `GET /api/gradebook/my-grades` | Student | Student's own grade history |
 
 ### Database
-Supabase Postgres. EF Core 8 with Npgsql. All table/column names use `snake_case` (applied globally in `SchoolPortalDbContext.OnModelCreating`). Twelve EF migrations, `InitialCreate` through `AddIdentityPositionsPermissions` — see Migration chain notes below. Two Postgres views mapped as keyless entities: `AttendanceSummaryView`, `GradebookSimpleView`.
+Supabase Postgres. EF Core 10 with Npgsql. All table/column names use `snake_case` (applied globally in `SchoolPortalDbContext.OnModelCreating`). Twelve EF migrations, `InitialCreate` through `AddIdentityPositionsPermissions` — see Migration chain notes below. Two Postgres views mapped as keyless entities: `AttendanceSummaryView`, `GradebookSimpleView`.
 
 ### Migration chain notes (Sprint 1.5.0 findings — read before adding migrations)
 - **Migrations were gitignored from the initial commit (2025-10-07) until Sprint 1.5.0** (`**/Migrations/` in `.gitignore`). No migration was ever in version control before commit `1b2e2cc7` (12/06/2026). Do not re-ignore them.

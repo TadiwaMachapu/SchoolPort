@@ -4,9 +4,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Npgsql;
 using SchoolPortal.Data;
+using SchoolPortal.Server.Extensions;
 using SchoolPortal.Server.Hubs;
 using SchoolPortal.Server.Middleware;
 using SchoolPortal.Server.Services;
@@ -26,7 +27,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add Serilog
 builder.Host.UseSerilog();
 
-// Add DbContext — EnableDynamicJson() required for Npgsql 8 to deserialize jsonb columns into POCOs
+// Add DbContext — EnableDynamicJson() required for Npgsql to deserialize jsonb columns into POCOs
 var npgsqlDataSource = new NpgsqlDataSourceBuilder(
         builder.Configuration.GetConnectionString("DefaultConnection"))
     .EnableDynamicJson()
@@ -188,19 +189,11 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer"
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    // Microsoft.OpenApi 2.x (Swashbuckle 10): scheme references are OpenApiSecuritySchemeReference,
+    // not OpenApiSecurityScheme + OpenApiReference.
+    c.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
     {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
+        [new OpenApiSecuritySchemeReference("Bearer", doc)] = new List<string>()
     });
 });
 
@@ -258,6 +251,14 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 // Map Health Checks — must stay anonymous (load balancers / CI probe it without a token);
 // otherwise the deny-by-default fallback policy would lock it behind authentication.
 app.MapHealthChecks("/health").AllowAnonymous();
+
+// HTTP QUERY smoke endpoint — Testing environment ONLY, never mapped in prod/dev.
+// Proves the QUERY method flows through the full pipeline (routing → deny-by-default
+// fallback policy → handler) ahead of the real MapQuery filter endpoints in Phase 1.5.
+if (app.Environment.IsEnvironment("Testing"))
+{
+    app.MapQuery("/api/_smoke/query", () => Results.Ok(new { method = "QUERY", ok = true }));
+}
 
 // Read-only backfill modes (report, verify) must make NO database changes — skip migrate/seed.
 var isReadonlyBackfillReport = args.Length > 0

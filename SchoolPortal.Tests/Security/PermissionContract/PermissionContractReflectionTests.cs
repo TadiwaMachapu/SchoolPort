@@ -148,6 +148,8 @@ public class PermissionContractReflectionTests
         ["PathwaysController.GetGapAnalysis"] = "pathways.view_own",
         ["PathwaysController.GetGr9Profile"] = "pathways.view_own",
         ["PathwaysController.GetGr9Advice"] = "pathways.view_own",
+        // Sprint 1.5.1 Gap 3: subject-name diagnostics — Principal/Deputy/HOD + ITAdministrator.
+        ["PathwaysController.GetSubjectMatchReport"] = "academics.diagnostics",
         // Matric
         ["MatricController.GetDashboard"] = "marks.view_class",
         ["MatricController.GetMine"] = "marks.view_own",

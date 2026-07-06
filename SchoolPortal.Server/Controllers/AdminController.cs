@@ -38,8 +38,10 @@ public class AdminController : ControllerBase
         };
 
         var started = DateTime.UtcNow;
+#pragma warning disable EF1003 // EF 10 analyzer: concatenated SQL — safe here, fixed in-code view list (no user input)
         foreach (var view in views)
             await _context.Database.ExecuteSqlRawAsync("REFRESH MATERIALIZED VIEW CONCURRENTLY " + view + ";");
+#pragma warning restore EF1003
 
         var elapsedMs = (int)(DateTime.UtcNow - started).TotalMilliseconds;
         _logger.LogInformation("Refreshed {Count} materialized views in {Ms}ms.", views.Length, elapsedMs);

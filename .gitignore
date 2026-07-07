@@ -124,3 +124,10 @@ node_modules/
 out/
 .env.local
 .env*.local
+
+# Obsidian vault app-state and plugins (the obsidian-git plugin fired a 53k-line
+# "vault backup" commit onto a working branch during Sprint 1.5.1 — vault config
+# and plugin binaries are not project source). Ignoring .obsidian everywhere
+# supersedes the plugin's own narrower workspace/cache entries.
+**/.obsidian/
+SchoolPort/.trash/

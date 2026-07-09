@@ -1836,9 +1836,21 @@ namespace SchoolPortal.Data.Migrations
                         .HasColumnName("matric_past_paper_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<int>("Grade")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(12)
+                        .HasColumnName("grade");
+
                     b.Property<bool>("HasMemo")
                         .HasColumnType("boolean")
                         .HasColumnName("has_memo");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
 
                     b.Property<string>("Language")
                         .IsRequired()
@@ -1860,6 +1872,14 @@ namespace SchoolPortal.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("paper_number");
 
+                    b.Property<string>("PaperType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("NSCNovember")
+                        .HasColumnName("paper_type");
+
                     b.Property<string>("Subject")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -1879,7 +1899,7 @@ namespace SchoolPortal.Data.Migrations
                     b.HasKey("MatricPastPaperId")
                         .HasName("pk_matric_past_papers");
 
-                    b.HasIndex("Subject", "Year", "PaperNumber", "Language")
+                    b.HasIndex("Subject", "Year", "PaperNumber", "Language", "PaperType")
                         .IsUnique();
 
                     b.ToTable("matric_past_papers", (string)null);

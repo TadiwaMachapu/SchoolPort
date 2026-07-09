@@ -15,6 +15,10 @@ public static class MatricHubSeedData
         await SeedQuizQuestionsAsync(context, logger);
         await SeedExtendedSeniorPhaseRequirementsAsync(context, logger);
         await context.SaveChangesAsync();
+
+        // Sprint 1.5.2: verified-URL past-paper catalogue (additive upsert; also heals the
+        // broken v1 index URL and deactivates never-published phantom rows). Runs every start.
+        await MatricPastPaperSeedData.SyncAsync(context, logger);
     }
 
     // ── Past Papers ──────────────────────────────────────────────────────────────

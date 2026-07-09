@@ -62,6 +62,7 @@ public static class PositionsSeedData
             Perm("academics.manage",       "System", "Manage academic structure: classes, subjects, class-subject assignments"),
             Perm("academics.diagnostics",  "System", "View academic-configuration diagnostics (subject-name match report)"),
             Perm("ai.use",                 "System", "Use AI-assisted tools (grade suggestion, question generation, plagiarism check)"),
+            Perm("ai.tutor",               "System", "Ask the Matric Hub AI tutor (Learner, identity-implicit; staff via the marks.view_class cluster)"),
             // Pathways
             Perm("pathways.view_own",      "Pathways", "View own pathways (Learner, identity-implicit)"),
             Perm("pathways.view_child",    "Pathways", "View linked child's pathways (Parent, identity-implicit)"),
@@ -384,6 +385,19 @@ public static class PositionsSeedData
         // system.feature_flags WIDENED to SMT (was ITAdministrator only) so admins can toggle features (AS-2).
         Map("Principal",        "system.feature_flags");
         Map("DeputyPrincipal",  "system.feature_flags");
+
+        // ── Sprint 1.5.2 ─────────────────────────────────────────────────────────────
+        // ai.tutor — Learner identity-implicit (resolved in code from PermissionKeys.IdentityImplicit,
+        // not mapped here — same pattern as marks.view_own). ALSO granted to the marks.view_class
+        // teaching/oversight cluster so staff can test what their Grade 12 learners see. Kept
+        // separate from ai.use: revoking learner tutor access must not touch staff AI tools.
+        Map("SubjectTeacher",   "ai.tutor");
+        Map("ClassTeacher",     "ai.tutor");
+        Map("HOD",              "ai.tutor");
+        Map("PhaseHead",        "ai.tutor");
+        Map("GradeHead",        "ai.tutor");
+        Map("Principal",        "ai.tutor");
+        Map("DeputyPrincipal",  "ai.tutor");
 
         // ── Sprint 1.5.0.5 ───────────────────────────────────────────────────────────
         // system.refresh_views — manually refresh the materialized analytics/reporting views

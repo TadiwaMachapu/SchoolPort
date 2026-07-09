@@ -943,7 +943,14 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.Url).IsRequired().HasMaxLength(500);
             entity.Property(e => e.MemoUrl).HasMaxLength(500);
             entity.Property(e => e.Notes).HasMaxLength(500);
-            entity.HasIndex(e => new { e.Subject, e.Year, e.PaperNumber, e.Language }).IsUnique();
+            // Sprint 1.5.2: paper type (string per TaskType convention), grade, soft-delete flag.
+            // Defaults backfill the existing 2019–2023 November rows correctly.
+            entity.Property(e => e.PaperType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(PastPaperType.NSCNovember);
+            entity.Property(e => e.Grade).HasDefaultValue(12);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            // Widened from (Subject, Year, PaperNumber, Language): Exemplar and November papers
+            // can share subject/year/number, so PaperType joins the natural key.
+            entity.HasIndex(e => new { e.Subject, e.Year, e.PaperNumber, e.Language, e.PaperType }).IsUnique();
         });
 
         modelBuilder.Entity<MatricQuizQuestion>(entity =>

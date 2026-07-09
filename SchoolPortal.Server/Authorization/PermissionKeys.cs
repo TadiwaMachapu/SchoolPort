@@ -94,6 +94,11 @@ public static class PermissionKeys
     // Separate from academics.manage so ITAdministrator gets the diagnostic without structure writes.
     public const string AcademicsDiagnostics = "academics.diagnostics";
     public const string AiUse = "ai.use";
+    // Sprint 1.5.2 Step 3 — ask the Matric Hub AI tutor. Learner identity-implicit (the
+    // feature exists FOR learners); also granted to the marks.view_class teaching/oversight
+    // cluster so staff can exercise what their learners see. Separate from ai.use (teacher
+    // authoring tools) so learner tutor access can be revoked without touching staff AI.
+    public const string AiTutor = "ai.tutor";
 
     // Platform — baseline "any authenticated user" permission (identity-implicit, all identities)
     public const string PlatformAccess = "platform.access";
@@ -133,6 +138,7 @@ public static class PermissionKeys
                 PlatformAccess,
                 MarksViewOwn, AttendanceViewOwn, PathwaysViewOwn,
                 AssignmentsViewAssigned, AssignmentsSubmit, FinanceViewOwn,
+                AiTutor, // Sprint 1.5.2: Matric AI tutor — rate-limited + cost-capped
             },
             ["Parent"] = new HashSet<string>
             {

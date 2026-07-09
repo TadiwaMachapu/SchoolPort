@@ -1,11 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, type MatricDashboard, type MatricLearnerRow, type MatricStudentResult, type MatricPastPaper, type MatricQuizQuestion, type Class } from "@/lib/api";
+import { api, type MatricDashboard, type MatricStudentResult, type MatricPastPaper, type MatricQuizQuestion, type Class } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
-import { useIdentity } from "@/lib/auth-context";
+import { useIdentity, usePermission, usePosition } from "@/lib/auth-context";
+import RiskDashboardTab from "@/components/matric/RiskDashboardTab";
+import GradeOverviewTab from "@/components/matric/GradeOverviewTab";
 import MatricTutorCard from "@/components/matric/MatricTutorCard";
-import { Award, Loader2, AlertTriangle, CheckCircle2, AlertCircle, XCircle, BarChart2, FileText, Brain, Sparkles, ExternalLink, ChevronRight } from "lucide-react";
+import StudyPlannerTab from "@/components/matric/StudyPlannerTab";
+import NscRequirementsTab from "@/components/matric/NscRequirementsTab";
+import { Award, Loader2, AlertTriangle, CheckCircle2, AlertCircle, XCircle, BarChart2, FileText, Brain, Sparkles, ExternalLink, CalendarClock, GraduationCap } from "lucide-react";
 
 const STATUS_CONFIG = {
   Pass:   { label: "Pass",    colour: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle2 },
@@ -250,8 +254,16 @@ function NscStatusTab({ data }: { data: MatricStudentResult }) {
 
 // ─── Past papers tab ──────────────────────────────────────────────────────────
 
-function PastPapersTab({ subjects }: { subjects: string[] }) {
-  const [selected, setSelected] = useState(subjects[0] ?? "");
+function PastPapersTab({ subjects, enrolledSubjects = [] }: { subjects: string[]; enrolledSubjects?: string[] }) {
+  // The learner's own subjects lead the dropdown; the rest of the catalogue follows.
+  const enrolledSet = new Set(enrolledSubjects);
+  const orderedSubjects = [
+    ...subjects.filter(s => enrolledSet.has(s)),
+    ...subjects.filter(s => !enrolledSet.has(s)),
+  ];
+  const [selected, setSelected] = useState(orderedSubjects[0] ?? "");
+  const [yearFilter, setYearFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [papers, setPapers] = useState<MatricPastPaper[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -264,10 +276,58 @@ function PastPapersTab({ subjects }: { subjects: string[] }) {
       .finally(() => setLoading(false));
   }, [selected]);
 
-  const byYear = papers.reduce<Record<number, MatricPastPaper[]>>((acc, p) => {
+  // Client-side year + paper-type filters over the loaded subject's papers.
+  const availableYears = [...new Set(papers.map(p => p.year))].sort((a, b) => b - a);
+  const filtered = papers.filter(p =>
+    (!yearFilter || p.year === Number(yearFilter)) &&
+    (!typeFilter || p.paperType === typeFilter));
+
+  // November (and other exam-sitting) papers group by year; exemplars render as their own
+  // clearly-labelled group below — the UI label is "2014 NSC Exemplars", never bare "Exemplars".
+  const examPapers = filtered.filter(p => p.paperType !== "Exemplar");
+  const exemplars = filtered.filter(p => p.paperType === "Exemplar");
+  const byYear = examPapers.reduce<Record<number, MatricPastPaper[]>>((acc, p) => {
     (acc[p.year] ??= []).push(p);
     return acc;
   }, {});
+
+  const paperGroup = (title: string, group: MatricPastPaper[], key: string) => (
+    <div key={key} className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-gray-50 border-b border-gray-100 px-4 py-2.5">
+        <p className="text-sm font-semibold text-gray-700">{title}</p>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {group.map(p => (
+          <div key={p.matricPastPaperId} className="flex items-center justify-between px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-800">Paper {p.paperNumber}</p>
+              {p.notes && <p className="text-xs text-gray-400">{p.notes}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              {p.hasMemo && p.memoUrl && (
+                <a
+                  href={p.memoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-500 border border-gray-200 rounded-md px-2 py-1 hover:border-gray-400 transition-colors"
+                >
+                  Memo
+                </a>
+              )}
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 transition-colors"
+              >
+                Question Paper <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -278,57 +338,62 @@ function PastPapersTab({ subjects }: { subjects: string[] }) {
           onChange={e => setSelected(e.target.value)}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
-          {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+          {enrolledSet.size > 0 ? (
+            <>
+              <optgroup label="My subjects">
+                {orderedSubjects.filter(s => enrolledSet.has(s)).map(s => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+              <optgroup label="All subjects">
+                {orderedSubjects.filter(s => !enrolledSet.has(s)).map(s => <option key={s} value={s}>{s}</option>)}
+              </optgroup>
+            </>
+          ) : (
+            orderedSubjects.map(s => <option key={s} value={s}>{s}</option>)
+          )}
+        </select>
+        <label className="text-xs font-medium text-gray-600">Year</label>
+        <select
+          value={yearFilter}
+          onChange={e => setYearFilter(e.target.value)}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <option value="">All years</option>
+          {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <label className="text-xs font-medium text-gray-600">Type</label>
+        <select
+          value={typeFilter}
+          onChange={e => setTypeFilter(e.target.value)}
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <option value="">All types</option>
+          <option value="NSCNovember">November NSC</option>
+          <option value="Exemplar">2014 NSC Exemplars</option>
         </select>
         <span className="text-xs text-gray-400">All papers link to the official DBE website</span>
       </div>
 
       {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>}
 
-      {!loading && Object.keys(byYear).length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
           <FileText className="h-10 w-10 text-gray-200 mx-auto mb-2" />
           <p className="text-sm text-gray-400">No past papers found for this subject.</p>
         </div>
       )}
 
-      {!loading && Object.keys(byYear).sort((a, b) => Number(b) - Number(a)).map(year => (
-        <div key={year} className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-100 px-4 py-2.5">
-            <p className="text-sm font-semibold text-gray-700">{year} — {selected}</p>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {byYear[Number(year)].map(p => (
-              <div key={p.matricPastPaperId} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">Paper {p.paperNumber}</p>
-                  {p.notes && <p className="text-xs text-gray-400">{p.notes}</p>}
-                </div>
-                <div className="flex items-center gap-2">
-                  {p.hasMemo && (
-                    <a
-                      href={p.memoUrl ?? p.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-gray-500 border border-gray-200 rounded-md px-2 py-1 hover:border-gray-400 transition-colors"
-                    >
-                      Memo
-                    </a>
-                  )}
-                  <a
-                    href={p.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 transition-colors"
-                  >
-                    Question Paper <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
+      {!loading && Object.keys(byYear).sort((a, b) => Number(b) - Number(a)).map(year =>
+        paperGroup(`${year} — ${selected} (November NSC)`, byYear[Number(year)], year))}
+
+      {!loading && exemplars.length > 0 && (
+        <div className="space-y-1.5">
+          {paperGroup(`2014 NSC Exemplars — ${selected}`, exemplars, "exemplars-2014")}
+          <p className="text-xs text-gray-400 px-1">
+            Exemplars are model papers the DBE published in 2014 to show the current curriculum&apos;s
+            exam format — use them as extra practice; they were never written as national exams.
+          </p>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -366,11 +431,6 @@ function QuizTab({ subjects }: { subjects: string[] }) {
   const score = revealed
     ? questions.filter(q => answers[q.matricQuizQuestionId] === correctMap[q.matricQuizQuestionId]).length
     : 0;
-
-  const opts: { key: string; label: string }[] = [
-    { key: "A", label: "" }, { key: "B", label: "" },
-    { key: "C", label: "" }, { key: "D", label: "" },
-  ];
 
   if (questions.length === 0) {
     return (
@@ -495,7 +555,7 @@ function QuizTab({ subjects }: { subjects: string[] }) {
 function StudentMatricView() {
   const [data,    setData]    = useState<MatricStudentResult | null>(null);
   const [subjects, setSubjects] = useState<string[]>([]);
-  const [tab,     setTab]     = useState<"status" | "papers" | "quiz" | "tutor">("status");
+  const [tab,     setTab]     = useState<"status" | "papers" | "planner" | "quiz" | "tutor" | "nsc">("status");
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
 
@@ -521,10 +581,12 @@ function StudentMatricView() {
   }
 
   const tabs = [
-    { key: "status" as const, label: "NSC Status",   icon: BarChart2  },
-    { key: "papers" as const, label: "Past Papers",  icon: FileText   },
-    { key: "quiz"   as const, label: "Quiz Me",      icon: Brain      },
-    { key: "tutor"  as const, label: "AI Tutor",     icon: Sparkles   },
+    { key: "status"  as const, label: "NSC Status",    icon: BarChart2     },
+    { key: "papers"  as const, label: "Past Papers",   icon: FileText      },
+    { key: "planner" as const, label: "Study Planner", icon: CalendarClock },
+    { key: "quiz"    as const, label: "Quiz Me",       icon: Brain         },
+    { key: "tutor"   as const, label: "AI Tutor",      icon: Sparkles      },
+    { key: "nsc"     as const, label: "NSC Rules",     icon: GraduationCap },
   ];
 
   return (
@@ -547,9 +609,49 @@ function StudentMatricView() {
       </div>
 
       {tab === "status"  && <NscStatusTab data={data} />}
-      {tab === "papers"  && <PastPapersTab subjects={subjects} />}
+      {tab === "papers"  && <PastPapersTab subjects={subjects} enrolledSubjects={data.subjects.map(s => s.subjectName)} />}
+      {tab === "planner" && <StudyPlannerTab />}
       {tab === "quiz"    && <QuizTab subjects={subjects} />}
       {tab === "tutor"   && <MatricTutorCard subjects={subjects} />}
+      {tab === "nsc"     && <NscRequirementsTab />}
+    </div>
+  );
+}
+
+// ─── Staff view (tabbed — Sprint 1.5.2 Week 2) ───────────────────────────────
+
+function StaffMatricView() {
+  const canViewClass = usePermission("marks.view_class");
+  const isGradeHead = usePosition("GradeHead"); // Grade Overview tab only for Grade Heads
+  const [tab, setTab] = useState<"risk" | "status" | "overview">(canViewClass ? "risk" : "status");
+
+  const tabs = [
+    ...(canViewClass ? [{ key: "risk" as const, label: "Risk Dashboard", icon: AlertCircle }] : []),
+    { key: "status" as const, label: "NSC Status", icon: BarChart2 },
+    ...(isGradeHead ? [{ key: "overview" as const, label: "Grade Overview", icon: Award }] : []),
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl max-w-md">
+        {tabs.map(t => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors
+                ${tab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              <Icon className="h-3.5 w-3.5" /> {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "risk" && canViewClass && <RiskDashboardTab />}
+      {tab === "status" && <StaffDashboard />}
+      {tab === "overview" && isGradeHead && <GradeOverviewTab />}
     </div>
   );
 }
@@ -582,7 +684,7 @@ export default function MatricPage() {
             : "Monitor Grade 12 learner progress against NSC pass requirements."}
         </p>
       </div>
-      {identity === "Learner" ? <StudentMatricView /> : identity ? <StaffDashboard /> : null}
+      {identity === "Learner" ? <StudentMatricView /> : identity ? <StaffMatricView /> : null}
     </div>
   );
 }

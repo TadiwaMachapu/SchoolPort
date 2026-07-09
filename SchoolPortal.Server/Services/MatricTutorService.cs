@@ -3,49 +3,51 @@ using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 
 namespace SchoolPortal.Server.Services;
 
 public interface IMatricTutorService
 {
-    Task<TutorResponseDto?> GetExplanationAsync(
-        Guid studentId, Guid schoolId, string subject, string question, bool forceRefresh = false);
+    Task<TutorOutcome> GetExplanationAsync(
+        Guid? studentId, Guid schoolId, string subject, string question, bool forceRefresh = false);
 }
 
-public record TutorResponseDto(string AnswerMarkdown, bool FromCache);
+/// <summary>Tutor v2 outcome. Unavailable reasons: "rate_limited", "not_configured",
+/// "api_error". RemainingToday is -1 for callers without a daily cap (staff testers,
+/// or a school that disabled the limit).</summary>
+public record TutorOutcome(bool Available, string? Reason, string? AnswerMarkdown, bool FromCache, int RemainingToday)
+{
+    public static TutorOutcome Unavailable(string reason, int remaining = -1) =>
+        new(false, reason, null, false, remaining);
+}
 
 public class MatricTutorService : IMatricTutorService
 {
-    private const string AnthropicApiUrl = "https://api.anthropic.com/v1/messages";
-    private const string Model = "claude-sonnet-4-6";
-    private const decimal InputCostPerToken = 3m / 1_000_000m;
-    private const decimal OutputCostPerToken = 15m / 1_000_000m;
-    private const decimal UsdToZarRate = 18.5m;
+    // Gemini free tier — no per-call cost, so usage is logged at cost 0 and abuse is bounded by
+    // the per-learner daily rate limit alone (the Anthropic-priced monthly cost cap is removed).
     private const int CacheTtlDays = 30;
 
     private readonly SchoolPortalDbContext _context;
-    private readonly IConfiguration _config;
+    private readonly IGeminiService _gemini;
     private readonly ILogger<MatricTutorService> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
 
     public MatricTutorService(
         SchoolPortalDbContext context,
-        IConfiguration config,
-        ILogger<MatricTutorService> logger,
-        IHttpClientFactory httpClientFactory)
+        IGeminiService gemini,
+        ILogger<MatricTutorService> logger)
     {
         _context = context;
-        _config = config;
+        _gemini = gemini;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
     }
 
-    public async Task<TutorResponseDto?> GetExplanationAsync(
-        Guid studentId, Guid schoolId, string subject, string question, bool forceRefresh = false)
+    public async Task<TutorOutcome> GetExplanationAsync(
+        Guid? studentId, Guid schoolId, string subject, string question, bool forceRefresh = false)
     {
         var fingerprint = BuildFingerprint(subject, question);
 
+        // Cache hits are free — they cost nothing and consume no daily quota, so the
+        // cache is checked BEFORE the rate limit.
         if (!forceRefresh)
         {
             var cached = await _context.MatricTutorCaches
@@ -55,31 +57,43 @@ public class MatricTutorService : IMatricTutorService
                     c.ExpiresAt > DateTime.UtcNow);
 
             if (cached != null)
-                return new TutorResponseDto(cached.AnswerMarkdown, FromCache: true);
+                return new TutorOutcome(true, null, cached.AnswerMarkdown, FromCache: true,
+                    await RemainingTodayAsync(schoolId, studentId));
         }
 
-        var apiKey = _config["Anthropic:ApiKey"];
-        if (string.IsNullOrWhiteSpace(apiKey))
+        // Sprint 1.5.2 Step 3 — per-learner daily cap (default 20; School.Settings). Only
+        // learners are day-capped; staff testers have no Student row (studentId null) and
+        // are bounded by the monthly cost cap instead.
+        var remaining = await RemainingTodayAsync(schoolId, studentId);
+        if (remaining == 0)
+            return TutorOutcome.Unavailable("rate_limited", 0);
+
+        string? answerMarkdown;
+        try
         {
-            _logger.LogWarning("Anthropic:ApiKey not configured — tutor unavailable");
-            return null;
+            answerMarkdown = await _gemini.GenerateAsync(BuildSystemInstruction(subject), question);
         }
-
-        if (!await CheckCostCapAsync(schoolId))
-            return null;
-
-        var prompt = BuildPrompt(subject, question);
-        var (answerMarkdown, inputTokens, outputTokens) = await CallClaudeAsync(apiKey, prompt);
-
-        var costZar = (inputTokens * InputCostPerToken + outputTokens * OutputCostPerToken) * UsdToZarRate;
+        catch (GeminiNotConfiguredException)
+        {
+            _logger.LogWarning("Gemini:ApiKey not configured — tutor unavailable");
+            return TutorOutcome.Unavailable("not_configured", remaining);
+        }
+        catch (GeminiException ex)
+        {
+            // API failure — the learner's quota is NOT consumed (only Success=true rows count).
+            _logger.LogError(ex, "Gemini call failed for matric tutor");
+            await LogUsageAsync(schoolId, studentId, success: false, ex.Message);
+            return TutorOutcome.Unavailable("api_error", remaining);
+        }
 
         if (answerMarkdown == null)
         {
-            await LogUsageAsync(schoolId, studentId, inputTokens, outputTokens, costZar, false, "Claude API call failed");
-            return null;
+            // 200 with no usable candidate (safety block / empty) — same api_error contract, no quota.
+            await LogUsageAsync(schoolId, studentId, success: false, "Gemini returned no text");
+            return TutorOutcome.Unavailable("api_error", remaining);
         }
 
-        await LogUsageAsync(schoolId, studentId, inputTokens, outputTokens, costZar, true, null);
+        await LogUsageAsync(schoolId, studentId, success: true, null);
 
         // Upsert cache (remove stale entry with same fingerprint if forceRefresh)
         var stale = await _context.MatricTutorCaches
@@ -96,35 +110,30 @@ public class MatricTutorService : IMatricTutorService
             AnswerMarkdown = answerMarkdown,
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(CacheTtlDays),
-            InputTokens = inputTokens,
-            OutputTokens = outputTokens
         });
 
         await _context.SaveChangesAsync();
 
-        return new TutorResponseDto(answerMarkdown, FromCache: false);
+        return new TutorOutcome(true, null, answerMarkdown, FromCache: false,
+            remaining > 0 ? remaining - 1 : remaining);
     }
 
-    private async Task<bool> CheckCostCapAsync(Guid schoolId)
+    /// <summary>Successful, non-cached answers left today for a learner. -1 = uncapped
+    /// (staff caller, or the school disabled the limit); 0 = quota exhausted.</summary>
+    private async Task<int> RemainingTodayAsync(Guid schoolId, Guid? studentId)
     {
+        if (studentId == null) return -1;
+
         var school = await _context.Schools.AsNoTracking().FirstOrDefaultAsync(s => s.SchoolId == schoolId);
-        if (school == null) return true;
+        var limit = school?.Settings.MatricTutorDailyLimit ?? 20;
+        if (limit <= 0) return -1;
 
-        var cap = school.Settings.AiMonthlyCostCapZar;
-        if (cap <= 0) return true;
+        var dayStart = DateTime.UtcNow.Date;
+        var usedToday = await _context.AiUsageLogs.CountAsync(l =>
+            l.SchoolId == schoolId && l.StudentId == studentId &&
+            l.Feature == "MatricTutor" && l.Success && l.CreatedAt >= dayStart);
 
-        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-        var spent = await _context.AiUsageLogs
-            .Where(l => l.SchoolId == schoolId && l.CreatedAt >= monthStart && l.Success)
-            .SumAsync(l => (decimal?)l.EstimatedCostZar) ?? 0m;
-
-        if (spent >= cap)
-        {
-            _logger.LogInformation("AI cost cap reached for school {SchoolId}: R{Spent} >= R{Cap}", schoolId, spent, cap);
-            return false;
-        }
-
-        return true;
+        return Math.Max(0, limit - usedToday);
     }
 
     private static string BuildFingerprint(string subject, string question)
@@ -134,74 +143,29 @@ public class MatricTutorService : IMatricTutorService
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
-    private static string BuildPrompt(string subject, string question)
+    // Tutor v2 system prompt — VERBATIM from the sprint spec (all five sentences, including the
+    // final follow-up/practice rule). Sent as the Gemini `system_instruction`; the learner's
+    // question is the `contents`. The operational lines below (subject, length, format) are
+    // implementation scaffolding; the JSON-wrapper instruction is gone — Gemini returns plain
+    // text (candidates[0].content.parts[0].text) which is the markdown answer directly.
+    private static string BuildSystemInstruction(string subject)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"You are an expert South African Grade 12 tutor specialising in {subject} (CAPS curriculum).");
-        sb.AppendLine("A learner has asked you a question. Provide a clear, helpful explanation.");
+        sb.AppendLine("You are an expert NSC matric tutor for South African Grade 12 learners.");
+        sb.AppendLine("Answer in a teaching style — explain concepts, give examples, test understanding.");
+        sb.AppendLine("Reference CAPS curriculum where relevant. Never just give the answer — guide the learner to it.");
+        sb.AppendLine("End each response with either a follow-up question to check understanding, or a practice suggestion.");
+        sb.AppendLine();
+        sb.AppendLine($"You are tutoring {subject}.");
         sb.AppendLine("Use South African English. Keep your response under 500 words.");
         sb.AppendLine("Use markdown formatting where helpful (## headings, **bold**, bullet lists, numbered steps).");
-        sb.AppendLine();
-        sb.AppendLine($"SUBJECT: {subject}");
-        sb.AppendLine($"LEARNER QUESTION: {question}");
-        sb.AppendLine();
-        sb.AppendLine("Respond with ONLY a JSON object (no other text):");
-        sb.AppendLine("""{ "answer": "your full markdown answer here" }""");
 
         return sb.ToString();
     }
 
-    private async Task<(string? answer, int inputTokens, int outputTokens)> CallClaudeAsync(string apiKey, string prompt)
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("anthropic");
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-            var body = new
-            {
-                model = Model,
-                max_tokens = 1024,
-                messages = new[] { new { role = "user", content = prompt } }
-            };
-
-            var response = await client.PostAsync(AnthropicApiUrl,
-                new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("Anthropic API returned {Status}", response.StatusCode);
-                return (null, 0, 0);
-            }
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(responseJson);
-            var text = doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
-
-            var usage = doc.RootElement.GetProperty("usage");
-            var inputTokens = usage.GetProperty("input_tokens").GetInt32();
-            var outputTokens = usage.GetProperty("output_tokens").GetInt32();
-
-            var start = text.IndexOf('{');
-            var end = text.LastIndexOf('}');
-            if (start < 0 || end <= start) return (null, inputTokens, outputTokens);
-
-            using var parsed = JsonDocument.Parse(text[start..(end + 1)]);
-            var answer = parsed.RootElement.GetProperty("answer").GetString();
-            return (answer, inputTokens, outputTokens);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Anthropic API call failed for matric tutor");
-            return (null, 0, 0);
-        }
-    }
-
-    private async Task LogUsageAsync(
-        Guid schoolId, Guid studentId, int inputTokens, int outputTokens,
-        decimal costZar, bool success, string? error)
+    // Gemini free tier: no token counts flow through IGeminiService and there is no per-call
+    // charge — rows log at cost 0 and exist purely to drive the daily rate-limit tally.
+    private async Task LogUsageAsync(Guid schoolId, Guid? studentId, bool success, string? error)
     {
         _context.AiUsageLogs.Add(new AiUsageLog
         {
@@ -209,9 +173,7 @@ public class MatricTutorService : IMatricTutorService
             SchoolId = schoolId,
             Feature = "MatricTutor",
             StudentId = studentId,
-            InputTokens = inputTokens,
-            OutputTokens = outputTokens,
-            EstimatedCostZar = costZar,
+            EstimatedCostZar = 0m,
             CreatedAt = DateTime.UtcNow,
             Success = success,
             ErrorMessage = error

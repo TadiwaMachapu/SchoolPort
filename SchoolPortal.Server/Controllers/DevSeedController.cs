@@ -375,4 +375,153 @@ public class DevSeedController : ControllerBase
             }
         });
     }
+
+    // ═════════════════════════════════════════════════════════════════════════════
+    // Demo data for Matric Hub spot-check (Sprint 1.5.2 — seed decision Option B).
+    //
+    // REMOVABLE: this whole endpoint (and its governance-map row) can be deleted when a
+    // real pilot school seeds its own data — it only ever touches Greendale High School.
+    //
+    // What it does (idempotent — marker: the "Functions & Graphs Test" assignment):
+    // 1. Terms: Greendale's seeded IsCurrent is Term 1 (Jan–Mar 2026), stale for a July
+    //    demo. Adds Term 3 (1 Jul – 20 Sep 2026) as current; Term 2 becomes "previous"
+    //    for trend computation.
+    // 2. Reshapes Lethabo Sithole's marks to a realistic MIXED profile (the original seed
+    //    made her uniformly strong): English HL green (~81%), Life Sciences green (78%),
+    //    Mathematics amber (~45%) IMPROVING (T2 40% → T3 48%), Accounting amber (44%),
+    //    Physical Sciences red (~39%) DECLINING (T2 44% → T3 26%) — which also trips the
+    //    "declining below 60%" red rule by design.
+    // 3. New assessments are CLASS-wide, so Amahle and Sipho get profile-consistent scores
+    //    on them too (Amahle stays red/at-risk, Sipho stays red/failing) — otherwise the
+    //    new assessments would show as phantom "missing" work for them.
+    // ═════════════════════════════════════════════════════════════════════════════
+    [AllowAnonymous]
+    [AnonymousJustification("Dev-only Matric Hub demo seeding for the Greendale demo school: guarded by IsDevelopment() (returns Forbid otherwise), idempotent, touches only demo data.")]
+    [HttpPost("seed-matric-demo")]
+    public async Task<IActionResult> SeedMatricDemo()
+    {
+        if (!_env.IsDevelopment())
+            return Forbid();
+
+        var school = await _db.Schools.FirstOrDefaultAsync(s => s.Name == "Greendale High School");
+        if (school == null)
+            return NotFound(new { message = "Greendale High School not found — run POST /api/dev/seed first." });
+        var schoolId = school.SchoolId;
+
+        // Idempotency marker: one of the demo assessments this block creates.
+        if (await _db.Assignments.AnyAsync(a => a.SchoolId == schoolId && a.Title == "Functions & Graphs Test"))
+            return Ok(new { message = "Matric Hub demo data already seeded." });
+
+        var now = DateTime.UtcNow;
+        var teacherUserId = await _db.Users
+            .Where(u => u.SchoolId == schoolId && u.Email == "james.dlamini@greendale.edu")
+            .Select(u => u.UserId).SingleAsync();
+
+        var learners = await _db.Students
+            .Where(s => s.SchoolId == schoolId &&
+                        (s.StudentNumber == "STU2026-1001" || s.StudentNumber == "STU2026-1002" || s.StudentNumber == "STU2026-1003"))
+            .ToDictionaryAsync(s => s.StudentNumber, s => s.StudentId);
+        var lethabo = learners["STU2026-1001"];
+        var amahle = learners["STU2026-1002"];
+        var sipho = learners["STU2026-1003"];
+
+        // Grade 12A class-subjects by FET subject name.
+        var classSubjects = await _db.ClassSubjects
+            .Where(cs => cs.SchoolId == schoolId && cs.Class.Name == "Grade 12A")
+            .Select(cs => new { cs.ClassSubjectId, cs.Subject.Name })
+            .ToDictionaryAsync(x => x.Name, x => x.ClassSubjectId);
+
+        // ── 1. Terms: Term 3 (covers today) becomes current; Term 2 becomes "previous" ──
+        var year = await _db.AcademicYears.SingleAsync(y => y.SchoolId == schoolId && y.Year == 2026);
+        var term3Start = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var term3 = await _db.Terms.FirstOrDefaultAsync(t => t.SchoolId == schoolId && t.StartDate == term3Start);
+        if (term3 == null)
+        {
+            term3 = new Term
+            {
+                TermId = Guid.NewGuid(), AcademicYearId = year.AcademicYearId, SchoolId = schoolId,
+                TermNumber = 3, StartDate = term3Start,
+                EndDate = new DateTime(2026, 9, 20, 0, 0, 0, DateTimeKind.Utc), CreatedAt = now,
+            };
+            _db.Terms.Add(term3);
+        }
+        foreach (var t in await _db.Terms.Where(t => t.SchoolId == schoolId && t.IsCurrent).ToListAsync())
+            t.IsCurrent = false;
+        term3.IsCurrent = true;
+
+        // ── 2. Reshape Lethabo's ORIGINAL marks so the target bands are reachable ──
+        // (the original seed's uniformly-strong scores would keep every average green).
+        var originalScoreUpdates = new Dictionary<string, decimal>
+        {
+            ["Algebra Test"] = 45,      // /100 → 45%   (was 72)
+            ["Geometry Task"] = 21,     // /50  → 42%   (was 42 = 84%)
+            ["Forces Lab Report"] = 52, // /100 → 52%   (was 65)
+            ["Energy Quiz"] = 24,       // /50  → 48%   (was 38 = 76%)
+            ["Balance Sheet"] = 46,     // /100 → 46%   (was 55)
+        };
+        foreach (var (title, newScore) in originalScoreUpdates)
+        {
+            var grade = await _db.Grades.FirstOrDefaultAsync(g =>
+                g.SchoolId == schoolId && g.Submission.StudentId == lethabo &&
+                g.Submission.Assignment.Title == title);
+            if (grade != null) { grade.Score = newScore; grade.UpdatedAt = now; }
+        }
+
+        // ── 3. New class-wide assessments across Term 2 + Term 3 (all out of 100) ──
+        var t2Due = new DateTime(2026, 5, 15, 0, 0, 0, DateTimeKind.Utc);
+        var t3Due = new DateTime(2026, 7, 3, 0, 0, 0, DateTimeKind.Utc);
+        var demoAssessments = new (string Subject, string Title, DateTime DueAt, decimal Lethabo, decimal Amahle, decimal Sipho)[]
+        {
+            ("Mathematics",           "Trigonometry Test",       t2Due, 40, 36, 20),
+            ("Physical Sciences",     "Chemical Change Test",    t2Due, 44, 30, 16),
+            ("Mathematics",           "Functions & Graphs Test", t3Due, 50, 38, 22),
+            ("Mathematics",           "Calculus Task",           t3Due, 46, 34, 18),
+            ("Physical Sciences",     "Momentum Test",           t3Due, 28, 26, 14),
+            ("Physical Sciences",     "Organic Chemistry Quiz",  t3Due, 24, 28, 12),
+            ("English Home Language", "Poetry Analysis",         t3Due, 74, 58, 48),
+            ("Accounting",            "Cash Flow Statement",     t3Due, 42, 40, 22),
+        };
+
+        foreach (var a in demoAssessments)
+        {
+            var assignment = new Assignment
+            {
+                AssignmentId = Guid.NewGuid(), ClassSubjectId = classSubjects[a.Subject], SchoolId = schoolId,
+                Title = a.Title, MaxMarks = 100, DueAt = a.DueAt,
+                CreatedByUserId = teacherUserId, CreatedAt = a.DueAt.AddDays(-7),
+            };
+            _db.Assignments.Add(assignment);
+
+            foreach (var (studentId, score) in new[] { (lethabo, a.Lethabo), (amahle, a.Amahle), (sipho, a.Sipho) })
+            {
+                var submission = new Submission
+                {
+                    SubmissionId = Guid.NewGuid(), AssignmentId = assignment.AssignmentId,
+                    StudentId = studentId, SchoolId = schoolId, SubmittedAt = a.DueAt,
+                };
+                _db.Submissions.Add(submission);
+                _db.Grades.Add(new Grade
+                {
+                    GradeId = Guid.NewGuid(), SubmissionId = submission.SubmissionId, SchoolId = schoolId,
+                    Score = score, GradedByUserId = teacherUserId, GradedAt = a.DueAt.AddDays(2),
+                });
+            }
+        }
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Matric Hub demo data seeded.",
+            lethaboProfile = new
+            {
+                english = "green ~81% (strong)",
+                lifeSciences = "green 78%",
+                mathematics = "amber ~45%, improving (T2 40% -> T3 48%)",
+                accounting = "amber 44%",
+                physicalSciences = "red ~39%, declining (T2 44% -> T3 26%)",
+            },
+            terms = "Term 3 (1 Jul – 20 Sep 2026) is now current; Term 2 is the trend baseline.",
+        });
+    }
 }

@@ -44,11 +44,7 @@ public record Gr9AiAdviceDto(
 
 public class Gr9AdvisorService : IGr9AdvisorService
 {
-    private const string AnthropicApiUrl = "https://api.anthropic.com/v1/messages";
-    private const string Model = "claude-sonnet-4-6";
-    private const decimal InputCostPerToken = 3m / 1_000_000m;
-    private const decimal OutputCostPerToken = 15m / 1_000_000m;
-    private const decimal UsdToZarRate = 18.5m;
+    // Gemini free tier — usage logged at cost 0 (the monthly cost cap below is now vestigial).
     private const int CacheTtlDays = 7;
 
     // CAPS FET elective subjects available at most SA schools
@@ -65,20 +61,17 @@ public class Gr9AdvisorService : IGr9AdvisorService
     };
 
     private readonly SchoolPortalDbContext _context;
-    private readonly IConfiguration _config;
     private readonly ILogger<Gr9AdvisorService> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IGeminiService _gemini;
 
     public Gr9AdvisorService(
         SchoolPortalDbContext context,
-        IConfiguration config,
         ILogger<Gr9AdvisorService> logger,
-        IHttpClientFactory httpClientFactory)
+        IGeminiService gemini)
     {
         _context = context;
-        _config = config;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
+        _gemini = gemini;
     }
 
     public async Task<Gr9ProfileDto> GetGr9ProfileAsync(Guid studentId, Guid schoolId)
@@ -216,24 +209,35 @@ public class Gr9AdvisorService : IGr9AdvisorService
             }
         }
 
-        var apiKey = _config["Anthropic:ApiKey"];
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _logger.LogWarning("Anthropic:ApiKey not configured — Gr9 advisor unavailable");
-            return null;
-        }
-
         if (!await CheckCostCapAsync(schoolId))
             return null;
 
         var prompt = BuildPrompt(profile);
-        var (resultJson, inputTokens, outputTokens) = await CallClaudeAsync(apiKey, prompt);
 
-        var costZar = (inputTokens * InputCostPerToken + outputTokens * OutputCostPerToken) * UsdToZarRate;
+        // Token counts don't flow through IGeminiService; free tier — logged at 0/0 and cost 0.
+        const int inputTokens = 0, outputTokens = 0;
+        const decimal costZar = 0m;
+
+        string? resultJson;
+        try
+        {
+            resultJson = GeminiJson.ExtractObject(
+                await _gemini.GenerateAsync(GeminiService.StructuredSystemPrompt, prompt));
+        }
+        catch (GeminiNotConfiguredException)
+        {
+            _logger.LogWarning("Gemini:ApiKey not configured — Gr9 advisor unavailable");
+            return null;
+        }
+        catch (GeminiException ex)
+        {
+            await LogUsageAsync(schoolId, studentId, inputTokens, outputTokens, costZar, false, ex.Message);
+            return null;
+        }
 
         if (resultJson == null)
         {
-            await LogUsageAsync(schoolId, studentId, inputTokens, outputTokens, costZar, false, "Claude API call failed");
+            await LogUsageAsync(schoolId, studentId, inputTokens, outputTokens, costZar, false, "Gemini returned no JSON");
             return null;
         }
 
@@ -416,7 +420,9 @@ public class Gr9AdvisorService : IGr9AdvisorService
         var cap = school.Settings.AiMonthlyCostCapZar;
         if (cap <= 0) return true;
 
-        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        // Kind=Utc required — Npgsql rejects a Kind=Unspecified DateTime as a timestamptz param.
+        var utcNow = DateTime.UtcNow;
+        var monthStart = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var spent = await _context.AiUsageLogs
             .Where(l => l.SchoolId == schoolId && l.CreatedAt >= monthStart && l.Success)
             .SumAsync(l => (decimal?)l.EstimatedCostZar) ?? 0m;
@@ -430,51 +436,6 @@ public class Gr9AdvisorService : IGr9AdvisorService
         return true;
     }
 
-    private async Task<(string? json, int inputTokens, int outputTokens)> CallClaudeAsync(string apiKey, string prompt)
-    {
-        try
-        {
-            var client = _httpClientFactory.CreateClient("anthropic");
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-            var body = new
-            {
-                model = Model,
-                max_tokens = 1500,
-                messages = new[] { new { role = "user", content = prompt } }
-            };
-
-            var response = await client.PostAsync(AnthropicApiUrl,
-                new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("Anthropic API returned {Status}", response.StatusCode);
-                return (null, 0, 0);
-            }
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(responseJson);
-            var text = doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
-
-            var usage = doc.RootElement.GetProperty("usage");
-            var inputTokens = usage.GetProperty("input_tokens").GetInt32();
-            var outputTokens = usage.GetProperty("output_tokens").GetInt32();
-
-            var start = text.IndexOf('{');
-            var end = text.LastIndexOf('}');
-            if (start < 0 || end <= start) return (null, inputTokens, outputTokens);
-
-            return (text[start..(end + 1)], inputTokens, outputTokens);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Anthropic API call failed for Gr9 advisor");
-            return (null, 0, 0);
-        }
-    }
 
     private async Task LogUsageAsync(
         Guid schoolId, Guid studentId, int inputTokens, int outputTokens,

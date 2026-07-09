@@ -13,6 +13,8 @@ export default function MatricTutorCard({ subjects }: Props) {
   const [answer, setAnswer] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  const [reason, setReason] = useState<string | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -22,10 +24,13 @@ export default function MatricTutorCard({ subjects }: Props) {
     setError("");
     setAnswer(null);
     setUnavailable(false);
+    setReason(null);
     try {
       const res = await api.matric.tutor(subject, question.trim(), forceRefresh);
+      if (typeof res.remainingToday === "number" && res.remainingToday >= 0) setRemaining(res.remainingToday);
       if (!res.available || !res.answer) {
         setUnavailable(true);
+        setReason(res.reason ?? null);
       } else {
         setAnswer(res.answer);
         setFromCache(res.fromCache ?? false);
@@ -36,6 +41,13 @@ export default function MatricTutorCard({ subjects }: Props) {
       setLoading(false);
     }
   }
+
+  const unavailableCopy =
+    reason === "rate_limited"
+      ? { title: "Daily question limit reached", body: "You have used all your tutor questions for today. Your quota resets tomorrow — until then, try past papers or a quiz." }
+      : reason === "api_error"
+      ? { title: "The tutor hit a snag", body: "The AI service didn't respond properly. Your question didn't count against your daily limit — try again in a moment." }
+      : { title: "AI tutor not available", body: "AI features may not be configured yet. Ask your school's administrator, or try again later." };
 
   return (
     <div className="space-y-3">
@@ -77,13 +89,20 @@ export default function MatricTutorCard({ subjects }: Props) {
         </div>
       )}
 
+      {/* Remaining quota */}
+      {remaining !== null && !unavailable && (
+        <p className="text-xs text-gray-400">
+          {remaining} tutor question{remaining !== 1 ? "s" : ""} left today
+        </p>
+      )}
+
       {/* Unavailable */}
       {unavailable && (
         <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500 flex items-start gap-3">
           <Sparkles className="h-4 w-4 mt-0.5 text-gray-400 shrink-0" />
           <div>
-            <p className="font-medium text-gray-600">AI tutor not available</p>
-            <p className="text-xs mt-0.5">AI features may not be configured, or the monthly usage limit has been reached.</p>
+            <p className="font-medium text-gray-600">{unavailableCopy.title}</p>
+            <p className="text-xs mt-0.5">{unavailableCopy.body}</p>
           </div>
         </div>
       )}

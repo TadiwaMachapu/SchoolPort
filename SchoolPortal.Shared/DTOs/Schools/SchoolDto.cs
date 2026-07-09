@@ -106,6 +106,10 @@ public class SchoolSettings
     public string Locale { get; set; } = "en-US";
     public WhatsAppConfig WhatsApp { get; set; } = new();
     public decimal AiMonthlyCostCapZar { get; set; } = 100.00m;
+    // Sprint 1.5.2 Step 3 — Matric AI tutor daily question cap per learner (successful,
+    // non-cached answers). <= 0 disables the limit. Staff testers are not day-capped —
+    // they are bounded by AiMonthlyCostCapZar. Stored in Settings jsonb (no migration).
+    public int MatricTutorDailyLimit { get; set; } = 20;
 
     // Sprint 1.5.0 Step 9 — onboarding size preset. SizePreset records the chosen starting point;
     // EnabledPositionKeys is the preset's DEFAULT seeded set (ADVISORY ONLY — the position UI/CSV

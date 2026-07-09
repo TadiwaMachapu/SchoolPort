@@ -56,6 +56,10 @@ public class PermissionBehavioralTests
         Row("school.manage",                   "PUT",  "/api/schools/info",                    "Staff",   "Principal",         "Learner",""),
         Row("system.feature_flags",            "PUT",  "/api/schools/features",                "Staff",   "Principal",         "Learner",""),
         Row("ai.use",                          "POST", "/api/ai/plagiarism-check",             "Staff",   "SubjectTeacher",    "Learner",""),
+        // Sprint 1.5.2 Step 3: ai.tutor — Learner identity-implicit; Parent holds no tutor access.
+        Row("ai.tutor",                        "POST", "/api/matric/tutor",                    "Learner", "",                  "Parent", ""),
+        // ai.tutor staff grant path: the marks.view_class cluster holds it; position-less Staff does not.
+        Row("ai.tutor",                        "POST", "/api/matric/tutor",                    "Staff",   "SubjectTeacher",    "Staff",  ""),
         Row("finance.view_all",                "GET",  "/api/fees",                            "Staff",   "FinanceManager",    "Learner",""),
         // SoD: Bursar must NOT create invoices (revoked).
         Row("finance.create_invoice",          "POST", "/api/fees",                            "Staff",   "FinanceManager",    "Staff",  "BursarDebtorsClerk"),

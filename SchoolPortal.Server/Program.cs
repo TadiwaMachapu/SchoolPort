@@ -119,9 +119,11 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 // Add HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
 
-// Add HttpClient for Supabase Storage and Anthropic AI
+// Add HttpClient for Supabase Storage and Google Gemini AI (free tier).
+// (The former "anthropic" named client is gone — all AI features route through IGeminiService.)
 builder.Services.AddHttpClient("supabase-storage");
-builder.Services.AddHttpClient("anthropic");
+builder.Services.AddHttpClient(SchoolPortal.Server.Services.GeminiService.HttpClientName);
+builder.Services.AddScoped<SchoolPortal.Server.Services.IGeminiService, SchoolPortal.Server.Services.GeminiService>();
 
 // Sprint 1.5.0 authorization — catalogue cache (immutable seed data, loaded at startup)
 // and the permission resolver (stateless; JWT fast path + DB authority path).

@@ -286,6 +286,10 @@ export const api = {
     subjects: () => request<string[]>("/api/matric/subjects"),
     pastPapers: (subject?: string) => request<MatricPastPaper[]>(`/api/matric/past-papers${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`),
     quiz: (subject: string, count = 10) => request<MatricQuizQuestion[]>(`/api/matric/quiz?subject=${encodeURIComponent(subject)}&count=${count}`),
+    studyPlan: () => request<MatricStudyPlan>("/api/matric/study-plan"),
+    nscRequirements: () => request<NscRequirements>("/api/matric/nsc-requirements"),
+    riskDashboard: (classId?: string) => request<RiskDashboard>(`/api/matric/risk-dashboard${classId ? `?classId=${classId}` : ""}`),
+    gradeOverview: () => request<GradeOverview>("/api/matric/grade-overview"),
     tutor: (subject: string, question: string, forceRefresh = false) =>
       request<TutorResult>(`/api/matric/tutor${forceRefresh ? "?forceRefresh=true" : ""}`, {
         method: "POST",
@@ -1359,11 +1363,108 @@ export interface MatricPastPaper {
   subject: string;
   year: number;
   paperNumber: number;
+  paperType: string; // "NSCNovember" | "NSCPrelim" | "TrialExam" | "Exemplar"
   language: string;
   url: string;
   hasMemo: boolean;
   memoUrl?: string;
   notes?: string;
+}
+
+// Sprint 1.5.2 — study planner (Step 4)
+export interface SubjectStudyGoal {
+  subjectName: string;
+  average: number;
+  status: string;
+  weeklySessions: number;
+  focusHint: string;
+}
+
+export interface MatricStudyPlan {
+  isGrade12: boolean;
+  examStart: string;
+  daysToExams: number;
+  weeksToExams: number;
+  suggestedWeeklySessions: number;
+  subjects: SubjectStudyGoal[];
+}
+
+// Sprint 1.5.2 — static NSC requirements catalogue (Step 2)
+export interface NscSubjectRule {
+  subject: string;
+  requirement: string;
+  credits: string;
+  notes: string;
+}
+
+export interface NscPassLevel {
+  level: string;
+  description: string;
+  requirements: string[];
+}
+
+export interface NscAchievementLevel {
+  level: number;
+  descriptor: string;
+  percentBand: string;
+}
+
+export interface NscRequirements {
+  subjectRules: NscSubjectRule[];
+  passLevels: NscPassLevel[];
+  achievementLevels: NscAchievementLevel[];
+}
+
+// Sprint 1.5.2 Week 2 — staff risk views
+export interface SubjectRisk {
+  subjectName: string;
+  average: number;
+  missingAssessments: number;
+  trend: "improving" | "declining" | "stable" | "no_data";
+  risk: "red" | "amber" | "green";
+}
+
+export interface LearnerRisk {
+  studentId: string;
+  name: string;
+  studentNumber: string;
+  className: string;
+  overallRisk: "red" | "amber" | "green" | "no_data";
+  subjects: SubjectRisk[];
+  redCount: number;
+  amberCount: number;
+  greenCount: number;
+}
+
+export interface RiskSummary {
+  red: number;
+  amber: number;
+  green: number;
+  noData: number;
+}
+
+export interface RiskDashboard {
+  classes: { classId: string; name: string }[];
+  summary: RiskSummary;
+  learners: LearnerRisk[];
+}
+
+export interface GradeOverviewLearner {
+  studentId: string;
+  name: string;
+  studentNumber: string;
+  className: string;
+  overallRisk: "red" | "amber" | "green" | "no_data";
+  redSubjects: string[];
+  amberSubjects: string[];
+  missingAssessments: number;
+  priorityFlags: string[];
+}
+
+export interface GradeOverview {
+  totalLearners: number;
+  summary: RiskSummary;
+  learners: GradeOverviewLearner[];
 }
 
 export interface MatricQuizQuestion {
@@ -1379,8 +1480,12 @@ export interface MatricQuizQuestion {
 
 export interface TutorResult {
   available: boolean;
+  // Tutor v2 (Sprint 1.5.2, Gemini backend): why the tutor declined, and the learner's
+  // remaining daily quota (-1 = uncapped staff caller / limit disabled).
+  reason?: "rate_limited" | "not_configured" | "api_error" | null;
   answer?: string;
   fromCache?: boolean;
+  remainingToday?: number;
 }
 
 // Smart Reports v1

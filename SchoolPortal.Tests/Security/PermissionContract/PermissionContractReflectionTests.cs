@@ -32,6 +32,8 @@ public class PermissionContractReflectionTests
         ["SsoController.GoogleLogin"] = Anon, ["SsoController.GoogleCallback"] = Anon,
         ["SsoController.MicrosoftLogin"] = Anon, ["SsoController.MicrosoftCallback"] = Anon,
         ["DevSeedController.Seed"] = Anon,
+        // Sprint 1.5.2: Matric Hub demo data for Greendale (dev-only, IsDevelopment-guarded).
+        ["DevSeedController.SeedMatricDemo"] = Anon,
         ["BillingController.Webhook"] = Anon,
         ["PluginsController.Register"] = Anon,
         // Attendance
@@ -152,11 +154,20 @@ public class PermissionContractReflectionTests
         ["PathwaysController.GetSubjectMatchReport"] = "academics.diagnostics",
         // Matric
         ["MatricController.GetDashboard"] = "marks.view_class",
+        // Sprint 1.5.2 Week 2: staff risk views — class-scoped via IScopeService.
+        ["MatricController.GetRiskDashboard"] = "marks.view_class",
+        ["MatricController.GetGradeOverview"] = "marks.view_class",
         ["MatricController.GetMine"] = "marks.view_own",
         ["MatricController.GetSubjects"] = "platform.access",
         ["MatricController.GetPastPapers"] = "platform.access",
+        // Sprint 1.5.2 Step 2: static NSC-requirements catalogue (national policy, no PII).
+        ["MatricController.GetNscRequirements"] = "platform.access",
+        // Sprint 1.5.2 Step 4: study planner reads the caller's OWN averages → marks.view_own.
+        ["MatricController.GetStudyPlan"] = "marks.view_own",
         ["MatricController.GetQuiz"] = "platform.access",
-        ["MatricController.AskTutor"] = "platform.access",
+        // Sprint 1.5.2 Step 3: tutor v2 — ai.tutor (Learner identity-implicit + the
+        // marks.view_class staff cluster), no longer bare platform.access.
+        ["MatricController.AskTutor"] = "ai.tutor",
         // Schools
         ["SchoolsController.GetCurrentSchool"] = "platform.access",
         ["SchoolsController.UpdateInfo"] = "school.manage",

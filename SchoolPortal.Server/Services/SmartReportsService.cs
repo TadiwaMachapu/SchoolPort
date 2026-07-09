@@ -33,28 +33,21 @@ public record PrincipalSummaryDto(string SummaryMarkdown, bool FromCache);
 
 public class SmartReportsService : ISmartReportsService
 {
-    private const string AnthropicApiUrl = "https://api.anthropic.com/v1/messages";
-    private const string Model = "claude-sonnet-4-6";
-    private const decimal InputCostPerToken = 3m / 1_000_000m;
-    private const decimal OutputCostPerToken = 15m / 1_000_000m;
-    private const decimal UsdToZarRate = 18.5m;
+    // Gemini free tier — usage logged at cost 0 (the monthly cost cap below is now vestigial).
     private const int CacheTtlDays = 7;
 
     private readonly SchoolPortalDbContext _context;
-    private readonly IConfiguration _config;
     private readonly ILogger<SmartReportsService> _logger;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IGeminiService _gemini;
 
     public SmartReportsService(
         SchoolPortalDbContext context,
-        IConfiguration config,
         ILogger<SmartReportsService> logger,
-        IHttpClientFactory httpClientFactory)
+        IGeminiService gemini)
     {
         _context = context;
-        _config = config;
         _logger = logger;
-        _httpClientFactory = httpClientFactory;
+        _gemini = gemini;
     }
 
     // ── At-Risk ────────────────────────────────────────────────────────────────
@@ -238,13 +231,6 @@ public class SmartReportsService : ISmartReportsService
                 return new ReportCommentDto(cached.CommentText, FromCache: true);
         }
 
-        var apiKey = _config["Anthropic:ApiKey"];
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _logger.LogWarning("Anthropic:ApiKey not configured — report comment unavailable");
-            return null;
-        }
-
         if (!await CheckCostCapAsync(schoolId)) return null;
 
         var prompt = BuildCommentPrompt(
@@ -252,12 +238,29 @@ public class SmartReportsService : ISmartReportsService
             bySubject.Select(x => (x.Subject, x.Avg)).ToList(),
             overallAvg, attPct);
 
-        var (commentText, inputTokens, outputTokens) = await CallClaudeForCommentAsync(apiKey, prompt);
-        var costZar = (inputTokens * InputCostPerToken + outputTokens * OutputCostPerToken) * UsdToZarRate;
+        // Token counts don't flow through IGeminiService; free tier — logged at 0/0 and cost 0.
+        const int inputTokens = 0, outputTokens = 0;
+        const decimal costZar = 0m;
+
+        string? commentText;
+        try
+        {
+            commentText = await CallGeminiAsync(prompt, "comment");
+        }
+        catch (GeminiNotConfiguredException)
+        {
+            _logger.LogWarning("Gemini:ApiKey not configured — report comment unavailable");
+            return null;
+        }
+        catch (GeminiException ex)
+        {
+            await LogUsageAsync(schoolId, studentId, "ReportComment", inputTokens, outputTokens, costZar, false, ex.Message);
+            return null;
+        }
 
         if (commentText == null)
         {
-            await LogUsageAsync(schoolId, studentId, "ReportComment", inputTokens, outputTokens, costZar, false, "Claude API call failed");
+            await LogUsageAsync(schoolId, studentId, "ReportComment", inputTokens, outputTokens, costZar, false, "Gemini returned no text");
             return null;
         }
 
@@ -367,13 +370,6 @@ public class SmartReportsService : ISmartReportsService
                 return new PrincipalSummaryDto(cached.SummaryMarkdown, FromCache: true);
         }
 
-        var apiKey = _config["Anthropic:ApiKey"];
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            _logger.LogWarning("Anthropic:ApiKey not configured — principal summary unavailable");
-            return null;
-        }
-
         if (!await CheckCostCapAsync(schoolId)) return null;
 
         var prompt = BuildSummaryPrompt(
@@ -382,12 +378,29 @@ public class SmartReportsService : ISmartReportsService
             subjectAvgs.Select(x => (x.Subject, x.Avg)).ToList(),
             classAvg, avgAttPct);
 
-        var (summaryMarkdown, inputTokens, outputTokens) = await CallClaudeForSummaryAsync(apiKey, prompt);
-        var costZar = (inputTokens * InputCostPerToken + outputTokens * OutputCostPerToken) * UsdToZarRate;
+        // Token counts don't flow through IGeminiService; free tier — logged at 0/0 and cost 0.
+        const int inputTokens = 0, outputTokens = 0;
+        const decimal costZar = 0m;
+
+        string? summaryMarkdown;
+        try
+        {
+            summaryMarkdown = await CallGeminiAsync(prompt, "summary");
+        }
+        catch (GeminiNotConfiguredException)
+        {
+            _logger.LogWarning("Gemini:ApiKey not configured — principal summary unavailable");
+            return null;
+        }
+        catch (GeminiException ex)
+        {
+            await LogUsageAsync(schoolId, null, "PrincipalSummary", inputTokens, outputTokens, costZar, false, ex.Message);
+            return null;
+        }
 
         if (summaryMarkdown == null)
         {
-            await LogUsageAsync(schoolId, null, "PrincipalSummary", inputTokens, outputTokens, costZar, false, "Claude API call failed");
+            await LogUsageAsync(schoolId, null, "PrincipalSummary", inputTokens, outputTokens, costZar, false, "Gemini returned no text");
             return null;
         }
 
@@ -474,64 +487,24 @@ public class SmartReportsService : ISmartReportsService
         return sb.ToString();
     }
 
-    private async Task<(string? text, int inputTokens, int outputTokens)> CallClaudeForCommentAsync(
-        string apiKey, string prompt)
+    // Gemini returns free text; the prompt asks for a JSON object with a named key, so extract the
+    // JSON block and read that key exactly as before (prompts are unchanged from the Anthropic
+    // version). Propagates GeminiNotConfiguredException / GeminiException to the call sites.
+    private async Task<string?> CallGeminiAsync(string prompt, string jsonKey)
     {
-        return await CallClaudeAsync(apiKey, prompt, "comment", 512);
-    }
+        var json = GeminiJson.ExtractObject(
+            await _gemini.GenerateAsync(GeminiService.StructuredSystemPrompt, prompt));
+        if (json == null) return null;
 
-    private async Task<(string? text, int inputTokens, int outputTokens)> CallClaudeForSummaryAsync(
-        string apiKey, string prompt)
-    {
-        return await CallClaudeAsync(apiKey, prompt, "summary", 1024);
-    }
-
-    private async Task<(string? text, int inputTokens, int outputTokens)> CallClaudeAsync(
-        string apiKey, string prompt, string jsonKey, int maxTokens)
-    {
         try
         {
-            var client = _httpClientFactory.CreateClient("anthropic");
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-            var body = new
-            {
-                model = Model,
-                max_tokens = maxTokens,
-                messages = new[] { new { role = "user", content = prompt } }
-            };
-
-            var response = await client.PostAsync(AnthropicApiUrl,
-                new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"));
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("Anthropic API returned {Status}", response.StatusCode);
-                return (null, 0, 0);
-            }
-
-            var responseJson = await response.Content.ReadAsStringAsync();
-            var doc = JsonDocument.Parse(responseJson);
-            var text = doc.RootElement.GetProperty("content")[0].GetProperty("text").GetString() ?? "";
-
-            var usage = doc.RootElement.GetProperty("usage");
-            var inputTokens = usage.GetProperty("input_tokens").GetInt32();
-            var outputTokens = usage.GetProperty("output_tokens").GetInt32();
-
-            var start = text.IndexOf('{');
-            var end = text.LastIndexOf('}');
-            if (start < 0 || end <= start) return (null, inputTokens, outputTokens);
-
-            using var parsed = JsonDocument.Parse(text[start..(end + 1)]);
-            var result = parsed.RootElement.GetProperty(jsonKey).GetString();
-            return (result, inputTokens, outputTokens);
+            using var parsed = JsonDocument.Parse(json);
+            return parsed.RootElement.GetProperty(jsonKey).GetString();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Anthropic API call failed for smart reports");
-            return (null, 0, 0);
+            _logger.LogError(ex, "Failed to parse Gemini smart-reports JSON");
+            return null;
         }
     }
 
@@ -543,7 +516,9 @@ public class SmartReportsService : ISmartReportsService
         var cap = school.Settings.AiMonthlyCostCapZar;
         if (cap <= 0) return true;
 
-        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        // Kind=Utc required — Npgsql rejects a Kind=Unspecified DateTime as a timestamptz param.
+        var utcNow = DateTime.UtcNow;
+        var monthStart = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var spent = await _context.AiUsageLogs
             .Where(l => l.SchoolId == schoolId && l.CreatedAt >= monthStart && l.Success)
             .SumAsync(l => (decimal?)l.EstimatedCostZar) ?? 0m;

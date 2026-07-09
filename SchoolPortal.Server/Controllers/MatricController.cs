@@ -10,8 +10,9 @@ namespace SchoolPortal.Server.Controllers;
 [Route("api/[controller]")]
 // Step 6: was [Authorize] + role overrides. Staff Gr12 dashboard (named learners) →
 // marks.view_class; learner's own NSC status → marks.view_own; study tools (subjects, past
-// papers, quiz, AI tutor) → platform.access (learner study features; AI tutor cost-capped via
-// School.Settings.AiMonthlyCostCapZar).
+// papers, quiz, NSC requirements) → platform.access. AI tutor (Sprint 1.5.2 v2) → ai.tutor
+// (Learner identity-implicit + marks.view_class staff cluster), day-capped per learner and
+// cost-capped via School.Settings.AiMonthlyCostCapZar.
 public class MatricController : ControllerBase
 {
     private readonly SchoolPortalDbContext _context;
@@ -141,6 +142,29 @@ public class MatricController : ControllerBase
         return Ok(new { Classes = classes, Learners = learners });
     }
 
+    // GET /api/matric/risk-dashboard?classId= [Staff — marks.view_class] (Week 2 Feature 5).
+    // Scoped via IScopeService: a teacher sees their own Gr12 classes, oversight sees all.
+    // classId only narrows WITHIN the caller's scope (out-of-scope id → 404, like GetDashboard).
+    [HttpGet("risk-dashboard")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
+    public async Task<IActionResult> GetRiskDashboard([FromQuery] Guid? classId)
+    {
+        if (classId.HasValue && !await _scope.CanAccessClassAsync(classId.Value)) return NotFound();
+        var accessible = await _scope.GetAccessibleClassIdsAsync();
+        return Ok(await _hub.GetRiskDashboardAsync(_currentUser.SchoolId, accessible, classId));
+    }
+
+    // GET /api/matric/grade-overview [Staff — marks.view_class] (Week 2 Feature 6).
+    // Takes NO ids; everything derives from the caller's scope — a GradeHead's grade scope
+    // covers their whole grade's classes, a teacher sees only their own Gr12 classes.
+    [HttpGet("grade-overview")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
+    public async Task<IActionResult> GetGradeOverview()
+    {
+        var accessible = await _scope.GetAccessibleClassIdsAsync();
+        return Ok(await _hub.GetGradeOverviewAsync(_currentUser.SchoolId, accessible));
+    }
+
     // GET /api/matric/mine [Student]
     [HttpGet("mine")]
     [RequirePermission(PermissionKeys.MarksViewOwn)]
@@ -223,6 +247,34 @@ public class MatricController : ControllerBase
         return Ok(papers);
     }
 
+    // GET /api/matric/study-plan [Student] — countdown + per-subject weekly goals from own
+    // marks (Step 4). Reads the caller's own averages → marks.view_own, like GetMine.
+    [HttpGet("study-plan")]
+    [RequirePermission(PermissionKeys.MarksViewOwn)]
+    public async Task<IActionResult> GetStudyPlan()
+    {
+        var schoolId = _currentUser.SchoolId;
+        var studentId = await _context.Students
+            .AsNoTracking()
+            .Where(s => s.UserId == _currentUser.UserId && s.SchoolId == schoolId)
+            .Select(s => (Guid?)s.StudentId)
+            .FirstOrDefaultAsync();
+
+        if (studentId == null) return NotFound();
+
+        return Ok(await _hub.GetStudyPlanAsync(studentId.Value, schoolId));
+    }
+
+    // GET /api/matric/nsc-requirements [Any] — static national policy catalogue (Step 2).
+    [HttpGet("nsc-requirements")]
+    [RequirePermission(PermissionKeys.PlatformAccess)]
+    public IActionResult GetNscRequirements() => Ok(new
+    {
+        SubjectRules = NscRequirementsCatalogue.SubjectRules,
+        PassLevels = NscRequirementsCatalogue.PassLevels,
+        AchievementLevels = NscRequirementsCatalogue.AchievementLevels,
+    });
+
     // GET /api/matric/quiz?subject=&count=10 [Student]
     [HttpGet("quiz")]
     [RequirePermission(PermissionKeys.PlatformAccess)]
@@ -236,27 +288,32 @@ public class MatricController : ControllerBase
         return Ok(questions);
     }
 
-    // POST /api/matric/tutor [Student]
+    // POST /api/matric/tutor [Learner identity-implicit; staff via marks.view_class cluster]
+    // Tutor v2 (Step 3): ai.tutor permission; learners are day-capped (default 20 successful
+    // answers, School.Settings.MatricTutorDailyLimit), staff testers have no Student row and
+    // are bounded by the monthly AI cost cap instead.
     [HttpPost("tutor")]
-    [RequirePermission(PermissionKeys.PlatformAccess)]
+    [RequirePermission(PermissionKeys.AiTutor)]
     public async Task<IActionResult> AskTutor([FromBody] TutorRequest request, [FromQuery] bool forceRefresh = false)
     {
         if (string.IsNullOrWhiteSpace(request.Subject) || string.IsNullOrWhiteSpace(request.Question))
             return BadRequest("subject and question are required");
 
         var schoolId = _currentUser.SchoolId;
-        var student = await _context.Students
+        var studentId = await _context.Students
             .Where(s => s.UserId == _currentUser.UserId && s.SchoolId == schoolId)
             .Select(s => (Guid?)s.StudentId)
             .FirstOrDefaultAsync();
 
-        if (student == null) return NotFound();
-
-        var result = await _tutor.GetExplanationAsync(student.Value, schoolId, request.Subject, request.Question, forceRefresh);
-        if (result == null)
-            return Ok(new { available = false });
-
-        return Ok(new { available = true, answer = result.AnswerMarkdown, fromCache = result.FromCache });
+        var result = await _tutor.GetExplanationAsync(studentId, schoolId, request.Subject, request.Question, forceRefresh);
+        return Ok(new
+        {
+            available = result.Available,
+            reason = result.Reason,
+            answer = result.AnswerMarkdown,
+            fromCache = result.FromCache,
+            remainingToday = result.RemainingToday,
+        });
     }
 
     private static string NscStatus(double average) => average switch

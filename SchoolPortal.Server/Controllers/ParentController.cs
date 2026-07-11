@@ -63,7 +63,7 @@ public class ParentController : ControllerBase
                 g.GradeId,
                 g.Score,
                 MaxMarks = g.Submission.Assignment.MaxMarks,
-                Percentage = Math.Round(g.Score / g.Submission.Assignment.MaxMarks * 100, 1),
+                Percentage = Math.Round((g.Score ?? 0) / g.Submission!.Assignment.MaxMarks * 100, 1),
                 AssignmentTitle = g.Submission.Assignment.Title,
                 Subject = g.Submission.Assignment.ClassSubject.Subject.Name,
                 Class = g.Submission.Assignment.ClassSubject.Class.Name,

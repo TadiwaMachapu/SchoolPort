@@ -43,6 +43,12 @@ public class SchoolPortalDbContext : DbContext
     // Gradebook categories
     public DbSet<GradeCategory> GradeCategories { get; set; }
 
+    // Sprint 1.5.2.5 — Marks Capture & Approval
+    public DbSet<AssessmentCriteria> AssessmentCriteria { get; set; }
+    public DbSet<CriteriaScore> CriteriaScores { get; set; }
+    public DbSet<ApprovalRecord> ApprovalRecords { get; set; }
+    public DbSet<MarkCaptureAuditLog> MarkCaptureAuditLogs { get; set; }
+
     // Calendar & Timetable
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
     public DbSet<TimetableSlot> TimetableSlots { get; set; }
@@ -332,6 +338,10 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.TaskType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(TaskType.Assignment);
             entity.Property(e => e.MaxMarks).HasPrecision(10, 2);
+            // Sprint 1.5.2.5 — capture fields. Defaults keep existing rows valid: HasRubric
+            // false (simple entry), SbaWeight/TermNumber null (not yet classified).
+            entity.Property(e => e.HasRubric).HasDefaultValue(false);
+            entity.Property(e => e.SbaWeight).HasPrecision(5, 2);
             entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
             entity.HasIndex(e => e.SchoolId);
             entity.HasIndex(e => e.ClassSubjectId);
@@ -359,20 +369,94 @@ public class SchoolPortalDbContext : DbContext
             entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Grade
+        // Grade — Sprint 1.5.2.5: decoupled from Submission. (StudentId, AssignmentId) is the
+        // authoritative unique grain (backfilled from submissions, whose (AssignmentId, StudentId)
+        // unique index guarantees the backfill cannot collide); SubmissionId is nullable and set
+        // only by the LMS submission-grading flow. IsAbsent=true ⇒ Score=null (service-enforced).
         modelBuilder.Entity<Grade>(entity =>
         {
             entity.ToTable("grades");
             entity.HasKey(e => e.GradeId);
             entity.Property(e => e.GradeId).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Score).HasPrecision(10, 2);
+            entity.Property(e => e.IsAbsent).HasDefaultValue(false);
             entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
             entity.HasIndex(e => e.SubmissionId).IsUnique();
+            entity.HasIndex(e => new { e.AssignmentId, e.StudentId }).IsUnique();
             entity.HasIndex(e => e.SchoolId);
+            entity.HasIndex(e => e.StudentId);
             entity.HasIndex(e => e.GradedByUserId);
             entity.HasOne(e => e.Submission).WithOne(s => s.Grade).HasForeignKey<Grade>(e => e.SubmissionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Student).WithMany().HasForeignKey(e => e.StudentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Assignment).WithMany(a => a.Grades).HasForeignKey(e => e.AssignmentId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.GradedByUser).WithMany().HasForeignKey(e => e.GradedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // AssessmentCriteria (Sprint 1.5.2.5) — rubric criteria per task
+        modelBuilder.Entity<AssessmentCriteria>(entity =>
+        {
+            entity.ToTable("assessment_criteria");
+            entity.HasKey(e => e.CriteriaId);
+            entity.Property(e => e.CriteriaId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.MaxMark).HasPrecision(10, 2);
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.HasIndex(e => new { e.AssignmentId, e.DisplayOrder });
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.Assignment).WithMany(a => a.Criteria).HasForeignKey(e => e.AssignmentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // CriteriaScore (Sprint 1.5.2.5) — a learner's score on one rubric criterion
+        modelBuilder.Entity<CriteriaScore>(entity =>
+        {
+            entity.ToTable("criteria_scores");
+            entity.HasKey(e => e.CriteriaScoreId);
+            entity.Property(e => e.CriteriaScoreId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Score).HasPrecision(10, 2);
+            entity.HasIndex(e => new { e.GradeId, e.CriteriaId }).IsUnique();
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.Grade).WithMany(g => g.CriteriaScores).HasForeignKey(e => e.GradeId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Criteria).WithMany(c => c.Scores).HasForeignKey(e => e.CriteriaId).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_criteria_scores__assessment_criteria_criteria_id");
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ApprovalRecord (Sprint 1.5.2.5) — one submit→review moderation cycle per task.
+        // Partial unique index: at most one OPEN (Draft/Submitted) record per assignment;
+        // closed (Approved/Rejected) records accumulate as CAPS moderation history.
+        modelBuilder.Entity<ApprovalRecord>(entity =>
+        {
+            entity.ToTable("approval_records");
+            entity.HasKey(e => e.ApprovalRecordId);
+            entity.Property(e => e.ApprovalRecordId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20).HasDefaultValue(ApprovalStatus.Draft);
+            entity.Property(e => e.ReviewComment).HasMaxLength(1000);
+            entity.Property(e => e.RowVersion).HasDefaultValue(1L).IsConcurrencyToken();
+            entity.HasIndex(e => e.AssignmentId).IsUnique().HasFilter("status IN ('Draft', 'Submitted')");
+            entity.HasIndex(e => new { e.SchoolId, e.Status });
+            entity.HasOne(e => e.Assignment).WithMany(a => a.ApprovalRecords).HasForeignKey(e => e.AssignmentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SubmittedByUser).WithMany().HasForeignKey(e => e.SubmittedByUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ReviewedByUser).WithMany().HasForeignKey(e => e.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // MarkCaptureAuditLog (Sprint 1.5.2.5) — append-only mark-change history. Grade FK is
+        // RESTRICT (not Cascade): audit rows must survive, so hard-deleting audited marks fails
+        // loudly by design (nothing deletes assignments/grades today).
+        modelBuilder.Entity<MarkCaptureAuditLog>(entity =>
+        {
+            entity.ToTable("mark_capture_audit_logs");
+            entity.HasKey(e => e.AuditId);
+            entity.Property(e => e.AuditId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.PreviousScore).HasPrecision(10, 2);
+            entity.Property(e => e.NewScore).HasPrecision(10, 2);
+            entity.Property(e => e.ChangeReason).HasMaxLength(500);
+            entity.HasIndex(e => new { e.GradeId, e.ChangedAt });
+            entity.HasIndex(e => e.SchoolId);
+            entity.HasOne(e => e.Grade).WithMany().HasForeignKey(e => e.GradeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.ChangedByUser).WithMany().HasForeignKey(e => e.ChangedByUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Attendance

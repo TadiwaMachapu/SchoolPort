@@ -244,6 +244,7 @@ public class DevSeedController : ControllerBase
                 gradeList.Add(new Grade
                 {
                     GradeId=Guid.NewGuid(), SubmissionId=sub.SubmissionId,
+                    StudentId=sid, AssignmentId=a.AssignmentId,
                     SchoolId=schoolId, Score=score, Feedback="Well done",
                     GradedByUserId=teacher1Id, GradedAt=now.AddDays(-7)
                 });
@@ -502,7 +503,8 @@ public class DevSeedController : ControllerBase
                 _db.Submissions.Add(submission);
                 _db.Grades.Add(new Grade
                 {
-                    GradeId = Guid.NewGuid(), SubmissionId = submission.SubmissionId, SchoolId = schoolId,
+                    GradeId = Guid.NewGuid(), SubmissionId = submission.SubmissionId,
+                    StudentId = studentId, AssignmentId = assignment.AssignmentId, SchoolId = schoolId,
                     Score = score, GradedByUserId = teacherUserId, GradedAt = a.DueAt.AddDays(2),
                 });
             }

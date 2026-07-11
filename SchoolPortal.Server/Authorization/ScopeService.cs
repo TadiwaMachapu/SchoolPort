@@ -38,6 +38,17 @@ public interface IScopeService
     Task EnsureClassAsync(Guid classId);
     Task EnsureStudentAsync(Guid studentId);
     Task EnsureActivityAsync(Guid activityId);
+
+    // Sprint 1.5.2.5 — batched enrolment validation for bulk mark writes.
+
+    /// <summary>Is the student an ACTIVE enrolment of the class-subject's class (same school)?
+    /// Single-id convenience — bulk callers MUST use <see cref="GetEnrolledStudentIdsAsync"/>
+    /// once + in-memory checks instead of calling this in a loop (N+1).</summary>
+    Task<bool> IsStudentInClassAsync(Guid studentId, Guid classSubjectId, Guid schoolId, CancellationToken ct = default);
+
+    /// <summary>All ACTIVE enrolled student ids of the class-subject's class (same school), in
+    /// ONE query — bulk-capture validates every body studentId against this set in memory.</summary>
+    Task<HashSet<Guid>> GetEnrolledStudentIdsAsync(Guid classSubjectId, Guid schoolId, CancellationToken ct = default);
 }
 
 public sealed class ScopeService : IScopeService
@@ -182,6 +193,29 @@ public sealed class ScopeService : IScopeService
     public async Task EnsureActivityAsync(Guid activityId)
     {
         if (!await CanAccessActivityAsync(activityId)) throw new ForbiddenAccessException();
+    }
+
+    // Sprint 1.5.2.5 — batched enrolment validation. Both resolve the class THROUGH the
+    // class-subject with the schoolId pinned on both hops, so a foreign class-subject (or a
+    // class-subject whose class was cross-linked) yields an empty set / false, never a leak.
+
+    public async Task<bool> IsStudentInClassAsync(Guid studentId, Guid classSubjectId, Guid schoolId, CancellationToken ct = default)
+    {
+        return await _db.Enrollments.AsNoTracking().AnyAsync(e =>
+            e.StudentId == studentId && e.IsActive && e.SchoolId == schoolId &&
+            _db.ClassSubjects.Any(cs =>
+                cs.ClassSubjectId == classSubjectId && cs.SchoolId == schoolId && cs.ClassId == e.ClassId), ct);
+    }
+
+    public async Task<HashSet<Guid>> GetEnrolledStudentIdsAsync(Guid classSubjectId, Guid schoolId, CancellationToken ct = default)
+    {
+        var ids = await _db.Enrollments.AsNoTracking()
+            .Where(e => e.IsActive && e.SchoolId == schoolId &&
+                _db.ClassSubjects.Any(cs =>
+                    cs.ClassSubjectId == classSubjectId && cs.SchoolId == schoolId && cs.ClassId == e.ClassId))
+            .Select(e => e.StudentId)
+            .ToListAsync(ct);
+        return ids.ToHashSet();
     }
 
     // CAPS phase → grade levels (Step 9 D4). Accepts "FET"/"SeniorPhase" (and a couple of

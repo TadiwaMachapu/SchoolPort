@@ -104,6 +104,13 @@ public class PermissionContractReflectionTests
         ["GradebookController.GetMyAcademics"] = "marks.view_own",
         ["GradebookController.GetCategories"] = "marks.view_class",
         ["GradebookController.SetCategories"] = "assessment.create",
+        // Sprint 1.5.2.5 — Marks Capture: reads follow the class-gradebook key; writes are
+        // marks.capture (TC-1: capture stays with teaching roles, oversight cannot capture).
+        ["GradebookController.GetCaptureTasks"] = "marks.view_class",
+        ["GradebookController.GetTaskMarks"] = "marks.view_class",
+        ["GradebookController.BulkCapture"] = "marks.capture",
+        ["GradebookController.CreateTask"] = "marks.capture",
+        ["GradebookController.UpdateTask"] = "marks.capture",
         // Fees
         ["FeesController.GetFees"] = "finance.view_all",
         ["FeesController.CreateFee"] = "finance.create_invoice",

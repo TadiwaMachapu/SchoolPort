@@ -5,6 +5,7 @@ using SchoolPortal.Data.Entities;
 using SchoolPortal.Server.Authorization;
 using SchoolPortal.Server.Services;
 using SchoolPortal.Shared.DTOs.Academics;
+using SchoolPortal.Shared.DTOs.Grades;
 
 namespace SchoolPortal.Server.Controllers;
 
@@ -123,23 +124,31 @@ public class GradebookController : ControllerBase
             .Select(s => s.StudentId)
             .FirstOrDefaultAsync();
 
+        // Sprint 1.5.2.5: reads via the authoritative Grade.StudentId/AssignmentId (not the
+        // submission join), so capture-grid marks (SubmissionId null) appear too. Scored marks
+        // only — pending (null-score) and absent rows aren't grades to display. When the task
+        // has a rubric, the per-criterion breakdown ships with the mark (transparency rule).
         var grades = await _context.Grades
             .AsNoTracking()
-            .Where(g => g.Submission.StudentId == studentId && g.SchoolId == _currentUser.SchoolId)
-            .Include(g => g.Submission).ThenInclude(s => s.Assignment).ThenInclude(a => a.ClassSubject).ThenInclude(cs => cs.Subject)
-            .Include(g => g.Submission).ThenInclude(s => s.Assignment).ThenInclude(a => a.ClassSubject).ThenInclude(cs => cs.Class)
+            .Where(g => g.StudentId == studentId && g.SchoolId == _currentUser.SchoolId && g.Score != null)
             .OrderByDescending(g => g.GradedAt)
             .Select(g => new
             {
                 g.GradeId,
                 g.Score,
-                MaxMarks = g.Submission.Assignment.MaxMarks,
-                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1),
-                AssignmentTitle = g.Submission.Assignment.Title,
-                Subject = g.Submission.Assignment.ClassSubject.Subject.Name,
-                Class = g.Submission.Assignment.ClassSubject.Class.Name,
+                MaxMarks = g.Assignment.MaxMarks,
+                Percentage = Math.Round((double)g.Score!.Value / (double)g.Assignment.MaxMarks * 100, 1),
+                AssignmentTitle = g.Assignment.Title,
+                Subject = g.Assignment.ClassSubject.Subject.Name,
+                Class = g.Assignment.ClassSubject.Class.Name,
                 g.Feedback,
-                g.GradedAt
+                g.GradedAt,
+                CriteriaBreakdown = g.Assignment.HasRubric
+                    ? g.CriteriaScores
+                        .OrderBy(cs => cs.Criteria.DisplayOrder)
+                        .Select(cs => new { cs.Criteria.Name, cs.Score, cs.Criteria.MaxMark })
+                        .ToList()
+                    : null,
             })
             .ToListAsync();
 
@@ -394,6 +403,40 @@ public class GradebookController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok();
     }
+
+    // ── Sprint 1.5.2.5 — Marks Capture (Weeks 1-2) ─────────────────────────────────
+    // Thin passthroughs: tenant resolution (404), scope (403), and all validation live in
+    // MarkCaptureService. Reads → marks.view_class; writes → marks.capture (TC-1: oversight
+    // roles deliberately cannot capture).
+
+    [HttpGet("{classSubjectId:guid}/tasks")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
+    public async Task<IActionResult> GetCaptureTasks(Guid classSubjectId, [FromServices] IMarkCaptureService capture)
+        => Ok(await capture.GetTasksAsync(classSubjectId));
+
+    [HttpGet("{classSubjectId:guid}/task/{taskId:guid}/marks")]
+    [RequirePermission(PermissionKeys.MarksViewClass)]
+    public async Task<IActionResult> GetTaskMarks(Guid classSubjectId, Guid taskId, [FromServices] IMarkCaptureService capture)
+        => Ok(await capture.GetTaskMarksAsync(classSubjectId, taskId));
+
+    [HttpPost("bulk-capture")]
+    [RequirePermission(PermissionKeys.MarksCapture)]
+    public async Task<IActionResult> BulkCapture([FromBody] BulkCaptureRequest request, [FromServices] IMarkCaptureService capture)
+        => Ok(await capture.BulkCaptureAsync(request));
+
+    [HttpPost("tasks")]
+    [RequirePermission(PermissionKeys.MarksCapture)]
+    public async Task<IActionResult> CreateTask([FromBody] CreateTaskRequest request, [FromServices] IMarkCaptureService capture)
+    {
+        var created = await capture.CreateTaskAsync(request);
+        return CreatedAtAction(nameof(GetTaskMarks),
+            new { classSubjectId = request.ClassSubjectId, taskId = created.AssignmentId }, created);
+    }
+
+    [HttpPut("tasks/{taskId:guid}")]
+    [RequirePermission(PermissionKeys.MarksCapture)]
+    public async Task<IActionResult> UpdateTask(Guid taskId, [FromBody] UpdateTaskRequest request, [FromServices] IMarkCaptureService capture)
+        => Ok(await capture.UpdateTaskAsync(taskId, request));
 
     // Step 7: a class-subject is in scope iff its parent class is in the caller's scope.
     private async Task<bool> CanAccessClassSubjectAsync(Guid classSubjectId)

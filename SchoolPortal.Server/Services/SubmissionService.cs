@@ -103,7 +103,7 @@ public class SubmissionService : ISubmissionService
                 Grade = s.Grade != null ? new GradeInfo
                 {
                     GradeId = s.Grade.GradeId,
-                    Score = s.Grade.Score,
+                    Score = s.Grade.Score ?? 0,
                     Feedback = s.Grade.Feedback,
                     GradedAt = s.Grade.GradedAt
                 } : null
@@ -152,7 +152,7 @@ public class SubmissionService : ISubmissionService
                 Grade = s.Grade != null ? new GradeInfo
                 {
                     GradeId = s.Grade.GradeId,
-                    Score = s.Grade.Score,
+                    Score = s.Grade.Score ?? 0,
                     Feedback = s.Grade.Feedback,
                     GradedAt = s.Grade.GradedAt
                 } : null

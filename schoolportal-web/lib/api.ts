@@ -224,6 +224,17 @@ export const api = {
     myAcademics: () => request<MyAcademics>("/api/gradebook/my-academics"),
     classGradebook: (classId: string, termId?: string) =>
       request<ClassGradebook>(`/api/gradebook/${classId}${termId ? `?termId=${termId}` : ""}`),
+    // Sprint 1.5.2.5 — Marks Capture
+    captureTasks: (classSubjectId: string) =>
+      request<CaptureTaskSummary[]>(`/api/gradebook/${classSubjectId}/tasks`),
+    taskMarks: (classSubjectId: string, taskId: string) =>
+      request<CaptureTaskMarks>(`/api/gradebook/${classSubjectId}/task/${taskId}/marks`),
+    bulkCapture: (body: { taskId: string; classSubjectId: string; changeReason?: string; entries: BulkCaptureEntry[] }) =>
+      request<BulkCaptureResult>("/api/gradebook/bulk-capture", { method: "POST", body: JSON.stringify(body) }),
+    createTask: (body: CreateTaskBody) =>
+      request<CaptureTaskSummary>("/api/gradebook/tasks", { method: "POST", body: JSON.stringify(body) }),
+    updateTask: (taskId: string, body: Omit<CreateTaskBody, "classSubjectId" | "hasRubric" | "criteria">) =>
+      request<CaptureTaskSummary>(`/api/gradebook/tasks/${taskId}`, { method: "PUT", body: JSON.stringify(body) }),
   },
   reports: {
     termReport: (classId: string, termId: string) =>
@@ -956,6 +967,77 @@ export interface GradeEntry {
   class: string;
   feedback?: string;
   gradedAt: string;
+  // Sprint 1.5.2.5 — per-criterion breakdown when the task has a rubric (transparency rule)
+  criteriaBreakdown?: { name: string; score: number | null; maxMark: number }[] | null;
+}
+
+// ── Sprint 1.5.2.5 — Marks Capture ────────────────────────────────────────────
+export interface CaptureTaskSummary {
+  assignmentId: string;
+  title: string;
+  taskType: string;
+  termNumber?: number | null;
+  maxMarks: number;
+  hasRubric: boolean;
+  sbaWeight?: number | null;
+  dueAt: string;
+  capturedCount: number;
+  classSize: number;
+  approvalStatus?: string | null;
+}
+export interface CaptureCriteria {
+  criteriaId: string;
+  name: string;
+  maxMark: number;
+  displayOrder: number;
+}
+export interface CaptureCriteriaScore {
+  criteriaId: string;
+  score: number | null; // null = not yet entered (pending) — different from 0
+}
+export interface CaptureLearner {
+  studentId: string;
+  name: string;
+  surname: string;
+  studentNumber: string;
+  score: number | null;
+  isAbsent: boolean;
+  criteriaScores: CaptureCriteriaScore[];
+}
+export interface CaptureTaskMarks {
+  assignmentId: string;
+  classSubjectId: string;
+  title: string;
+  taskType: string;
+  maxMarks: number;
+  hasRubric: boolean;
+  termNumber?: number | null;
+  sbaWeight?: number | null;
+  approvalStatus?: string | null;
+  criteria: CaptureCriteria[];
+  learners: CaptureLearner[];
+}
+export interface BulkCaptureEntry {
+  studentId: string;
+  score: number | null;
+  isAbsent: boolean;
+  criteriaScores?: CaptureCriteriaScore[];
+}
+export interface BulkCaptureResult {
+  saved: number;
+  changed: number;
+  warnings: string[];
+}
+export interface CreateTaskBody {
+  classSubjectId: string;
+  title: string;
+  taskType: string;
+  termNumber?: number | null;
+  maxMarks: number;
+  hasRubric: boolean;
+  sbaWeight?: number | null;
+  dueAt?: string | null;
+  criteria?: { name: string; maxMark: number }[];
 }
 
 // Step 8 — aggregated learner academics payload (My Academics page). Percentages only; CAPS

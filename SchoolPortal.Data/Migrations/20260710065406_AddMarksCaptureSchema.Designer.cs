@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SchoolPortal.Data;
@@ -12,9 +13,11 @@ using SchoolPortal.Shared.DTOs.Schools;
 namespace SchoolPortal.Data.Migrations
 {
     [DbContext(typeof(SchoolPortalDbContext))]
-    partial class SchoolPortalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710065406_AddMarksCaptureSchema")]
+    partial class AddMarksCaptureSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

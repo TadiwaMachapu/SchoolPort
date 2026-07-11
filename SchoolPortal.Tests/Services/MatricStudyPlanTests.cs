@@ -73,7 +73,7 @@ public class MatricStudyPlanTests
                 });
                 var subId = Guid.NewGuid();
                 db.Submissions.Add(new Submission { SubmissionId = subId, AssignmentId = aId, StudentId = studentId, SchoolId = schoolId, SubmittedAt = DateTime.UtcNow });
-                db.Grades.Add(new Grade { GradeId = Guid.NewGuid(), SubmissionId = subId, SchoolId = schoolId, Score = score, GradedByUserId = teacherUserId, GradedAt = DateTime.UtcNow });
+                db.Grades.Add(new Grade { GradeId = Guid.NewGuid(), SubmissionId = subId, StudentId = studentId, AssignmentId = aId, SchoolId = schoolId, Score = score, GradedByUserId = teacherUserId, GradedAt = DateTime.UtcNow });
             }
 
             SubjectWithMark("Mathematics", 35);       // AtRisk band (30–39) → 4 sessions

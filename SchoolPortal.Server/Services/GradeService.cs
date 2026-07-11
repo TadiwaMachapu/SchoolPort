@@ -45,6 +45,8 @@ public class GradeService : IGradeService
         var grade = new Grade
         {
             SubmissionId = request.SubmissionId,
+            StudentId = submission.StudentId,
+            AssignmentId = submission.AssignmentId,
             SchoolId = _currentUser.SchoolId,
             Score = request.Score,
             Feedback = request.Feedback,
@@ -84,11 +86,11 @@ public class GradeService : IGradeService
             await _scope.EnsureClassAsync(classId);
 
         var existingGrades = await _context.Grades
-            .Where(g => submissionIds.Contains(g.SubmissionId))
+            .Where(g => g.SubmissionId != null && submissionIds.Contains(g.SubmissionId.Value))
             .ToListAsync();
 
         var submissionLookup = submissions.ToDictionary(s => s.SubmissionId);
-        var gradeLookup = existingGrades.ToDictionary(g => g.SubmissionId);
+        var gradeLookup = existingGrades.ToDictionary(g => g.SubmissionId!.Value);
 
         foreach (var item in request.Grades)
         {
@@ -106,6 +108,8 @@ public class GradeService : IGradeService
                 _context.Grades.Add(new Grade
                 {
                     SubmissionId = item.SubmissionId,
+                    StudentId = submission.StudentId,
+                    AssignmentId = submission.AssignmentId,
                     SchoolId = _currentUser.SchoolId,
                     Score = item.Score,
                     Feedback = item.Feedback,

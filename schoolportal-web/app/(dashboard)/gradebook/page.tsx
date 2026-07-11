@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { useIdentity } from "@/lib/auth-context";
 import { useFeature } from "@/lib/use-feature";
+import { CaptureTab } from "@/components/gradebook/CaptureTab";
 import { BarChart2, Download, Users } from "lucide-react";
 
 function gradeLetter(pct: number) {
@@ -283,6 +284,10 @@ function StudentGradebook() {
 
 /* ─── Teacher / Admin view ─────────────────────────────────────── */
 function TeacherGradebook() {
+  // Sprint 1.5.2.5 — "Capture Marks" is the teacher's weekly workflow and lands first;
+  // "Overview" is the original read-only matrix. Oversight roles without marks.capture can
+  // still open the tab read-only (task list is marks.view_class); saving 403s server-side.
+  const [mode, setMode] = useState<"capture" | "overview">("capture");
   const [classes,      setClasses]      = useState<Class[]>([]);
   const [terms,        setTerms]        = useState<Term[]>([]);
   const [classId,      setClassId]      = useState("");
@@ -318,8 +323,26 @@ function TeacherGradebook() {
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Gradebook</h1>
-          <p className="text-sm text-gray-500 mt-1">Class performance overview</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {mode === "capture" ? "Capture and manage assessment marks" : "Class performance overview"}
+          </p>
         </div>
+        <div className="flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+          {([["capture", "Capture Marks"], ["overview", "Overview"]] as const).map(([m, labelText]) => (
+            <button key={m} onClick={() => setMode(m)}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                mode === m ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              {labelText}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {mode === "capture" ? (
+        <CaptureTab />
+      ) : (
+      <>
+      <div className="mb-6 flex items-center justify-end flex-wrap gap-4">
         <div className="flex items-center gap-3 flex-wrap">
           {terms.length > 0 && (
             <select value={termId} onChange={e => setTermId(e.target.value)}
@@ -462,6 +485,8 @@ function TeacherGradebook() {
             </CardContent>
           </Card>
         </div>
+      )}
+      </>
       )}
     </div>
   );

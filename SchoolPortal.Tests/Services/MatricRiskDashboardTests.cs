@@ -103,7 +103,7 @@ public class MatricRiskDashboardTests
             if (score == null) continue;
             var subId = Guid.NewGuid();
             f.Db.Submissions.Add(new Submission { SubmissionId = subId, AssignmentId = aId, StudentId = studentId, SchoolId = f.SchoolId, SubmittedAt = dueAt });
-            f.Db.Grades.Add(new Grade { GradeId = Guid.NewGuid(), SubmissionId = subId, SchoolId = f.SchoolId, Score = score.Value, GradedByUserId = f.TeacherUserId, GradedAt = dueAt });
+            f.Db.Grades.Add(new Grade { GradeId = Guid.NewGuid(), SubmissionId = subId, StudentId = studentId, AssignmentId = aId, SchoolId = f.SchoolId, Score = score.Value, GradedByUserId = f.TeacherUserId, GradedAt = dueAt });
         }
     }
 

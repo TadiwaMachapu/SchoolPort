@@ -120,6 +120,7 @@ public class PathwaysServiceTests : IAsyncLifetime
         _context.Grades.Add(new Grade
         {
             GradeId = Guid.NewGuid(), SubmissionId = submissionId, SchoolId = _schoolId,
+            StudentId = _studentId, AssignmentId = assignmentId,
             Score = percent, GradedByUserId = graderId, GradedAt = dueAt,
         });
         await _context.SaveChangesAsync();

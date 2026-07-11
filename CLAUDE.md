@@ -196,7 +196,7 @@ Real credentials are **never** in `appsettings.json` — they carry `CHANGE_ME_U
 ```bash
 cd SchoolPortal.Server
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<connection-string>"
-dotnet user-secrets set "Anthropic:ApiKey" "<key>"
+dotnet user-secrets set "Gemini:ApiKey" "<key>"
 ```
 
 Or set env var `CONNECTIONSTRINGS__DEFAULTCONNECTION` at runtime.
@@ -385,7 +385,7 @@ SA National Senior Certificate Admission Point Score (7-point scale):
 - **Life Orientation** capped at 4 APS points; included in some university totals but never in the standard APS used for admission comparisons
 
 ### AI Gap Analysis
-- Model: `claude-sonnet-4-6`, cost R3/MTok input + R15/MTok output (at R18.50/USD)
+- Model: Google Gemini free tier via `IGeminiService` (was `claude-sonnet-4-6` pre-1.5.2) — see "AI Tutor" section; per-call cost is 0
 - Cache: SHA-256 fingerprint of `{courseId}:{standardAps}|{subj}={avg%}|...` sorted by subject name; expires after 7 days
 - Monthly cap: `School.Settings.AiMonthlyCostCapZar` (default R100); sum of `AiUsageLog.EstimatedCostZar WHERE CreatedAt >= month start AND Success = true`
 - Returns `{ available: false }` (never throws) when: no API key, cap exceeded, API error, parse failure
@@ -419,6 +419,65 @@ SA National Senior Certificate Admission Point Score (7-point scale):
 
 ### Settings Added
 `SchoolSettings.AiMonthlyCostCapZar` — `decimal`, default `100.00m`, stored in `School.Settings` jsonb.
+
+---
+
+## AI Tutor (Sprint 1.5.2)
+
+- **AI Provider:** Google Gemini (free tier)
+- **Model:** `gemini-3.1-flash-lite` (config-driven via `Gemini:Model` in appsettings.json — update the value if a better free-tier model becomes available)
+- **Key:** set via user-secrets as `Gemini:ApiKey`
+- **Why Gemini:** Anthropic API costs not viable at pre-revenue pilot stage. Switch back to Claude when schools are paying. The system prompt and service interface are provider-agnostic.
+- **Rate limit:** 20 questions/day per learner (configurable via `School.Settings.MatricTutorDailyLimit`)
+
+All four AI services (Matric tutor, gap analysis, smart reports, Gr9 advisor) route through the single `IGeminiService`; usage rows log at cost 0 on the free tier.
+
+---
+
+## Marks Capture (Sprint 1.5.2.5)
+
+CAPS mark capture for teachers — the highest-frequency teacher workflow. Weeks 1-2 (data model + capture grid) shipped; Week 3 (HOD approval/moderation) is paused pending the HOD interview (the "Submit for Review" button is built but disabled).
+
+### Endpoints (all on `GradebookController`)
+| Endpoint | Permission | Purpose |
+|---|---|---|
+| `GET /api/gradebook/{classSubjectId}/tasks` | `marks.view_class` | Task list for a class-subject (captured x/y counts, approval status) |
+| `GET /api/gradebook/{classSubjectId}/task/{taskId}/marks` | `marks.view_class` | Full capture-grid payload: criteria + every enrolled learner with current mark, `isAbsent`, `criteriaScores` |
+| `POST /api/gradebook/bulk-capture` | `marks.capture` | Save marks for many learners in one task (the security-critical write) |
+| `POST /api/gradebook/tasks` | `marks.capture` | Create a task; accepts a criteria array when `HasRubric` |
+| `PUT /api/gradebook/tasks/{taskId}` | `marks.capture` | Update task details (rubric criteria are immutable post-create) |
+| `GET /api/gradebook/my-grades` | `marks.view_own` | Learner's own marks; includes per-criterion breakdown when the task has a rubric |
+
+`marks.capture` is a **teaching-role** key (TC-1: oversight roles like HOD/Principal deliberately cannot capture — they can open the grid read-only via `marks.view_class`, but saves 403 server-side). All logic (validation, scope, audit) lives in `MarkCaptureService`; the controller is a thin passthrough.
+
+### Absent ≠ zero
+`Grade.IsAbsent = true` **requires `Grade.Score = null`** — enforced in `MarkCaptureService` before any DB write and again on the audit path. Absent is *not* a zero; a zero is present-scored-nothing. `Grade.Score` is nullable precisely so absent (and not-yet-captured) rows carry no number, and **every average/aggregation must exclude `IsAbsent` rows** — SQL `AVG(score)` ignores NULLs, so this is automatic for straight averages, but explicit filters are still required anywhere absents could otherwise be counted.
+
+### Audit on change, not on initial capture
+`MarkCaptureAuditLog` records **corrections, never first entries**. The rule in `BulkCaptureAsync`:
+```csharp
+var hadCapturedMark = grade.Score != null || grade.IsAbsent;
+var differs = grade.Score != newScore || grade.IsAbsent != entry.IsAbsent;
+if (hadCapturedMark && differs) { /* write audit row */ }
+```
+- New grade row → no log (initial capture).
+- Existing row whose score was still `null` (pending — e.g. a partially-entered rubric) being filled in → no log (still initial capture).
+- A previously-captured value/absent-state changing → log (PreviousScore/NewScore, PreviousIsAbsent/NewIsAbsent, ChangedByUserId, ChangedAt). The Grade FK is `RESTRICT` so audit rows survive.
+
+### The 4-query cross-tenant validation pattern (ESTABLISHED — reuse it)
+**Any endpoint that processes a list of student entries** (bulk-capture, and future submission / attendance bulk endpoints) MUST validate in a fixed number of queries, never N-per-entry:
+1. Resolve `classSubjectId` scoped to `SchoolId` (404 if foreign).
+2. `IScopeService.EnsureClassAsync` on its class (403 if in-school but out of the caller's scope).
+3. Resolve `taskId` (or equivalent) scoped to both `SchoolId` and that class-subject (404 otherwise).
+4. `IScopeService.GetEnrolledStudentIdsAsync(classSubjectId, schoolId)` — **one** query loads the active-enrolment student ids into a `HashSet`; each entry's `studentId` is then checked **in memory** (O(1)), never re-queried.
+
+Result: 4 security queries regardless of class size, not 4 + N. `IScopeService` exposes `GetEnrolledStudentIdsAsync` (batch, active-only, school-pinned) and `IsStudentInClassAsync` (single-id convenience — **do not call it in a loop**). Pinned by `MarksCaptureCrossTenantWriteTests` (all three body-id directions) + `ScopeServiceEnrolmentTests`.
+
+### Rubric vs simple entry
+- `Assignment.HasRubric` (bool) picks the mode. Also on `Assignment`: `SbaWeight` (decimal(5,2)?, 0–100, service-validated), `TermNumber` (int?, 1–4, service-validated), and `TaskType += PAT` (Practical Assessment Task; `task_type` is a **string column, not a pg enum** — new values need no `ALTER TYPE`).
+- **Simple:** one `Grade.Score` per learner, `0..MaxMarks`.
+- **Rubric:** `AssessmentCriteria` rows (name + `MaxMark` + `DisplayOrder`) hang off the task; each learner gets a `CriteriaScore` per criterion (`Score` nullable — null = pending, distinct from 0; unique `(GradeId, CriteriaId)`). The task **total is server-derived** — `Grade.Score` is set to the sum of entered criteria; a client-sent total is ignored. Task `MaxMarks` for a rubric is the sum of criterion maxima, computed on create.
+- **Grade is decoupled from Submission** (Sprint 1.5.2.5): `Grade.StudentId` + `Grade.AssignmentId` are authoritative (unique pair); `Grade.SubmissionId` is nullable and set only by the LMS submission-grading flow (capture-grid marks leave it null). Read paths must not assume a submission exists.
 
 ---
 

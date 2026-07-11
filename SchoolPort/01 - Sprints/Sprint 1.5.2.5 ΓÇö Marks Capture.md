@@ -2,12 +2,31 @@
 
 ---
 sprint: 1.5.2.5
-status: planned
-gate: Need HOD interview response + Henco's markbook absorbed
+status: Weeks 1-2 shipped; Week 3 pending HOD interview
+pr: 12
+shipped: 2026-07-11
+gate: Week 3 still needs HOD interview response
 ---
 
 ## Goal
 The most important sprint in Phase 1.5. Every teacher uses this every week. Getting it right determines whether teachers adopt the platform.
+
+## Shipped — Weeks 1-2 (PR #12, CI green 2026-07-11; not yet merged)
+Single clean commit off main. All CI green: backend build + tests (277, zero exclusions), frontend build, migration replay on fresh DB, architecture contract. Live spot-check passed (James Dlamini, Grade 12A): rubric entry + auto total, CAPS badges, absent-not-zero, live class average + distribution, autosave, unsaved indicator, rubric-builder modal.
+
+### Week 1 — data model (migration `AddMarksCaptureSchema`, applied to live)
+- **Grade decoupled from Submission**: StudentId + AssignmentId authoritative (unique pair, backfilled); SubmissionId nullable (null = capture-grid mark); Score nullable (absent ⇒ null, service-enforced — absents fall out of SQL AVG).
+- New: AssessmentCriteria, CriteriaScore (score null = pending ≠ 0; unique (GradeId,CriteriaId)), ApprovalRecord (per-task, history rows, partial-unique open-record index), MarkCaptureAuditLog (append-only, Grade FK RESTRICT).
+- Assignment +HasRubric/+SbaWeight/+TermNumber; TaskType += PAT (string column, no pg enum — no ALTER TYPE).
+
+### Week 2 — API + capture grid
+- MarkCaptureService + 5 GradebookController endpoints (reads marks.view_class, writes marks.capture); my-grades extended with rubric breakdown.
+- Bulk-capture: 4-query cross-tenant validation + HashSet batch student check (no N+1) via new IScopeService.GetEnrolledStudentIdsAsync/IsStudentInClassAsync; rubric totals server-derived; **audit on corrections only** (filling a pending null = initial capture, no log).
+- Grid: keyboard-first (Tab/Enter, skips absent rows), ABS toggle, auto CAPS badges, live stats + L1-7 distribution, 60s autosave, unsaved indicator, mobile one-learner view.
+- **Submit for Review button built but DISABLED** ("HOD review — coming soon") — Week 3.
+
+## Week 3 — PAUSED, pending HOD interview
+The approval workflow below (HOD moderation view comparing distributions across teachers, approve/flag/request-correction, publish marks to learner+parent) is NOT built. Starts when HOD interview responses arrive.
 
 ## Critical context from Henco's markbook (Design, Randfontein HS, 2025)
 

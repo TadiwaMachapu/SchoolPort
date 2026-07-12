@@ -1516,6 +1516,11 @@ export interface LearnerRisk {
   redCount: number;
   amberCount: number;
   greenCount: number;
+  // Sprint 1.5.3 — intervention band on the 50% line (null = none), over captured subjects only
+  interventionBand: "Watch" | "AtRisk" | "Priority" | null;
+  subjectsBelowFifty: number;
+  capturedSubjectCount: number;
+  totalSubjectCount: number;
 }
 
 export interface RiskSummary {
@@ -1541,6 +1546,10 @@ export interface GradeOverviewLearner {
   amberSubjects: string[];
   missingAssessments: number;
   priorityFlags: string[];
+  interventionBand: "Watch" | "AtRisk" | "Priority" | null;
+  subjectsBelowFifty: number;
+  capturedSubjectCount: number;
+  totalSubjectCount: number;
 }
 
 export interface GradeOverview {

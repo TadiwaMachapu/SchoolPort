@@ -26,6 +26,7 @@ public class MatricRiskDashboardTests
         public Guid SchoolId;
         public Guid TeacherUserId;
         public Guid ClassId;
+        public Guid YearId;
         public Term Current = null!;
         public Term Previous = null!;
     }
@@ -40,6 +41,7 @@ public class MatricRiskDashboardTests
         if (withTerms)
         {
             var yearId = Guid.NewGuid();
+            f.YearId = yearId;
             var now = DateTime.UtcNow;
             db.AcademicYears.Add(new AcademicYear
             {
@@ -311,6 +313,92 @@ public class MatricRiskDashboardTests
             Assert.Contains("3 missing assessments", c.PriorityFlags);
             Assert.Equal("green", overview.Learners[1].OverallRisk);
             Assert.Empty(overview.Learners[1].PriorityFlags);
+        }
+        finally { await db.DisposeAsync(); await source.DisposeAsync(); }
+    }
+
+    // Like ClassSubjectFor, but also enrols THIS learner in the subject (LearnerSubjects) so the
+    // subject counts as "taken" even before any mark is captured — needed to exercise the
+    // captured-vs-enrolled distinction.
+    private static Guid EnrolledClassSubject(Fixture f, string subjectName, Guid studentId)
+    {
+        var subjectId = Guid.NewGuid();
+        f.Db.Subjects.Add(new Subject { SubjectId = subjectId, SchoolId = f.SchoolId, Name = subjectName, Code = subjectName[..3].ToUpperInvariant(), CreatedAt = DateTime.UtcNow });
+        var csId = Guid.NewGuid();
+        f.Db.ClassSubjects.Add(new ClassSubject { ClassSubjectId = csId, ClassId = f.ClassId, SubjectId = subjectId, SchoolId = f.SchoolId, CreatedAt = DateTime.UtcNow });
+        f.Db.LearnerSubjects.Add(new LearnerSubject
+        {
+            LearnerSubjectId = Guid.NewGuid(), StudentId = studentId, SubjectId = subjectId,
+            AcademicYearId = f.YearId, SchoolId = f.SchoolId, EnrolledAt = DateTime.UtcNow,
+        });
+        return csId;
+    }
+
+    // Sprint 1.5.3 Refinement 1 — with one term of data there is no trend, so the
+    // declining→Priority clause cannot fire; the absolute below-50 count still classifies.
+    [Fact]
+    public async Task AtRisk_SingleTerm_DecliningRuleDoesNotFire_AbsoluteThresholdStillApplies()
+    {
+        var (db, source) = await _pg.CreateIsolatedDatabaseAsync();
+        try
+        {
+            var f = await SetUpAsync(db);
+            var inCur = f.Current.StartDate.AddDays(5); // current term only → no previous marks
+
+            var learner = Learner(f, "OneTerm");
+            await db.SaveChangesAsync();
+
+            var maths = ClassSubjectFor(f, "Mathematics");
+            Mark(f, maths, learner, 45, inCur);
+            var acc = ClassSubjectFor(f, "Accounting");
+            Mark(f, acc, learner, 40, inCur);
+            await db.SaveChangesAsync();
+
+            var l = (await new MatricHubService(db).GetRiskDashboardAsync(f.SchoolId, null, null))
+                .Learners.Single(x => x.StudentId == learner);
+
+            // No prior-term marks → trend uncomputable → declining clause can't fire; the
+            // absolute "below 50 in 2 subjects" rule still lands the learner at At Risk.
+            Assert.All(l.Subjects, s => Assert.Equal("no_data", s.Trend));
+            Assert.Equal("AtRisk", l.InterventionBand);
+            Assert.Equal(2, l.CapturedSubjectCount);
+        }
+        finally { await db.DisposeAsync(); await source.DisposeAsync(); }
+    }
+
+    // Sprint 1.5.3 Refinement 2 — the band counts only subjects WITH captured marks. Enrolled
+    // subjects the learner hasn't been marked in yet must not inflate the below-50 count.
+    [Fact]
+    public async Task AtRisk_CountsOnlyCapturedSubjects_NotEnrolledSubjects()
+    {
+        var (db, source) = await _pg.CreateIsolatedDatabaseAsync();
+        try
+        {
+            var f = await SetUpAsync(db);
+            var inCur = f.Current.StartDate.AddDays(5);
+
+            var learner = Learner(f, "Partial");
+            await db.SaveChangesAsync();
+
+            // Enrolled in 4 subjects: 2 captured below 50, 2 enrolled-but-unmarked (missing).
+            var maths = EnrolledClassSubject(f, "Mathematics", learner);
+            Mark(f, maths, learner, 45, inCur);
+            var acc = EnrolledClassSubject(f, "Accounting", learner);
+            Mark(f, acc, learner, 40, inCur);
+            var geo = EnrolledClassSubject(f, "Geography", learner);
+            Mark(f, geo, learner, null, inCur);  // enrolled, past-due, no mark → missing, not captured
+            var hist = EnrolledClassSubject(f, "History", learner);
+            Mark(f, hist, learner, null, inCur); // enrolled, past-due, no mark → missing, not captured
+            await db.SaveChangesAsync();
+
+            var l = (await new MatricHubService(db).GetRiskDashboardAsync(f.SchoolId, null, null))
+                .Learners.Single(x => x.StudentId == learner);
+
+            // Only the 2 CAPTURED subjects count toward "below 50" → At Risk. Counting the 2
+            // unmarked enrolled subjects as below-50 would wrongly escalate to Priority (4).
+            Assert.Equal("AtRisk", l.InterventionBand);
+            Assert.Equal(2, l.CapturedSubjectCount);
+            Assert.Equal(4, l.TotalSubjectCount);
         }
         finally { await db.DisposeAsync(); await source.DisposeAsync(); }
     }

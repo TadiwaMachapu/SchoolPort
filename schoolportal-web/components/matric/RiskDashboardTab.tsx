@@ -19,6 +19,24 @@ export function RiskChip({ risk }: { risk: string }) {
   );
 }
 
+// Sprint 1.5.3 — intervention band on the 50% line (distinct from the per-subject red/amber/green).
+const BAND_STYLES: Record<string, { chip: string; label: string }> = {
+  Priority: { chip: "bg-red-100 text-red-800 ring-red-300",    label: "Priority" },
+  AtRisk:   { chip: "bg-orange-100 text-orange-800 ring-orange-300", label: "At Risk" },
+  Watch:    { chip: "bg-amber-100 text-amber-800 ring-amber-300", label: "Watch" },
+};
+
+export function BandChip({ band }: { band: string | null }) {
+  if (!band) return null;
+  const s = BAND_STYLES[band];
+  if (!s) return null;
+  return (
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ring-1 ${s.chip}`}>
+      {s.label}
+    </span>
+  );
+}
+
 export function TrendIcon({ trend }: { trend: string }) {
   if (trend === "declining") return <TrendingDown className="h-3.5 w-3.5 text-red-500" aria-label="Declining" />;
   if (trend === "improving") return <TrendingUp className="h-3.5 w-3.5 text-emerald-500" aria-label="Improving" />;
@@ -50,11 +68,22 @@ function LearnerRow({ learner }: { learner: LearnerRisk }) {
             <p className="font-semibold text-gray-900">{learner.name}</p>
             <p className="text-xs text-gray-400">{learner.studentNumber} · {learner.className}</p>
           </div>
+          <BandChip band={learner.interventionBand} />
           <RiskChip risk={learner.overallRisk} />
         </div>
-        <span className="text-xs text-gray-400">
-          {learner.redCount}R · {learner.amberCount}A · {learner.greenCount}G
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-xs text-gray-400">
+            {learner.redCount}R · {learner.amberCount}A · {learner.greenCount}G
+          </span>
+          {learner.interventionBand && (
+            <span className="text-[11px] text-gray-500">
+              below 50% in {learner.subjectsBelowFifty} of {learner.capturedSubjectCount} captured
+              {learner.capturedSubjectCount < learner.totalSubjectCount && (
+                <span className="text-amber-600"> · {learner.capturedSubjectCount}/{learner.totalSubjectCount} subjects captured</span>
+              )}
+            </span>
+          )}
+        </div>
       </button>
 
       {open && learner.subjects.length > 0 && (
@@ -152,10 +181,16 @@ export default function RiskDashboardTab() {
         </div>
       )}
 
-      <p className="text-xs text-gray-400">
-        Red: average below 40%, 3+ missing assessments, or declining below 60% · Amber: 40–49% or 1–2 missing ·
-        Green: 50%+ with nothing missing. Trend compares this term to last term (±5%).
-      </p>
+      <div className="space-y-1 text-xs text-gray-400">
+        <p>
+          <span className="font-semibold text-gray-500">Intervention band</span> (50% line, captured subjects only):
+          Watch = below 50% in 1 subject · At Risk = 2 subjects · Priority = 3+ subjects or declining more than 10% since last term.
+        </p>
+        <p>
+          <span className="font-semibold text-gray-500">Per-subject</span> — Red: below 40%, 3+ missing, or declining below 60% ·
+          Amber: 40–49% or 1–2 missing · Green: 50%+ with nothing missing. Trend compares this term to last term (±5%).
+        </p>
+      </div>
     </div>
   );
 }

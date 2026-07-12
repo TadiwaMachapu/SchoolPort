@@ -36,7 +36,15 @@ public record LearnerRiskDto(
     List<SubjectRiskDto> Subjects,
     int RedCount,
     int AmberCount,
-    int GreenCount
+    int GreenCount,
+    // Sprint 1.5.3 — intervention band on the 50% line (Watch/AtRisk/Priority; null = none),
+    // counting only CAPTURED subjects. Fraction context: {SubjectsBelowFifty} of
+    // {CapturedSubjectCount} captured, {CapturedSubjectCount} of {TotalSubjectCount} captured
+    // so far — so the frontend can show "below 50% in 2 of 3 captured subjects" (partial picture).
+    string? InterventionBand,
+    int SubjectsBelowFifty,
+    int CapturedSubjectCount,
+    int TotalSubjectCount
 );
 
 public record RiskSummaryDto(int Red, int Amber, int Green, int NoData);
@@ -58,7 +66,11 @@ public record GradeOverviewLearnerDto(
     List<string> RedSubjects,
     List<string> AmberSubjects,
     int MissingAssessments,
-    List<string> PriorityFlags
+    List<string> PriorityFlags,
+    string? InterventionBand,
+    int SubjectsBelowFifty,
+    int CapturedSubjectCount,
+    int TotalSubjectCount
 );
 
 public record GradeOverviewDto(
@@ -236,7 +248,8 @@ public class MatricHubService : IMatricHubService
 
             return new GradeOverviewLearnerDto(
                 l.StudentId, l.Name, l.StudentNumber, l.ClassName,
-                l.OverallRisk, red, amber, missing, flags);
+                l.OverallRisk, red, amber, missing, flags,
+                l.InterventionBand, l.SubjectsBelowFifty, l.CapturedSubjectCount, l.TotalSubjectCount);
         }).ToList();
 
         return new GradeOverviewDto(rows.Count, Summarise(learners), rows);
@@ -253,6 +266,21 @@ public class MatricHubService : IMatricHubService
         .OrderBy(l => l.OverallRisk switch { "red" => 0, "amber" => 1, "green" => 2, _ => 3 })
         .ThenByDescending(l => l.RedCount)
         .ThenBy(l => l.Name);
+
+    /// <summary>
+    /// THE single filter point for marks that count toward the risk dashboard. Today it means
+    /// "captured": a Sprint 1.5.2.5 <see cref="Grade"/> that is not absent (absent ≠ 0) and has a
+    /// score (not pending). Reads the authoritative Grade.StudentId/AssignmentId path, so
+    /// capture-grid marks (no submission) are included — unlike the old submission join.
+    /// WEEK 3 FOLLOW-UP: when HOD approval ships, gate here — append
+    /// <c>&amp;&amp; g.Assignment.ApprovalRecords.OrderByDescending(r =&gt; r.ReviewedAt).First().Status == ApprovalStatus.Approved</c>
+    /// — and nowhere else. See CLAUDE.md "Marks Capture".
+    /// </summary>
+    private IQueryable<Grade> GetCapturedGradesQuery(Guid schoolId) =>
+        _context.Grades.AsNoTracking().Where(g =>
+            g.SchoolId == schoolId &&
+            !g.IsAbsent &&
+            g.Score != null);
 
     /// <summary>Shared Week-2 risk computation over the caller's accessible Grade 12 classes.
     /// accessibleClassIds null = unrestricted (oversight). classId narrows to one class
@@ -292,8 +320,9 @@ public class MatricHubService : IMatricHubService
         var studentIds = students.Select(s => s.StudentId).ToHashSet();
 
         var now = DateTime.UtcNow;
-        // Every past-due assignment in the accessible classes, with this cohort's submissions
-        // and marks attached — one round trip; the rest is in-memory (Gr12 cohorts are small).
+        // Every past-due assignment in the accessible classes (Gr12 cohorts are small — the rest
+        // is in-memory). Marks are read separately through the capture seam below, NOT via the
+        // submission join, so Sprint 1.5.2.5 capture-grid marks (no submission) are included.
         var assignments = await _context.Assignments.AsNoTracking()
             .Where(a => a.SchoolId == schoolId && classIds.Contains(a.ClassSubject.ClassId) && a.DueAt <= now)
             .Select(a => new
@@ -304,12 +333,27 @@ public class MatricHubService : IMatricHubService
                 SubjectName = a.ClassSubject.Subject.Name,
                 a.DueAt,
                 a.MaxMarks,
-                Submissions = a.Submissions
-                    .Where(s => studentIds.Contains(s.StudentId))
-                    .Select(s => new { s.StudentId, Score = s.Grade == null ? (decimal?)null : s.Grade.Score })
-                    .ToList(),
             })
             .ToListAsync();
+        var assignmentIds = assignments.Select(a => a.AssignmentId).ToList();
+
+        // THE SEAM — every mark that counts for reporting flows through GetCapturedGradesQuery
+        // (not absent, score present). Keyed by (student, assignment). Week 3 approval gate goes
+        // in GetCapturedGradesQuery and nowhere else.
+        var capturedLookup = (await GetCapturedGradesQuery(schoolId)
+                .Where(g => studentIds.Contains(g.StudentId) && assignmentIds.Contains(g.AssignmentId))
+                .Select(g => new { g.StudentId, g.AssignmentId, Score = g.Score!.Value })
+                .ToListAsync())
+            .ToDictionary(x => (x.StudentId, x.AssignmentId), x => x.Score);
+
+        // "Missing" = a past-due assignment the learner takes with NO grade record at all. An
+        // absent mark IS a record (absence was captured), so absent counts as neither a mark nor
+        // missing — it simply never enters the average (the seam already excludes it).
+        var recordedKeys = (await _context.Grades.AsNoTracking()
+                .Where(g => g.SchoolId == schoolId && studentIds.Contains(g.StudentId) && assignmentIds.Contains(g.AssignmentId))
+                .Select(g => new { g.StudentId, g.AssignmentId })
+                .ToListAsync())
+            .Select(x => (x.StudentId, x.AssignmentId)).ToHashSet();
 
         // FET learners do NOT all take every subject offered in their register class — a
         // class-subject's assignments must only count as "missing" for learners who take the
@@ -325,67 +369,67 @@ public class MatricHubService : IMatricHubService
 
         bool InWindow(DateTime dueAt, Term term) => dueAt >= term.StartDate && dueAt <= term.EndDate;
 
+        decimal? CapturedScore(Guid studentId, Guid assignmentId) =>
+            capturedLookup.TryGetValue((studentId, assignmentId), out var sc) ? sc : null;
+
         var learners = students.Select(st =>
         {
             var enrolled = learnerSubjects.GetValueOrDefault(st.StudentId)
-                ?? assignments.Where(a => a.Submissions.Any(s => s.StudentId == st.StudentId))
+                ?? assignments.Where(a => recordedKeys.Contains((st.StudentId, a.AssignmentId)))
                     .Select(a => a.SubjectId).ToHashSet();
             var mine = assignments
                 .Where(a => a.ClassId == st.ClassId && enrolled.Contains(a.SubjectId))
                 .ToList();
-            var subjects = mine
+
+            // Intermediate per-subject data (keeps HasMarks + trend magnitude, which the DTO drops).
+            var subjectData = mine
                 .GroupBy(a => a.SubjectName)
                 .Select(g =>
                 {
-                    var marks = g
-                        .Select(a => new
-                        {
-                            a.DueAt,
-                            Submission = a.Submissions.FirstOrDefault(s => s.StudentId == st.StudentId),
-                            a.MaxMarks,
-                        })
+                    var graded = g
+                        .Select(a => new { a.DueAt, Score = CapturedScore(st.StudentId, a.AssignmentId), a.MaxMarks })
+                        .Where(m => m.Score != null && m.MaxMarks > 0)
+                        .Select(m => new { m.DueAt, Pct = (double)(m.Score!.Value / m.MaxMarks * 100) })
                         .ToList();
 
-                    var graded = marks
-                        .Where(m => m.Submission?.Score != null && m.MaxMarks > 0)
-                        .Select(m => new { m.DueAt, Pct = (double)(m.Submission!.Score!.Value / m.MaxMarks * 100) })
-                        .ToList();
+                    var missing = g.Count(a => !recordedKeys.Contains((st.StudentId, a.AssignmentId)) &&
+                        (current == null || InWindow(a.DueAt, current)));
 
-                    var missing = marks.Count(m => m.Submission == null &&
-                        (current == null || InWindow(m.DueAt, current)));
-
-                    // Nothing captured AND nothing missing → no signal; don't badge the
-                    // subject (a submitted-but-unmarked subject must not claim green).
+                    // Nothing captured AND nothing missing → no signal; don't badge the subject.
                     if (graded.Count == 0 && missing == 0) return null;
 
-                    var average = graded.Count > 0 ? Math.Round(graded.Average(m => m.Pct), 1) : 0.0;
+                    var hasMarks = graded.Count > 0;
+                    var average = hasMarks ? Math.Round(graded.Average(m => m.Pct), 1) : 0.0;
 
                     string trend = "no_data";
+                    double? trendDiff = null;
                     if (current != null && previous != null)
                     {
                         var cur = graded.Where(m => InWindow(m.DueAt, current)).Select(m => m.Pct).ToList();
                         var prev = graded.Where(m => InWindow(m.DueAt, previous)).Select(m => m.Pct).ToList();
                         if (cur.Count > 0 && prev.Count > 0)
                         {
-                            var diff = cur.Average() - prev.Average();
-                            trend = diff > 5 ? "improving" : diff < -5 ? "declining" : "stable";
+                            trendDiff = cur.Average() - prev.Average();
+                            trend = trendDiff > 5 ? "improving" : trendDiff < -5 ? "declining" : "stable";
                         }
                     }
 
                     // With no captured marks the average carries no signal — risk comes from
                     // missing work alone (0.0 must not trip the "< 40 → red" clause).
-                    var hasMarks = graded.Count > 0;
                     var risk =
                         (hasMarks && average < 40) || missing >= 3 || (trend == "declining" && average < 60 && hasMarks) ? "red"
                         : (hasMarks && average < 50) || missing >= 1 ? "amber"
                         : "green";
 
-                    return new SubjectRiskDto(g.Key, average, missing, trend, risk);
+                    return new { SubjectName = g.Key, Average = average, Missing = missing, Trend = trend, TrendDiff = trendDiff, Risk = risk, HasMarks = hasMarks };
                 })
-                .Where(s => s != null)
-                .Select(s => s!)
+                .Where(s => s != null).Select(s => s!)
                 .OrderBy(s => s.Risk switch { "red" => 0, "amber" => 1, _ => 2 })
                 .ThenBy(s => s.SubjectName)
+                .ToList();
+
+            var subjects = subjectData
+                .Select(s => new SubjectRiskDto(s.SubjectName, s.Average, s.Missing, s.Trend, s.Risk))
                 .ToList();
 
             var overall = subjects.Count == 0 ? "no_data"
@@ -393,11 +437,25 @@ public class MatricHubService : IMatricHubService
                 : subjects.Any(s => s.Risk == "amber") ? "amber"
                 : "green";
 
+            // Sprint 1.5.3 Fix 1 — intervention band on the 50% line, over ONLY captured subjects
+            // (Refinement 2: a learner "below 50% in 2 subjects" means 2 of their captured ones,
+            // regardless of subjects not yet marked). With one term there is no trend, so the
+            // declining clause simply can't fire — the below-50 count still applies (Refinement 1).
+            var capturedSubjects = subjectData.Where(s => s.HasMarks).ToList();
+            var below50 = capturedSubjects.Count(s => s.Average < 50);
+            var decliningSharp = capturedSubjects.Any(s => s.TrendDiff is < -10);
+            string? band =
+                below50 >= 3 || decliningSharp ? "Priority"
+                : below50 == 2 ? "AtRisk"
+                : below50 == 1 ? "Watch"
+                : null;
+
             return new LearnerRiskDto(
                 st.StudentId, st.Name, st.StudentNumber, st.ClassName, overall, subjects,
                 subjects.Count(s => s.Risk == "red"),
                 subjects.Count(s => s.Risk == "amber"),
-                subjects.Count(s => s.Risk == "green"));
+                subjects.Count(s => s.Risk == "green"),
+                band, below50, capturedSubjects.Count, subjectData.Count);
         }).ToList();
 
         return (classes, learners);

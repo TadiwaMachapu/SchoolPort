@@ -33,7 +33,8 @@ public record PrincipalSummaryDto(string SummaryMarkdown, bool FromCache);
 
 public class SmartReportsService : ISmartReportsService
 {
-    // Gemini free tier — usage logged at cost 0 (the monthly cost cap below is now vestigial).
+    // Gemini free tier — usage logged at cost 0. No cost cap: the 7-day fingerprint cache is the
+    // throttle (a given student/term report regenerates at most once a week). Sprint 1.5.3.
     private const int CacheTtlDays = 7;
 
     private readonly SchoolPortalDbContext _context;
@@ -231,8 +232,6 @@ public class SmartReportsService : ISmartReportsService
                 return new ReportCommentDto(cached.CommentText, FromCache: true);
         }
 
-        if (!await CheckCostCapAsync(schoolId)) return null;
-
         var prompt = BuildCommentPrompt(
             student.User.FirstName, term.TermNumber, term.AcademicYear.Year,
             bySubject.Select(x => (x.Subject, x.Avg)).ToList(),
@@ -370,8 +369,6 @@ public class SmartReportsService : ISmartReportsService
                 return new PrincipalSummaryDto(cached.SummaryMarkdown, FromCache: true);
         }
 
-        if (!await CheckCostCapAsync(schoolId)) return null;
-
         var prompt = BuildSummaryPrompt(
             cls.Name, term.TermNumber, term.AcademicYear.Year,
             totalStudents, atRisk.Count,
@@ -506,30 +503,6 @@ public class SmartReportsService : ISmartReportsService
             _logger.LogError(ex, "Failed to parse Gemini smart-reports JSON");
             return null;
         }
-    }
-
-    private async Task<bool> CheckCostCapAsync(Guid schoolId)
-    {
-        var school = await _context.Schools.AsNoTracking().FirstOrDefaultAsync(s => s.SchoolId == schoolId);
-        if (school == null) return true;
-
-        var cap = school.Settings.AiMonthlyCostCapZar;
-        if (cap <= 0) return true;
-
-        // Kind=Utc required — Npgsql rejects a Kind=Unspecified DateTime as a timestamptz param.
-        var utcNow = DateTime.UtcNow;
-        var monthStart = new DateTime(utcNow.Year, utcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var spent = await _context.AiUsageLogs
-            .Where(l => l.SchoolId == schoolId && l.CreatedAt >= monthStart && l.Success)
-            .SumAsync(l => (decimal?)l.EstimatedCostZar) ?? 0m;
-
-        if (spent >= cap)
-        {
-            _logger.LogInformation("AI cost cap reached for school {SchoolId}: R{Spent} >= R{Cap}", schoolId, spent, cap);
-            return false;
-        }
-
-        return true;
     }
 
     private async Task LogUsageAsync(

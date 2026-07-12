@@ -479,6 +479,9 @@ Result: 4 security queries regardless of class size, not 4 + N. `IScopeService` 
 - **Rubric:** `AssessmentCriteria` rows (name + `MaxMark` + `DisplayOrder`) hang off the task; each learner gets a `CriteriaScore` per criterion (`Score` nullable — null = pending, distinct from 0; unique `(GradeId, CriteriaId)`). The task **total is server-derived** — `Grade.Score` is set to the sum of entered criteria; a client-sent total is ignored. Task `MaxMarks` for a rubric is the sum of criterion maxima, computed on create.
 - **Grade is decoupled from Submission** (Sprint 1.5.2.5): `Grade.StudentId` + `Grade.AssignmentId` are authoritative (unique pair); `Grade.SubmissionId` is nullable and set only by the LMS submission-grading flow (capture-grid marks leave it null). Read paths must not assume a submission exists.
 
+### At-risk dashboard: marks source + Week 3 approval seam
+The Matric risk dashboard (`MatricHubService`, Sprint 1.5.3) **reads all captured marks** — deliberately not gated on approval status, because nothing else in the platform gates on approval yet (marks appear on My Academics the moment they're captured); a stricter dashboard would be inconsistent. All at-risk marks flow through **one seam — `MatricHubService.GetCapturedGradesQuery(schoolId)`** (not absent, score present). **When HOD approval (Marks Capture Week 3) ships, gate on `approval_status = Approved` at that single filter point** — append `&& g.Assignment.ApprovalRecords.OrderByDescending(r => r.ReviewedAt).First().Status == ApprovalStatus.Approved` there and nowhere else. Tracked as a Week 3 follow-up. The intervention band (Watch/At Risk/Priority) uses the **50% intervention line** counting only captured subjects, distinct from the per-subject CAPS bands (red <40 / amber <50 / green ≥50).
+
 ---
 
 ## Key Constraints

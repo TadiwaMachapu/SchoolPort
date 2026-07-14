@@ -252,6 +252,13 @@ export const api = {
         { method: "POST" }
       ),
   },
+  // Sprint 1.5.3 Smart Reports v1 role views. Gated server-side on the oversight POSITION
+  // (GradeHead/HOD/Principal-Deputy) + scope — the UI only renders these tabs for holders.
+  smartReports: {
+    gradeView: (grade: number) => request<GradeView>(`/api/smart-reports/grade/${grade}`),
+    subjectView: (subjectId: string) => request<SubjectView>(`/api/smart-reports/subject/${subjectId}`),
+    schoolOverview: () => request<SchoolOverview>("/api/smart-reports/school-overview"),
+  },
   fees: {
     list: () => request<FeeItem[]>("/api/fees"),
     create: (body: { name: string; description?: string; amountZar: number; dueDate: string; termId?: string }) =>
@@ -1580,19 +1587,82 @@ export interface TutorResult {
 }
 
 // Smart Reports v1
-export interface SmartSubjectResult {
-  subjectName: string;
-  average: number;
-}
-
 export interface SmartAtRiskStudent {
   studentId: string;
   name: string;
   studentNumber: string;
   overallAverage?: number;
   attendancePercent?: number;
+  // Sprint 1.5.3 — intervention band from the shared at-risk primitive; riskFlags is now the
+  // attendance layer only (e.g. LowAttendance); subjectResults carry per-subject risk/trend.
+  interventionBand: "Watch" | "AtRisk" | "Priority" | null;
   riskFlags: string[];
-  subjectResults: SmartSubjectResult[];
+  subjectResults: SubjectRisk[];
+}
+
+// Sprint 1.5.3 Smart Reports v1 — oversight role views (on the shared at-risk primitive).
+export interface GradeViewLearner {
+  studentId: string;
+  name: string;
+  studentNumber: string;
+  className: string;
+  interventionBand: "Watch" | "AtRisk" | "Priority" | null;
+  overallRisk: "red" | "amber" | "green" | "no_data";
+  subjectsBelowFifty: number;
+  capturedSubjectCount: number;
+  totalSubjectCount: number;
+  subjects: SubjectRisk[];
+}
+export interface GradeView {
+  grade: number;
+  learners: GradeViewLearner[];
+}
+
+export interface TeacherComparison {
+  teacherId: string | null;
+  teacherName: string;
+  classes: string[];
+  learnerCount: number;
+  atRiskCount: number;
+  notCapturedYet: boolean;
+}
+export interface SubjectViewLearner {
+  studentId: string;
+  name: string;
+  className: string;
+  risk: "red" | "amber" | "green";
+  average: number | null;
+  trend: "improving" | "declining" | "stable" | "no_data";
+  missingAssessments: number;
+}
+export interface SubjectView {
+  subjectId: string;
+  subjectName: string;
+  byTeacher: TeacherComparison[];
+  learners: SubjectViewLearner[];
+}
+
+export interface GradeBreakdown {
+  grade: number;
+  priority: number;
+  atRisk: number;
+  watch: number;
+  totalLearners: number;
+}
+export interface SubjectBreakdown {
+  subjectName: string;
+  atRiskLearners: number;
+}
+export interface BandTotals {
+  priority: number;
+  atRisk: number;
+  watch: number;
+  totalLearners: number;
+}
+export interface SchoolOverview {
+  byGrade: GradeBreakdown[];
+  bySubject: SubjectBreakdown[];
+  totals: BandTotals;
 }
 
 // Grade 9 Subject Advisor

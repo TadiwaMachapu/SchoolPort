@@ -29,7 +29,7 @@ public class MatricStudyPlanTests
             var studentId = Seed.Student(db, schoolId);
             await db.SaveChangesAsync();
 
-            var plan = await new MatricHubService(db).GetStudyPlanAsync(studentId, schoolId);
+            var plan = await new MatricHubService(db, new AtRiskService(db)).GetStudyPlanAsync(studentId, schoolId);
 
             Assert.False(plan.IsGrade12);
             Assert.Empty(plan.Subjects);
@@ -81,7 +81,7 @@ public class MatricStudyPlanTests
             SubjectWithMark("Physical Sciences", 85); // Strong → 1 maintenance session
             await db.SaveChangesAsync();
 
-            var plan = await new MatricHubService(db).GetStudyPlanAsync(studentId, schoolId);
+            var plan = await new MatricHubService(db, new AtRiskService(db)).GetStudyPlanAsync(studentId, schoolId);
 
             Assert.True(plan.IsGrade12);
             Assert.Equal(new[] { "Mathematics", "Accounting", "Physical Sciences" },

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
 using SchoolPortal.Data;
 using SchoolPortal.Data.Entities;
 using SchoolPortal.Server.Services;
@@ -149,7 +151,7 @@ public class MatricRiskDashboardTests
             Mark(f, csRedMissing, redMissing, null, inTerm); // 3 missing
             await db.SaveChangesAsync();
 
-            var dash = await new MatricHubService(db).GetRiskDashboardAsync(f.SchoolId, null, null);
+            var dash = await new MatricHubService(db, new AtRiskService(db)).GetRiskDashboardAsync(f.SchoolId, null, null);
 
             string RiskOf(Guid id, string subject) => dash.Learners
                 .Single(l => l.StudentId == id).Subjects.Single(s => s.SubjectName == subject).Risk;
@@ -191,7 +193,7 @@ public class MatricRiskDashboardTests
             Assessment(f, cs1, inCur, (declining, 45), (improving, 62), (stable, 57), (oneTerm, 66));
             await db.SaveChangesAsync();
 
-            var dash = await new MatricHubService(db).GetRiskDashboardAsync(f.SchoolId, null, null);
+            var dash = await new MatricHubService(db, new AtRiskService(db)).GetRiskDashboardAsync(f.SchoolId, null, null);
             SubjectRiskDto Of(Guid id) => dash.Learners.Single(l => l.StudentId == id).Subjects.Single();
 
             Assert.Equal("declining", Of(declining).Trend);
@@ -218,7 +220,7 @@ public class MatricRiskDashboardTests
             var learner = Learner(f, "Mine"); // enrolled in 12A
             await db.SaveChangesAsync();
 
-            var svc = new MatricHubService(db);
+            var svc = new MatricHubService(db, new AtRiskService(db));
 
             // Caller scoped to 12B only → 12A's learner is invisible.
             var scoped = await svc.GetRiskDashboardAsync(f.SchoolId, new HashSet<Guid> { otherClassId }, null);
@@ -264,7 +266,7 @@ public class MatricRiskDashboardTests
             Mark(f, acc, learner, null, inCur);
             await db.SaveChangesAsync();
 
-            var dash = await new MatricHubService(db).GetRiskDashboardAsync(f.SchoolId, null, null);
+            var dash = await new MatricHubService(db, new AtRiskService(db)).GetRiskDashboardAsync(f.SchoolId, null, null);
             var row = dash.Learners.Single(l => l.StudentId == learner);
 
             var subject = Assert.Single(row.Subjects); // Accounting produced no row at all
@@ -300,7 +302,7 @@ public class MatricRiskDashboardTests
             Assessment(f, acc, inCur, (crisis, null), (fine, 80));
             await db.SaveChangesAsync();
 
-            var overview = await new MatricHubService(db).GetGradeOverviewAsync(f.SchoolId, null);
+            var overview = await new MatricHubService(db, new AtRiskService(db)).GetGradeOverviewAsync(f.SchoolId, null);
 
             Assert.Equal(2, overview.TotalLearners);
             Assert.Equal("Crisis", overview.Learners[0].Name.Split(' ')[0]); // red first
@@ -354,7 +356,7 @@ public class MatricRiskDashboardTests
             Mark(f, acc, learner, 40, inCur);
             await db.SaveChangesAsync();
 
-            var l = (await new MatricHubService(db).GetRiskDashboardAsync(f.SchoolId, null, null))
+            var l = (await new MatricHubService(db, new AtRiskService(db)).GetRiskDashboardAsync(f.SchoolId, null, null))
                 .Learners.Single(x => x.StudentId == learner);
 
             // No prior-term marks → trend uncomputable → declining clause can't fire; the
@@ -391,7 +393,7 @@ public class MatricRiskDashboardTests
             Mark(f, hist, learner, null, inCur); // enrolled, past-due, no mark → missing, not captured
             await db.SaveChangesAsync();
 
-            var l = (await new MatricHubService(db).GetRiskDashboardAsync(f.SchoolId, null, null))
+            var l = (await new MatricHubService(db, new AtRiskService(db)).GetRiskDashboardAsync(f.SchoolId, null, null))
                 .Learners.Single(x => x.StudentId == learner);
 
             // Only the 2 CAPTURED subjects count toward "below 50" → At Risk. Counting the 2
@@ -399,6 +401,51 @@ public class MatricRiskDashboardTests
             Assert.Equal("AtRisk", l.InterventionBand);
             Assert.Equal(2, l.CapturedSubjectCount);
             Assert.Equal(4, l.TotalSubjectCount);
+        }
+        finally { await db.DisposeAsync(); await source.DisposeAsync(); }
+    }
+
+    // Sprint 1.5.3 — the permanent guarantee against re-divergence. The SAME learner run through
+    // BOTH surfaces (Matric dashboard + Smart Reports) must produce an identical band and identical
+    // per-subject risk, because both route through the one shared AtRiskService.
+    [Fact]
+    public async Task AtRisk_BothSurfaces_AgreeForSameLearner()
+    {
+        var (db, source) = await _pg.CreateIsolatedDatabaseAsync();
+        try
+        {
+            var f = await SetUpAsync(db);
+            var inCur = f.Current.StartDate.AddDays(5);
+
+            // Lethabo's profile: 3 subjects below 50, 2 green → clearly Priority.
+            var lethabo = Learner(f, "Lethabo");
+            await db.SaveChangesAsync();
+            Mark(f, ClassSubjectFor(f, "Mathematics"), lethabo, 44, inCur);
+            Mark(f, ClassSubjectFor(f, "Accounting"), lethabo, 40, inCur);
+            Mark(f, ClassSubjectFor(f, "Physical Sciences"), lethabo, 39, inCur);
+            Mark(f, ClassSubjectFor(f, "English"), lethabo, 81, inCur);
+            Mark(f, ClassSubjectFor(f, "Life Sciences"), lethabo, 78, inCur);
+            await db.SaveChangesAsync();
+
+            var atRisk = new AtRiskService(db);
+
+            // Surface 1 — Matric risk dashboard.
+            var dash = await new MatricHubService(db, atRisk).GetRiskDashboardAsync(f.SchoolId, null, null);
+            var fromDash = dash.Learners.Single(l => l.StudentId == lethabo);
+
+            // Surface 2 — Smart Reports (same class + term). Gemini/logger unused on this path.
+            var smart = new SmartReportsService(db,
+                new Mock<ILogger<SmartReportsService>>().Object, new Mock<IGeminiService>().Object, atRisk);
+            var fromSmart = (await smart.GetAtRiskStudentsAsync(f.ClassId, f.Current.TermId, f.SchoolId))
+                .Single(s => s.StudentId == lethabo);
+
+            // Identical band …
+            Assert.Equal(fromDash.InterventionBand, fromSmart.InterventionBand);
+            Assert.Equal("Priority", fromDash.InterventionBand); // sanity: 3 subjects below 50
+            // … and identical per-subject risk.
+            Assert.Equal(
+                fromDash.Subjects.Select(s => (s.SubjectName, s.Risk)).OrderBy(x => x.SubjectName).ToList(),
+                fromSmart.SubjectResults.Select(s => (s.SubjectName, s.Risk)).OrderBy(x => x.SubjectName).ToList());
         }
         finally { await db.DisposeAsync(); await source.DisposeAsync(); }
     }

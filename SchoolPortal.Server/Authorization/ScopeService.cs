@@ -26,6 +26,15 @@ public interface IScopeService
     /// <summary>Class ids the user may access for class-level academic data; null = unrestricted.</summary>
     Task<IReadOnlySet<Guid>?> GetAccessibleClassIdsAsync();
 
+    /// <summary>Oversight-only class ids (Sprint 1.5.3 role views): the WHOLE subject/grade the
+    /// caller oversees via <c>user_position_scopes</c> (HOD → subject, GradeHead → grade, PhaseHead
+    /// → phase), independent of the classes they personally teach. One-to-many aware (all scope
+    /// rows) and school-bounded. null = unrestricted (school-wide oversight, <see cref="PermissionKeys.MarksViewAll"/>);
+    /// an empty set = the caller holds no oversight position, so a role view shows nothing. Shares
+    /// its resolution with <see cref="GetAccessibleClassIdsAsync"/> (which unions it with the
+    /// teacher-operational/learner sources) — this returns that oversight subset alone.</summary>
+    Task<IReadOnlySet<Guid>?> GetOversightClassIdsAsync();
+
     /// <summary>Student ids the user may access; null = unrestricted. Learner = self only,
     /// Parent = children only, staff = students in their accessible classes.</summary>
     Task<IReadOnlySet<Guid>?> GetAccessibleStudentIdsAsync();
@@ -33,6 +42,20 @@ public interface IScopeService
     Task<bool> CanAccessClassAsync(Guid classId);
     Task<bool> CanAccessStudentAsync(Guid studentId);
     Task<bool> CanAccessActivityAsync(Guid activityId);
+
+    /// <summary>Subject-level scope (Sprint 1.5.3, for the HOD subject view). True iff the caller
+    /// oversees THIS subject — school-wide (oversight), an HOD subject scope naming it, a
+    /// SubjectTeacher/ClassTeacher teaching it, or a GradeHead/PhaseHead whose grade(s) teach it.
+    /// Class-level scope is too coarse here: a class can teach several subjects, so a Maths HOD's
+    /// accessible classes must NOT expose another subject taught in the same class.</summary>
+    Task<bool> CanAccessSubjectAsync(Guid subjectId);
+
+    /// <summary>Grade-level scope (Sprint 1.5.3, for the Grade Head view). True iff the caller
+    /// oversees THIS grade — school-wide (oversight), a GradeHead grade scope naming it, or a
+    /// PhaseHead whose phase expands to it. Mirrors <see cref="CanAccessSubjectAsync"/>: holding the
+    /// GradeHead position is NOT enough — the specific grade must be in scope, so a Gr-12 head asking
+    /// for Gr-11 is out of scope (403), identical in shape to the subject view's wrong-subject 403.</summary>
+    Task<bool> CanAccessGradeAsync(int grade);
 
     /// <summary>Throws <see cref="ForbiddenAccessException"/> (→ 403) if the class is out of scope.</summary>
     Task EnsureClassAsync(Guid classId);
@@ -86,25 +109,9 @@ public sealed class ScopeService : IScopeService
                 .Select(c => c.ClassId).ToListAsync());
         }
 
-        // HOD subject scopes → classes teaching those subjects (UserPositionScope).
-        var subjectIds = await PositionScopeRefIdsAsync(ScopeType.Subject);
-        if (subjectIds.Count > 0)
-            classIds.UnionWith(await _db.ClassSubjects.AsNoTracking()
-                .Where(cs => cs.SchoolId == schoolId && subjectIds.Contains(cs.SubjectId))
-                .Select(cs => cs.ClassId).Distinct().ToListAsync());
-
-        // GradeHead grade scopes + PhaseHead phase scopes → classes at those grade levels
-        // (UserPositionScope). Phase expands to its CAPS grades (Step 9 D4): a PhaseHead of FET
-        // oversees Gr 10–12; Senior Phase oversees Gr 7–9.
-        var grades = (await PositionScopeValuesAsync(ScopeType.Grade))
-            .Select(v => int.TryParse(v, out var g) ? (int?)g : null)
-            .Where(g => g is not null).Select(g => g!.Value).ToHashSet();
-        foreach (var phase in await PositionScopeValuesAsync(ScopeType.Phase))
-            grades.UnionWith(GradesForPhase(phase));
-        if (grades.Count > 0)
-            classIds.UnionWith(await _db.Classes.AsNoTracking()
-                .Where(c => c.SchoolId == schoolId && c.GradeLevel != null && grades.Contains(c.GradeLevel.Value))
-                .Select(c => c.ClassId).ToListAsync());
+        // HOD subject scopes + GradeHead/PhaseHead grade/phase scopes → the whole subject/grade
+        // overseen (UserPositionScope). Shared with GetOversightClassIdsAsync.
+        classIds.UnionWith(await ResolveOversightClassIdsAsync(schoolId));
 
         // Learner → own enrolled classes; Parent → children's enrolled classes.
         if (_currentUser.Identity == IdentityKeys.Learner)
@@ -125,6 +132,39 @@ public sealed class ScopeService : IScopeService
                 classIds.UnionWith(await _db.Enrollments.AsNoTracking()
                     .Where(e => childIds.Contains(e.StudentId) && e.IsActive).Select(e => e.ClassId).ToListAsync());
         }
+
+        return classIds;
+    }
+
+    public async Task<IReadOnlySet<Guid>?> GetOversightClassIdsAsync()
+    {
+        if (IsSchoolWide) return null;                                      // school-wide → unrestricted
+        return await ResolveOversightClassIdsAsync(_currentUser.SchoolId);
+    }
+
+    // The oversight subset of accessible classes: HOD subject scopes → classes teaching those
+    // subjects; GradeHead grade + PhaseHead phase scopes → classes at those grade levels. All from
+    // UserPositionScope, one-to-many (every scope row), school-bounded — never a class the caller
+    // merely teaches. Phase expands to its CAPS grades (Step 9 D4): FET → Gr 10–12, Senior → 7–9.
+    private async Task<HashSet<Guid>> ResolveOversightClassIdsAsync(Guid schoolId)
+    {
+        var classIds = new HashSet<Guid>();
+
+        var subjectIds = await PositionScopeRefIdsAsync(ScopeType.Subject);
+        if (subjectIds.Count > 0)
+            classIds.UnionWith(await _db.ClassSubjects.AsNoTracking()
+                .Where(cs => cs.SchoolId == schoolId && subjectIds.Contains(cs.SubjectId))
+                .Select(cs => cs.ClassId).Distinct().ToListAsync());
+
+        var grades = (await PositionScopeValuesAsync(ScopeType.Grade))
+            .Select(v => int.TryParse(v, out var g) ? (int?)g : null)
+            .Where(g => g is not null).Select(g => g!.Value).ToHashSet();
+        foreach (var phase in await PositionScopeValuesAsync(ScopeType.Phase))
+            grades.UnionWith(GradesForPhase(phase));
+        if (grades.Count > 0)
+            classIds.UnionWith(await _db.Classes.AsNoTracking()
+                .Where(c => c.SchoolId == schoolId && c.GradeLevel != null && grades.Contains(c.GradeLevel.Value))
+                .Select(c => c.ClassId).ToListAsync());
 
         return classIds;
     }
@@ -178,6 +218,59 @@ public sealed class ScopeService : IScopeService
             .FirstOrDefaultAsync();
         if (owner is null) return false;                                   // not found / other school
         return owner.OwnerUserId is null || owner.OwnerUserId == _currentUser.UserId;
+    }
+
+    public async Task<bool> CanAccessSubjectAsync(Guid subjectId)
+    {
+        if (IsSchoolWide) return true;                                     // oversight → any subject
+        var schoolId = _currentUser.SchoolId;
+        var userId = _currentUser.UserId;
+
+        // HOD subject scope names the subject directly.
+        if ((await PositionScopeRefIdsAsync(ScopeType.Subject)).Contains(subjectId)) return true;
+
+        // SubjectTeacher teaches it, or ClassTeacher's register class teaches it.
+        var teacherId = await _db.Teachers.AsNoTracking()
+            .Where(t => t.UserId == userId && t.SchoolId == schoolId)
+            .Select(t => (Guid?)t.TeacherId).FirstOrDefaultAsync();
+        if (teacherId is not null)
+        {
+            if (await _db.ClassSubjects.AsNoTracking().AnyAsync(cs =>
+                    cs.SchoolId == schoolId && cs.SubjectId == subjectId && cs.TeacherId == teacherId))
+                return true;
+            if (await _db.ClassSubjects.AsNoTracking().AnyAsync(cs =>
+                    cs.SchoolId == schoolId && cs.SubjectId == subjectId &&
+                    _db.Classes.Any(c => c.ClassId == cs.ClassId && c.TeacherId == teacherId)))
+                return true;
+        }
+
+        // GradeHead / PhaseHead: subject taught at a grade they oversee (they oversee the grade
+        // cross-subject, so any subject at that grade is in scope).
+        var grades = (await PositionScopeValuesAsync(ScopeType.Grade))
+            .Select(v => int.TryParse(v, out var g) ? (int?)g : null)
+            .Where(g => g is not null).Select(g => g!.Value).ToHashSet();
+        foreach (var phase in await PositionScopeValuesAsync(ScopeType.Phase))
+            grades.UnionWith(GradesForPhase(phase));
+        if (grades.Count > 0 && await _db.ClassSubjects.AsNoTracking().AnyAsync(cs =>
+                cs.SchoolId == schoolId && cs.SubjectId == subjectId &&
+                _db.Classes.Any(c => c.ClassId == cs.ClassId && c.GradeLevel != null && grades.Contains(c.GradeLevel.Value))))
+            return true;
+
+        return false;
+    }
+
+    public async Task<bool> CanAccessGradeAsync(int grade)
+    {
+        if (IsSchoolWide) return true;                                     // oversight → any grade
+
+        // GradeHead grade scopes + PhaseHead phase scopes (phase → its CAPS grades). Same resolution
+        // as ResolveOversightClassIdsAsync uses to pick grade-level classes.
+        var grades = (await PositionScopeValuesAsync(ScopeType.Grade))
+            .Select(v => int.TryParse(v, out var g) ? (int?)g : null)
+            .Where(g => g is not null).Select(g => g!.Value).ToHashSet();
+        foreach (var phase in await PositionScopeValuesAsync(ScopeType.Phase))
+            grades.UnionWith(GradesForPhase(phase));
+        return grades.Contains(grade);
     }
 
     public async Task EnsureClassAsync(Guid classId)

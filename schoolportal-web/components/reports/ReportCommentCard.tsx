@@ -31,7 +31,7 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
     try {
       const res = await api.reports.reportComment(student.studentId, termId, forceRefresh);
       if (!res.available || !res.commentText) {
-        setError("AI comment unavailable — check the Anthropic API key or monthly cost cap.");
+        setError("AI comment unavailable — check the Gemini API key (Gemini:ApiKey).");
         setState("error");
         return;
       }
@@ -58,6 +58,14 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
           <p className="font-semibold text-gray-900 truncate">{student.name}</p>
           <p className="text-xs text-gray-400">{student.studentNumber}</p>
           <div className="flex flex-wrap gap-1.5 mt-2">
+            {student.interventionBand && (
+              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                student.interventionBand === "Priority" ? "bg-red-100 text-red-800"
+                : student.interventionBand === "AtRisk" ? "bg-orange-100 text-orange-800"
+                : "bg-amber-100 text-amber-800"}`}>
+                {student.interventionBand === "AtRisk" ? "At Risk" : student.interventionBand}
+              </span>
+            )}
             {student.riskFlags.map(flag => {
               const meta = FLAG_LABELS[flag] ?? { label: flag, colour: "bg-gray-100 text-gray-700" };
               return (

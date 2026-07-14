@@ -16,16 +16,18 @@ public interface ISmartReportsService
         Guid classId, Guid termId, Guid schoolId, bool forceRefresh = false);
 }
 
-public record SmartSubjectResultDto(string SubjectName, double Average);
-
+// Sprint 1.5.3 — at-risk shape now carries the SHARED primitive's judgment (InterventionBand +
+// per-subject SubjectRiskDto with risk/trend). RiskFlags is SmartReports' own layer on top —
+// today just attendance (LowAttendance). No more locally-computed marks flags.
 public record AtRiskStudentDto(
     Guid StudentId,
     string Name,
     string StudentNumber,
     double? OverallAverage,
     double? AttendancePercent,
+    string? InterventionBand,
     List<string> RiskFlags,
-    List<SmartSubjectResultDto> SubjectResults
+    List<SubjectRiskDto> SubjectResults
 );
 
 public record ReportCommentDto(string CommentText, bool FromCache);
@@ -40,15 +42,18 @@ public class SmartReportsService : ISmartReportsService
     private readonly SchoolPortalDbContext _context;
     private readonly ILogger<SmartReportsService> _logger;
     private readonly IGeminiService _gemini;
+    private readonly IAtRiskService _atRisk;
 
     public SmartReportsService(
         SchoolPortalDbContext context,
         ILogger<SmartReportsService> logger,
-        IGeminiService gemini)
+        IGeminiService gemini,
+        IAtRiskService atRisk)
     {
         _context = context;
         _logger = logger;
         _gemini = gemini;
+        _atRisk = atRisk;
     }
 
     // ── At-Risk ────────────────────────────────────────────────────────────────
@@ -56,14 +61,15 @@ public class SmartReportsService : ISmartReportsService
     public async Task<List<AtRiskStudentDto>> GetAtRiskStudentsAsync(
         Guid classId, Guid termId, Guid schoolId)
     {
-        var term = await _context.Terms
-            .AsNoTracking()
+        var term = await _context.Terms.AsNoTracking()
             .FirstOrDefaultAsync(t => t.TermId == termId && t.SchoolId == schoolId);
-
         if (term == null) return [];
 
-        var students = await _context.Enrollments
-            .AsNoTracking()
+        // At-risk JUDGMENT comes from the ONE shared primitive — the same computation the Matric
+        // dashboard uses, so the two can never disagree (AtRisk_BothSurfaces_AgreeForSameLearner).
+        var risk = await _atRisk.EvaluateAsync(schoolId, new[] { classId }, termId);
+
+        var students = await _context.Enrollments.AsNoTracking()
             .Where(e => e.ClassId == classId && e.IsActive && e.SchoolId == schoolId)
             .Include(e => e.Student).ThenInclude(s => s.User)
             .Select(e => new
@@ -71,87 +77,39 @@ public class SmartReportsService : ISmartReportsService
                 e.Student.StudentId,
                 Name = $"{e.Student.User.FirstName} {e.Student.User.LastName}",
                 e.Student.StudentNumber,
-                FirstName = e.Student.User.FirstName
             })
             .ToListAsync();
-
         if (students.Count == 0) return [];
 
-        var studentIds = students.Select(s => s.StudentId).ToList();
-
-        var grades = await _context.Grades
-            .AsNoTracking()
-            .Where(g =>
-                g.SchoolId == schoolId &&
-                g.Submission.Assignment.ClassSubject.ClassId == classId &&
-                g.Submission.Assignment.DueAt >= term.StartDate &&
-                g.Submission.Assignment.DueAt <= term.EndDate)
-            .Select(g => new
-            {
-                g.Submission.StudentId,
-                SubjectName = g.Submission.Assignment.ClassSubject.Subject.Name,
-                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1)
-            })
-            .ToListAsync();
-
-        var attendance = await _context.Attendances
-            .AsNoTracking()
-            .Where(a =>
-                a.SchoolId == schoolId &&
-                a.ClassId == classId &&
-                a.Date >= term.StartDate &&
-                a.Date <= term.EndDate)
-            .GroupBy(a => a.StudentId)
-            .Select(g => new
-            {
-                StudentId = g.Key,
-                Total = g.Count(),
-                Present = g.Count(a => a.Status == 1)
-            })
-            .ToListAsync();
-
-        var attendanceLookup = attendance.ToDictionary(a => a.StudentId);
+        // Attendance is SmartReports' OWN signal, layered on top of the shared marks band. Absent
+        // count only (Late = attended); AttendanceSignal nulls out a too-thin sample so a school
+        // that hasn't captured attendance never false-flags LowAttendance.
+        var attendanceLookup = (await _context.Attendances.AsNoTracking()
+                .Where(a => a.SchoolId == schoolId && a.ClassId == classId &&
+                            a.Date >= term.StartDate && a.Date <= term.EndDate)
+                .GroupBy(a => a.StudentId)
+                .Select(g => new { StudentId = g.Key, Total = g.Count(), Absent = g.Count(a => a.Status == AttendanceSignal.Absent) })
+                .ToListAsync())
+            .ToDictionary(a => a.StudentId);
 
         var result = new List<AtRiskStudentDto>();
-
         foreach (var s in students)
         {
-            var sGrades = grades.Where(g => g.StudentId == s.StudentId).ToList();
-            var bySubject = sGrades
-                .GroupBy(g => g.SubjectName)
-                .Select(g => new SmartSubjectResultDto(g.Key, Math.Round(g.Average(x => x.Percentage), 1)))
-                .OrderBy(x => x.SubjectName)
-                .ToList();
-
-            var overallAvg = bySubject.Count > 0
-                ? Math.Round(bySubject.Average(x => x.Average), 1)
-                : (double?)null;
+            risk.TryGetValue(s.StudentId, out var r);
+            var band = r?.InterventionBand;
+            var subjects = r?.Subjects ?? new List<SubjectRiskDto>();
 
             attendanceLookup.TryGetValue(s.StudentId, out var att);
-            var attPct = att is { Total: > 0 }
-                ? Math.Round((double)att.Present / att.Total * 100, 1)
-                : (double?)null;
+            var attPct = att is null ? (double?)null : AttendanceSignal.Percent(att.Total, att.Absent);
 
             var flags = new List<string>();
+            if (attPct is < 80) flags.Add("LowAttendance");
 
-            if (attPct.HasValue && attPct < 80)
-                flags.Add("LowAttendance");
-
-            var failingSubjects = bySubject.Count(x => x.Average < 40);
-            if (failingSubjects >= 2)
-                flags.Add("MultipleFailures");
-            else if (failingSubjects == 1)
-                flags.Add("SubjectFailing");
-
-            if (overallAvg.HasValue && overallAvg < 50)
-                flags.Add("LowOverallAverage");
-
-            if (flags.Count > 0)
-            {
+            // "At risk" iff the shared band flags them OR attendance is low.
+            if (band != null || flags.Count > 0)
                 result.Add(new AtRiskStudentDto(
                     s.StudentId, s.Name, s.StudentNumber,
-                    overallAvg, attPct, flags, bySubject));
-            }
+                    r?.OverallAverage, attPct, band, flags, subjects));
         }
 
         return result.OrderBy(s => s.Name).ToList();
@@ -177,17 +135,18 @@ public class SmartReportsService : ISmartReportsService
         if (student == null) return null;
 
         // Fetch grades within the term
+        // Captured marks (shared predicate) on the Grade path — sees 1.5.2.5 capture marks.
         var grades = await _context.Grades
             .AsNoTracking()
+            .Where(AtRiskMarks.CapturedPredicate(schoolId))
             .Where(g =>
-                g.SchoolId == schoolId &&
-                g.Submission.StudentId == studentId &&
-                g.Submission.Assignment.DueAt >= term.StartDate &&
-                g.Submission.Assignment.DueAt <= term.EndDate)
+                g.StudentId == studentId &&
+                g.Assignment.DueAt >= term.StartDate &&
+                g.Assignment.DueAt <= term.EndDate)
             .Select(g => new
             {
-                SubjectName = g.Submission.Assignment.ClassSubject.Subject.Name,
-                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1)
+                SubjectName = g.Assignment.ClassSubject.Subject.Name,
+                Percentage = Math.Round((double)g.Score!.Value / (double)g.Assignment.MaxMarks * 100, 1)
             })
             .ToListAsync();
 
@@ -314,17 +273,18 @@ public class SmartReportsService : ISmartReportsService
             .Where(e => e.ClassId == classId && e.IsActive && e.SchoolId == schoolId)
             .CountAsync();
 
+        // Captured marks (shared predicate) on the Grade path — sees 1.5.2.5 capture marks.
         var grades = await _context.Grades
             .AsNoTracking()
+            .Where(AtRiskMarks.CapturedPredicate(schoolId))
             .Where(g =>
-                g.SchoolId == schoolId &&
-                g.Submission.Assignment.ClassSubject.ClassId == classId &&
-                g.Submission.Assignment.DueAt >= term.StartDate &&
-                g.Submission.Assignment.DueAt <= term.EndDate)
+                g.Assignment.ClassSubject.ClassId == classId &&
+                g.Assignment.DueAt >= term.StartDate &&
+                g.Assignment.DueAt <= term.EndDate)
             .Select(g => new
             {
-                SubjectName = g.Submission.Assignment.ClassSubject.Subject.Name,
-                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1)
+                SubjectName = g.Assignment.ClassSubject.Subject.Name,
+                Percentage = Math.Round((double)g.Score!.Value / (double)g.Assignment.MaxMarks * 100, 1)
             })
             .ToListAsync();
 

@@ -67,19 +67,25 @@ public class ReportsController : ControllerBase
 
         var studentIds = students.Select(s => s.StudentId).ToList();
 
+        // #2 fix — read the CAPTURED marks path (Grade.StudentId/AssignmentId, not absent, score set),
+        // the same source of truth as the at-risk primitive and every other 1.5.x surface. The old
+        // Submission-join path could not see directly-captured marks (Sprint 1.5.2.5 decoupled Grade
+        // from Submission → SubmissionId is null for bulk-captured marks), so the Term Report and the
+        // at-risk/Matric views disagreed on the same learner's averages. One path now, everywhere.
         var grades = await _context.Grades
             .AsNoTracking()
+            .Where(AtRiskMarks.CapturedPredicate(schoolId))
             .Where(g =>
-                g.SchoolId == schoolId &&
-                g.Submission.Assignment.ClassSubject.ClassId == classId &&
-                g.Submission.Assignment.DueAt >= term.StartDate &&
-                g.Submission.Assignment.DueAt <= term.EndDate)
+                g.Assignment.ClassSubject.ClassId == classId &&
+                g.Assignment.MaxMarks > 0 &&
+                g.Assignment.DueAt >= term.StartDate &&
+                g.Assignment.DueAt <= term.EndDate)
             .Select(g => new
             {
-                g.Submission.StudentId,
-                SubjectName = g.Submission.Assignment.ClassSubject.Subject.Name,
-                CapsPhase = g.Submission.Assignment.ClassSubject.Subject.CapsPhase,
-                Percentage = Math.Round((double)g.Score / (double)g.Submission.Assignment.MaxMarks * 100, 1)
+                g.StudentId,
+                SubjectName = g.Assignment.ClassSubject.Subject.Name,
+                CapsPhase = g.Assignment.ClassSubject.Subject.CapsPhase,
+                Percentage = Math.Round((double)g.Score!.Value / (double)g.Assignment.MaxMarks * 100, 1)
             })
             .ToListAsync();
 
@@ -95,7 +101,7 @@ public class ReportsController : ControllerBase
             {
                 StudentId = g.Key,
                 Total = g.Count(),
-                Present = g.Count(a => a.Status == 1)
+                Absent = g.Count(a => a.Status == AttendanceSignal.Absent)   // Late = attended
             })
             .ToListAsync();
 
@@ -109,7 +115,10 @@ public class ReportsController : ControllerBase
                 .Select(g =>
                 {
                     var avg = Math.Round(g.Average(x => x.Percentage), 1);
-                    var capsLevel = g.Key.CapsPhase == "SeniorPhase" ? CapsLevelFromPercent(avg) : (int?)null;
+                    // #3 fix: the CAPS achievement level (1–7) is the national scale for ALL phases
+                    // (Gr R–12), FET included — not just Senior Phase. Compute it for every subject
+                    // with an average (was previously null for FET, rendering "—").
+                    var capsLevel = CapsLevelFromPercent(avg);
                     return new
                     {
                         SubjectName = g.Key.SubjectName,
@@ -125,8 +134,8 @@ public class ReportsController : ControllerBase
             var overallAvg = bySubject.Count > 0 ? Math.Round(bySubject.Average(x => x.Average), 1) : (double?)null;
 
             attendanceLookup.TryGetValue(s.StudentId, out var att);
-            var attendancePct = att is { Total: > 0 } ? Math.Round((double)att.Present / att.Total * 100, 1) : (double?)null;
-            var daysAbsent = att != null ? att.Total - att.Present : 0;
+            var attendancePct = att is null ? (double?)null : AttendanceSignal.Percent(att.Total, att.Absent);
+            var daysAbsent = att?.Absent ?? 0;
 
             return new
             {

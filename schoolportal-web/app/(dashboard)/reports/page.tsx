@@ -3,11 +3,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, type Class, type Term, type TermReport, type SmartAtRiskStudent } from "@/lib/api";
 import { useFeature } from "@/lib/use-feature";
-import { usePermission } from "@/lib/auth-context";
+import { usePermission, useAnyPosition, useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { ReportCommentCard } from "@/components/reports/ReportCommentCard";
 import { PrincipalSummaryCard } from "@/components/reports/PrincipalSummaryCard";
-import { FileText, Download, AlertTriangle, Loader2, ShieldAlert, Sparkles, BookOpen } from "lucide-react";
+import { GradeHeadView } from "@/components/reports/GradeHeadView";
+import { HodSubjectView } from "@/components/reports/HodSubjectView";
+import { SchoolOverviewView } from "@/components/reports/SchoolOverviewView";
+import { FileText, Download, AlertTriangle, Loader2, ShieldAlert, Sparkles, BookOpen, Layers, GraduationCap, Building2 } from "lucide-react";
+
+// Sprint 1.5.3 — ScopeType enum values (mirror SchoolPortal.Data.Entities.ScopeType) for reading
+// position scopes off the auth context: Subject=1, Phase=2, Grade=3.
+const SCOPE_SUBJECT = 1;
+const SCOPE_PHASE = 2;
+const SCOPE_GRADE = 3;
+
+function phaseGrades(phase: string): number[] {
+  const p = phase.replace(/\s+/g, "").toLowerCase();
+  if (p === "fet") return [10, 11, 12];
+  if (p === "seniorphase") return [7, 8, 9];
+  return [];
+}
 
 const CAPS_LEVEL_COLOURS: Record<number, string> = {
   7: "bg-emerald-100 text-emerald-800",
@@ -85,13 +101,50 @@ function printReport(report: TermReport) {
   setTimeout(() => win.print(), 400);
 }
 
-type PageTab = "term-report" | "at-risk" | "ai-comments" | "principal-summary";
+type PageTab = "term-report" | "at-risk" | "ai-comments" | "principal-summary"
+  | "grade-oversight" | "subject-oversight" | "school-overview";
+
+const OVERSIGHT_TABS: PageTab[] = ["grade-oversight", "subject-oversight", "school-overview"];
 
 export default function ReportsPage() {
   const router = useRouter();
   const hasReports = useFeature("smartReports");
   const [tab, setTab] = useState<PageTab>("term-report");
   const isAdmin = usePermission("reporting.principal_summary"); // Step 8
+
+  // Sprint 1.5.3 oversight role views — gated on the POSITION (mirrors the server gate). UX only;
+  // the backend is the authority (a non-holder that reaches an endpoint gets 403).
+  const auth = useAuth();
+  const canGrade = useAnyPosition(["GradeHead", "PhaseHead", "Principal", "DeputyPrincipal"]);
+  const canSubject = useAnyPosition(["HOD", "Principal", "DeputyPrincipal"]);
+  const canOverview = useAnyPosition(["Principal", "DeputyPrincipal"]);
+  const schoolWide = auth.positions.some((p) => p.key === "Principal" || p.key === "DeputyPrincipal");
+
+  // Grades the caller may open: GradeHead grade scopes + PhaseHead phase scopes; school-wide
+  // (Principal/Deputy) sees the full senior+FET span. Sorted; drives the grade selector.
+  const accessibleGrades = (() => {
+    const set = new Set<number>();
+    if (schoolWide) [8, 9, 10, 11, 12].forEach((g) => set.add(g));
+    for (const p of auth.positions) {
+      if (p.key === "GradeHead")
+        for (const s of p.scopes)
+          if (s.scopeType === SCOPE_GRADE && s.scopeValue) {
+            const g = parseInt(s.scopeValue, 10);
+            if (!Number.isNaN(g)) set.add(g);
+          }
+      if (p.key === "PhaseHead")
+        for (const s of p.scopes)
+          if (s.scopeType === SCOPE_PHASE && s.scopeValue) phaseGrades(s.scopeValue).forEach((g) => set.add(g));
+    }
+    return [...set].sort((a, b) => a - b);
+  })();
+
+  // Subjects the caller may open: HOD subject scopes; null = school-wide (any subject).
+  const allowedSubjectIds: string[] | null = schoolWide
+    ? null
+    : auth.positions
+        .filter((p) => p.key === "HOD")
+        .flatMap((p) => p.scopes.filter((s) => s.scopeType === SCOPE_SUBJECT && s.scopeRefId).map((s) => s.scopeRefId!));
 
   const [classes, setClasses] = useState<Class[]>([]);
   const [terms,   setTerms]   = useState<Term[]>([]);
@@ -158,12 +211,17 @@ export default function ReportsPage() {
     );
   }
 
-  const tabs: { id: PageTab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
+  const tabs: { id: PageTab; label: string; icon: React.ReactNode; show?: boolean }[] = [
     { id: "term-report",        label: "Term Report",       icon: <BookOpen className="h-4 w-4" /> },
     { id: "at-risk",            label: "At-Risk Learners",  icon: <ShieldAlert className="h-4 w-4" /> },
     { id: "ai-comments",        label: "AI Comments",       icon: <Sparkles className="h-4 w-4" /> },
-    { id: "principal-summary",  label: "Principal Summary", icon: <FileText className="h-4 w-4" />, adminOnly: true },
+    // Sprint 1.5.3 oversight role views — rendered only for holders of the relevant position.
+    { id: "grade-oversight",    label: "Grade View",        icon: <Layers className="h-4 w-4" />,        show: canGrade },
+    { id: "subject-oversight",  label: "Subject View",      icon: <GraduationCap className="h-4 w-4" />, show: canSubject },
+    { id: "school-overview",    label: "School Overview",   icon: <Building2 className="h-4 w-4" />,      show: canOverview },
+    { id: "principal-summary",  label: "Principal Summary", icon: <FileText className="h-4 w-4" />,      show: isAdmin },
   ];
+  const isOversight = OVERSIGHT_TABS.includes(tab);
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
@@ -179,7 +237,9 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* Selectors */}
+      {/* Selectors — class/term drive the class-scoped tabs only; the oversight views scope
+          themselves by position (grade/subject/school) and the current term server-side. */}
+      {!isOversight && (
       <div className="flex items-end gap-3 flex-wrap">
         <div className="space-y-1">
           <label className="text-xs font-medium text-gray-600">Class</label>
@@ -200,11 +260,12 @@ export default function ReportsPage() {
           </select>
         </div>
       </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-0 overflow-x-auto">
-          {tabs.filter(t => !t.adminOnly || isAdmin).map(t => (
+          {tabs.filter(t => t.show !== false).map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
@@ -395,6 +456,14 @@ export default function ReportsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
+                            {s.interventionBand && (
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                s.interventionBand === "Priority" ? "bg-red-100 text-red-800"
+                                : s.interventionBand === "AtRisk" ? "bg-orange-100 text-orange-800"
+                                : "bg-amber-100 text-amber-800"}`}>
+                                {s.interventionBand === "AtRisk" ? "At Risk" : s.interventionBand}
+                              </span>
+                            )}
                             {s.riskFlags.map(flag => {
                               const meta = FLAG_LABELS[flag] ?? { label: flag, colour: "bg-gray-100 text-gray-700" };
                               return (
@@ -457,6 +526,15 @@ export default function ReportsPage() {
           )}
         </div>
       )}
+
+      {/* ── Tab: Grade View (Grade Head oversight) ── */}
+      {tab === "grade-oversight" && canGrade && <GradeHeadView grades={accessibleGrades} />}
+
+      {/* ── Tab: Subject View (HOD oversight) ── */}
+      {tab === "subject-oversight" && canSubject && <HodSubjectView allowedSubjectIds={allowedSubjectIds} />}
+
+      {/* ── Tab: School Overview (Principal/Deputy) ── */}
+      {tab === "school-overview" && canOverview && <SchoolOverviewView />}
 
       {/* ── Tab: Principal Summary (Admin only) ── */}
       {tab === "principal-summary" && isAdmin && (

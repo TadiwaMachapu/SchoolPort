@@ -22,9 +22,11 @@ namespace SchoolPortal.Tests.Integration;
 ///    (null Identity, no UserPositions). The live DB was backfilled in Sprint 1.5.0; a fresh
 ///    seed is NOT, so this test applies the same backfill to the demo teacher (Staff +
 ///    SubjectTeacher) before logging in. Fresh demo environments need DevSeed updated.
-/// 2. DevSeed's IsCurrent term is Term 1 (Jan–Mar 2026) while every assignment is due
-///    "now − 14 days" — outside all seeded terms. Missing-assessment counts and trends are
-///    therefore structurally zero/no_data on demo data; risk derives from averages only.
+/// 2. DevSeed's current term now spans "now" (Sprint 1.5.3), so its assignments (due now − 14d)
+///    fall inside it and the term-scoped at-risk average sees them. Missing counts are still 0
+///    (every learner is graded in every subject they take) and trends are still no_data (all marks
+///    live in the single current term — the previous term carries none), so risk derives from
+///    averages only.
 /// </summary>
 [Collection("SecurityApi")]
 public class MatricDemoDataSpotCheckTests
@@ -109,8 +111,9 @@ public class MatricDemoDataSpotCheckTests
         Assert.Equal("red", learners.First().GetProperty("overallRisk").GetString());
         Assert.Equal("green", learners.Last().GetProperty("overallRisk").GetString());
 
-        // Demo-data reality (documented gap): assignments fall outside every seeded term →
-        // no missing counts, no trends. Sipho's unsubmitted Genetics Test is invisible here.
+        // Missing is 0 for everyone (each learner is graded in every subject they take) and trend is
+        // no_data (all marks live in the single current term). Sipho's ungraded Genetics Test sits in
+        // Life Sciences, which he doesn't take (no record) → not counted as his missing.
         var allSubjects = learners.SelectMany(l => l.GetProperty("subjects").EnumerateArray()).ToList();
         Assert.All(allSubjects, s => Assert.Equal(0, s.GetProperty("missingAssessments").GetInt32()));
         Assert.All(allSubjects, s => Assert.Equal("no_data", s.GetProperty("trend").GetString()));

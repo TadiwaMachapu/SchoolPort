@@ -51,10 +51,13 @@ public static class AtRiskMarks
 public interface IAtRiskService
 {
     /// <summary>Evaluates every active-enrolled learner in the given classes for the given term.
-    /// <paramref name="termId"/> is the "current" term (previous is resolved for trend); null → no
-    /// term context (all captured marks count, no trend, missing = all past-due). One set of
-    /// queries for the whole cohort. Keyed by StudentId; every enrolled learner gets an entry
-    /// (learners with no captured mark and nothing missing → OverallRisk "no_data", band null).</summary>
+    /// <paramref name="termId"/> is the "current" term and IS THE JUDGMENT WINDOW: per-subject
+    /// average, red/amber/green risk, the below-50 count and the intervention band all use marks
+    /// captured IN THAT TERM (the previous term is resolved only for the trend arrow). null → no
+    /// term context (all captured marks count, no trend, missing = all past-due). A learner with no
+    /// captured mark and nothing missing IN THE TERM → OverallRisk "no_data", band null,
+    /// OverallAverage null (no-data ≠ zero). One set of queries for the whole cohort, keyed by
+    /// StudentId; every enrolled learner gets an entry.</summary>
     Task<IReadOnlyDictionary<Guid, LearnerAtRiskResult>> EvaluateAsync(
         Guid schoolId, IReadOnlyCollection<Guid> classIds, Guid? termId);
 }
@@ -147,19 +150,31 @@ public class AtRiskService : IAtRiskService
                 .GroupBy(a => a.SubjectName)
                 .Select(g =>
                 {
+                    // All captured marks for the subject (all-time) — used ONLY for the term-over-term
+                    // trend (current vs previous window).
                     var graded = g
                         .Select(a => new { a.DueAt, Score = CapturedScore(st.StudentId, a.AssignmentId), a.MaxMarks })
                         .Where(m => m.Score != null && m.MaxMarks > 0)
                         .Select(m => new { m.DueAt, Pct = (double)(m.Score!.Value / m.MaxMarks * 100) })
                         .ToList();
 
+                    // The AVERAGE, risk and below-50 judgment use the SELECTED TERM only — the
+                    // actionable window (Sprint 1.5.3): a learner strong last term but failing now must
+                    // be judged on now, not have the present masked by the past. No term context
+                    // (termId null) → all captured marks count (graceful degradation).
+                    var gradedInTerm = current == null
+                        ? graded
+                        : graded.Where(m => InWindow(m.DueAt, current)).ToList();
+
                     var missing = g.Count(a => !recordedKeys.Contains((st.StudentId, a.AssignmentId)) &&
                         (current == null || InWindow(a.DueAt, current)));
 
-                    if (graded.Count == 0 && missing == 0) return null;
+                    // No captured mark AND no missing IN THIS TERM → the subject has no signal this
+                    // term (a prior-term-only subject is dropped, never read as 0%).
+                    if (gradedInTerm.Count == 0 && missing == 0) return null;
 
-                    var hasMarks = graded.Count > 0;
-                    var average = hasMarks ? Math.Round(graded.Average(m => m.Pct), 1) : 0.0;
+                    var hasMarks = gradedInTerm.Count > 0;
+                    var average = hasMarks ? Math.Round(gradedInTerm.Average(m => m.Pct), 1) : 0.0;
 
                     string trend = "no_data";
                     double? trendDiff = null;

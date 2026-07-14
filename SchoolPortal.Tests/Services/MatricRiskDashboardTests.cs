@@ -180,8 +180,10 @@ public class MatricRiskDashboardTests
             var inPrev = f.Previous.StartDate.AddDays(5);
             var inCur = f.Current.StartDate.AddDays(5);
 
-            var declining = Learner(f, "Declining"); // 70 → 45: declining, overall avg 57.5 < 60 → red
-            var improving = Learner(f, "Improving"); // 50 → 62: improving → amber? avg 56 ≥ 50, 0 missing → green
+            // Averages are TERM-SCOPED (Sprint 1.5.3) — the trend still compares prev→cur, but risk
+            // uses THIS term's mark. declining: cur 45 < 60 + declining → red; improving: cur 62 → green.
+            var declining = Learner(f, "Declining"); // 70 → 45: declining, term avg 45 < 60 → red
+            var improving = Learner(f, "Improving"); // 50 → 62: improving, term avg 62 ≥ 50, 0 missing → green
             var stable = Learner(f, "Stable");       // 55 → 57: within ±5 → stable, green
             var oneTerm = Learner(f, "OneTerm");     // current term only → no_data
             await db.SaveChangesAsync();
@@ -446,6 +448,70 @@ public class MatricRiskDashboardTests
             Assert.Equal(
                 fromDash.Subjects.Select(s => (s.SubjectName, s.Risk)).OrderBy(x => x.SubjectName).ToList(),
                 fromSmart.SubjectResults.Select(s => (s.SubjectName, s.Risk)).OrderBy(x => x.SubjectName).ToList());
+        }
+        finally { await db.DisposeAsync(); await source.DisposeAsync(); }
+    }
+
+    // Sprint 1.5.3 (time scope) — the AVERAGE and the below-50 count judge the SELECTED TERM. A
+    // subject strong last term but weak this term counts at THIS term's mark; prior-term marks never
+    // inflate the current average. (Band is asserted separately where trend isn't a confound — an
+    // 80→40 drop here also trips the sharp-decline → Priority path, which isn't what we're isolating.)
+    [Fact]
+    public async Task AtRisk_OverallAverage_And_BelowFifty_AreTermScoped()
+    {
+        var (db, source) = await _pg.CreateIsolatedDatabaseAsync();
+        try
+        {
+            var f = await SetUpAsync(db);
+            var inPrev = f.Previous.StartDate.AddDays(5);
+            var inCur = f.Current.StartDate.AddDays(5);
+
+            var learner = Learner(f, "Slipping");
+            await db.SaveChangesAsync();
+
+            var maths = ClassSubjectFor(f, "Mathematics");
+            Assessment(f, maths, inPrev, (learner, 80));   // last term — must be EXCLUDED from the average
+            Assessment(f, maths, inCur, (learner, 40));    // this term
+            var eng = ClassSubjectFor(f, "English");
+            Assessment(f, eng, inCur, (learner, 60));      // this term
+            await db.SaveChangesAsync();
+
+            var r = (await new AtRiskService(db).EvaluateAsync(f.SchoolId, new[] { f.ClassId }, f.Current.TermId))[learner];
+
+            // Independent term-scoped calc: Maths = 40 (this term only, NOT (80+40)/2 = 60), English
+            // = 60 → overall avg-of-subject-averages = (40 + 60)/2 = 50.0.
+            Assert.Equal(40.0, r.Subjects.Single(s => s.SubjectName == "Mathematics").Average);
+            Assert.Equal(50.0, r.OverallAverage);
+            // Below-50 counts Maths (40); all-time it would be Maths 60 → 0 below, so the slipping
+            // learner would be MISSED — the reason the window must be the term.
+            Assert.Equal(1, r.SubjectsBelowFifty);
+        }
+        finally { await db.DisposeAsync(); await source.DisposeAsync(); }
+    }
+
+    // Sprint 1.5.3 (time scope) — a learner marked only in a PRIOR term has no signal this term:
+    // no_data, null average, no band — never 0% / at-risk (the no-data ≠ zero rule, as for attendance).
+    [Fact]
+    public async Task AtRisk_NoMarksInSelectedTerm_IsNoData_NotZero()
+    {
+        var (db, source) = await _pg.CreateIsolatedDatabaseAsync();
+        try
+        {
+            var f = await SetUpAsync(db);
+            var inPrev = f.Previous.StartDate.AddDays(5);
+
+            var learner = Learner(f, "PriorOnly");
+            await db.SaveChangesAsync();
+            Assessment(f, ClassSubjectFor(f, "Mathematics"), inPrev, (learner, 70)); // previous term only
+            await db.SaveChangesAsync();
+
+            var r = (await new AtRiskService(db).EvaluateAsync(f.SchoolId, new[] { f.ClassId }, f.Current.TermId))[learner];
+
+            Assert.Equal("no_data", r.OverallRisk);
+            Assert.Null(r.InterventionBand);
+            Assert.Null(r.OverallAverage);
+            Assert.Equal(0, r.CapturedSubjectCount);
+            Assert.Empty(r.Subjects);              // the prior-term subject does not surface this term
         }
         finally { await db.DisposeAsync(); await source.DisposeAsync(); }
     }

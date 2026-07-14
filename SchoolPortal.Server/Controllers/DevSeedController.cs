@@ -162,9 +162,13 @@ public class DevSeedController : ControllerBase
             CreatedAt = now,
         };
         _db.AcademicYears.Add(ay);
+        // Terms are relative to now so the CURRENT term actually contains the recent assignments
+        // (due now−14d). With the at-risk judgment term-scoped (Sprint 1.5.3), a current term that
+        // doesn't span the marks would read every learner as no-data — the demo's marks must live in
+        // the current window. Term 1 (previous, no marks) gives trend a prior window to compare to.
         _db.Terms.AddRange(
-            new Term { TermId=term1Id, AcademicYearId=ayId, SchoolId=schoolId, TermNumber=1, StartDate=new DateTime(2026,1,15,0,0,0,DateTimeKind.Utc), EndDate=new DateTime(2026,3,28,0,0,0,DateTimeKind.Utc), IsCurrent=true,  CreatedAt=now },
-            new Term { TermId=term2Id, AcademicYearId=ayId, SchoolId=schoolId, TermNumber=2, StartDate=new DateTime(2026,4,7,0,0,0,DateTimeKind.Utc),  EndDate=new DateTime(2026,6,20,0,0,0,DateTimeKind.Utc), IsCurrent=false, CreatedAt=now }
+            new Term { TermId=term1Id, AcademicYearId=ayId, SchoolId=schoolId, TermNumber=1, StartDate=now.AddDays(-150), EndDate=now.AddDays(-70), IsCurrent=false, CreatedAt=now },
+            new Term { TermId=term2Id, AcademicYearId=ayId, SchoolId=schoolId, TermNumber=2, StartDate=now.AddDays(-60),  EndDate=now.AddDays(40),  IsCurrent=true,  CreatedAt=now }
         );
 
         // ── LearnerSubjects (Pathways) ───────────────────────────────────────

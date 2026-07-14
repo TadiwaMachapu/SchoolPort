@@ -85,7 +85,9 @@ public class ReportsController : ControllerBase
                 g.StudentId,
                 SubjectName = g.Assignment.ClassSubject.Subject.Name,
                 CapsPhase = g.Assignment.ClassSubject.Subject.CapsPhase,
-                Percentage = Math.Round((double)g.Score!.Value / (double)g.Assignment.MaxMarks * 100, 1)
+                // Raw per-mark %, rounded once at the subject average (below) — same rounding as
+                // AtRiskService, so the Term Report and the at-risk average agree to the decimal.
+                Percentage = (double)g.Score!.Value / (double)g.Assignment.MaxMarks * 100
             })
             .ToListAsync();
 

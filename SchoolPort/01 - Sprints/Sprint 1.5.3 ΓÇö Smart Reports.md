@@ -2,16 +2,16 @@
 
 ---
 sprint: 1.5.3
-status: gap-closing shipped (at-risk dashboard correctness) — full v1 scope partially remaining
-pr: 14
-shipped: 2026-07-12
-gate: remaining scope (role views, debounced refresh, comment permission) not yet built
+status: v1 shipped — role views + oversight scope MERGED (PR #15); gap-closing was PR #14
+pr: 14, 15
+shipped: 2026-07-12 (PR #14 gap-closing), 2026-07-16 (PR #15 role views)
+gate: MERGED to main 2026-07-16 (merge commit 4b96e1b6); post-merge CI green all 4 jobs (Backend 302/302, Frontend, Migration replay, Architecture contract)
 ---
 
 ## Goal
 Henco's most-wanted feature: "A dashboard that identifies at-risk learners and outstanding tasks automatically."
 
-## Shipped — gap-closing (PR #14, CI green 2026-07-12; not yet merged)
+## Shipped — gap-closing (PR #14, MERGED 2026-07-14 `f2182561`)
 The Matric at-risk dashboard (`MatricHubService`) rendered but had correctness bugs. Fixed:
 - **Reads real captured marks.** Was reading via the submission join → saw zero Sprint 1.5.2.5 capture-grid marks. Now all marks flow through one seam, `GetCapturedGradesQuery(schoolId)` (Grade path; not absent, score present). Absent excluded (≠ 0); "missing" = past-due assignment with no grade record.
 - **50% intervention band** (Fix 1): learner-level Watch (1) / At Risk (2) / Priority (3+ or declining >10% term-over-term), counting only captured subjects. Per-subject CAPS bands (red <40 / amber <50 / green ≥50) kept distinct. Response carries the "2 of 3 captured" honesty fraction.
@@ -20,12 +20,20 @@ The Matric at-risk dashboard (`MatricHubService`) rendered but had correctness b
 - 279 backend tests (+2) + 13 vitest green. Live spot-check passed (Lethabo → Priority, "3 of 5 captured", averages match DB, trends correct).
 - **Week 3 seam:** approval gate (`approval_status = Approved`) goes at `GetCapturedGradesQuery` when HOD approval ships — one line, one place.
 
-## Still planned (NOT built in this gap-closing pass)
-- Debounced background view refresh (still deferred; the matviews remain manual-refresh and, note, still read the submission join — they don't yet see capture marks).
-- Role-specific views beyond the current teacher/GradeHead dashboard (HOD teacher-comparison, Principal school-wide summary).
-- `reports.generate_comment` permission (comment generation currently under `reporting.view`).
-- Attendance-below-80 as an at-risk signal in the intervention band (band is marks-only today).
-- Unifying the second, separate at-risk calc in `SmartReportsService.GetAtRiskStudentsAsync` (still 40% subject / submission-join / no trend).
+## Shipped — role views + oversight scope (PR #15, MERGED 2026-07-16 `4b96e1b6`)
+Completes v1's role-specific scope on top of the corrected at-risk dashboard.
+- **Oversight scope primitive.** `GetOversightClassIdsAsync` / `CanAccessGradeAsync` resolve which classes/grades a position may see. Grade Head / HOD / Principal endpoints are position-gated, with matching frontend tabs — each role sees only its scope.
+- **At-risk judgment is term-scoped.** `AtRiskService` computes average / risk / below-50 / band from the **selected term's** marks; the previous term feeds the trend only. No marks in the selected term → `no_data`, not a false 0%. Named tests: `AtRisk_OverallAverage_And_BelowFifty_AreTermScoped`, `AtRisk_NoMarksInSelectedTerm_IsNoData_NotZero`, `AtRisk_SingleTerm_DecliningRuleDoesNotFire_AbsoluteThresholdStillApplies`.
+- **Overall average unified across surfaces.** Term Report, learner card, and at-risk now report an identical avg-of-subject-averages (rounding aligned). Guarded by `OverallAverage_ConsistentAcrossSurfaces_TermScoped`.
+- **Attendance false-flag fixed.** `AttendanceSignal`: Late counts as attended; sparse data → null (no signal) rather than a false at-risk flag.
+- **Term Report migrated to the captured-marks path**; **CAPS levels enabled for FET**.
+- DevSeed terms made relative-to-now so the term window is always live. **302 backend tests green in CI** (the term-scoping + consistency tests were the Postgres-gated ones confirmed by name on the runner). Merged to main; post-merge CI green on all 4 jobs.
+
+## Still planned (remaining after v1)
+- **Debounced background view refresh** (still deferred from 1.5.0.5; matviews remain manual-refresh and still read the submission join — they don't yet see capture marks).
+- **`AnalyticsController` third at-risk surface** — the separate at-risk calc still to be unified onto the term-scoped `AtRiskService` seam (the others now flow through one path; this one is the last holdout).
+- **Legacy `AiService` → Anthropic swap** — retire the vestigial legacy AI service path in favour of the current provider config.
+- **`fetch-in-effect` lint cleanup** — frontend effect/data-fetching lint pass.
 
 ## At-risk thresholds
 - **50%** — intervention threshold (NOT 40%). The 40% threshold in matviews is the CAPS pass line. A learner at 42% is technically passing but urgently needs help.

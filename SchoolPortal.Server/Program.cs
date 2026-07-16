@@ -154,6 +154,7 @@ builder.Services.AddScoped<IAiGapAnalysisService, AiGapAnalysisService>();
 builder.Services.AddScoped<IMatricHubService, MatricHubService>();
 builder.Services.AddScoped<IMatricTutorService, MatricTutorService>();
 builder.Services.AddScoped<IGr9AdvisorService, Gr9AdvisorService>();
+builder.Services.AddScoped<IAtRiskService, AtRiskService>(); // Sprint 1.5.3 — shared at-risk primitive
 builder.Services.AddScoped<ISmartReportsService, SmartReportsService>();
 builder.Services.AddScoped<IPositionService, PositionService>();
 builder.Services.AddScoped<IStaffImportService, StaffImportService>();

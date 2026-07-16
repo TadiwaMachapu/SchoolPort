@@ -263,6 +263,12 @@ public class PermissionContractReflectionTests
         ["ReportsController.GetPrincipalSummary"] = "reporting.principal_summary",
         ["ReportsController.GetAttendanceSummary"] = "reporting.view",
         ["ReportsController.GetGradebookSimple"] = "reporting.view",
+        // Sprint 1.5.3 Smart Reports v1 role views (on the shared at-risk primitive). Grade Head /
+        // HOD views are scoped class reads → marks.view_class; the Principal school-wide overview
+        // is analytics.view_school (Sensitive).
+        ["SmartReportsController.GetGradeView"] = "marks.view_class",
+        ["SmartReportsController.GetSubjectView"] = "marks.view_class",
+        ["SmartReportsController.GetSchoolOverview"] = "analytics.view_school",
         // SaSams (class-level system.data_export)
         ["SaSamsController.ExportLearners"] = "system.data_export",
         ["SaSamsController.ExportAttendance"] = "system.data_export",

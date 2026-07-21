@@ -95,6 +95,9 @@ Requested in the Sprint 1.5.0.5 indexing sprint but **not creatable against the 
 - **`submissions` (school_id, student_id, status)** — `submissions` has no `status` column (submitted/graded is derived from grade presence). Add if/when a materialized submission status is introduced.
 - **`fees`/invoices (school_id, student_id, status)** — `fees` are school-level templates (no per-student row, no status). Needs the Sprint 1.5.4 per-student invoice model first.
 
+### Pre-pilot performance items
+- **At-risk query is visibly slow on the Greendale demo (3 learners) — profile before pilot.** Observed in the Sprint 1.6 colour-rollout live-render pass: the At-Risk tab hit its loading spinner noticeably even at Greendale's 3 learners. If it's visibly slow at 3, it will be unusable at 800 — and at-risk is the feature teachers were most explicit about wanting. Likely candidates: `AtRiskService.EvaluateAsync` query shape, missing index on the captured-marks path (see the deferred-indexes note above — marks are reached via `grade → submission → assignment → class_subject`, no direct `(school_id, student_id, term_id)` index), or a per-learner N+1. **Must be profiled at realistic school scale (500–1200 learners), not on the 3-learner demo.** Not yet investigated — logged during the rollout, to be picked up after it.
+
 ---
 
 ## South African Context

@@ -38,7 +38,7 @@ export function RiskDot({ risk }: { risk: string }) {
 /** "captured n/total" fraction — how much of the learner's load has real marks yet. */
 export function CapturedFraction({ captured, total }: { captured: number; total: number }) {
   return (
-    <span className="text-[11px] text-gray-400">
+    <span className="text-[11px] text-text-muted">
       {captured}/{total} captured
     </span>
   );

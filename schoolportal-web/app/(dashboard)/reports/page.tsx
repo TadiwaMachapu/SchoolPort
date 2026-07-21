@@ -203,10 +203,10 @@ export default function ReportsPage() {
   if (!hasReports) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <FileText className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">Smart Reports not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable the Smart Reports feature in Settings.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <FileText className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">Smart Reports not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable the Smart Reports feature in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -227,8 +227,8 @@ export default function ReportsPage() {
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Smart Reports</h1>
-          <p className="text-sm text-gray-500 mt-1">Term reports, at-risk tracking, and AI-powered insights.</p>
+          <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Smart Reports</h1>
+          <p className="text-sm text-text-secondary mt-1">Term reports, at-risk tracking, and AI-powered insights.</p>
         </div>
         {tab === "term-report" && report && (
           <Button variant="outline" onClick={() => printReport(report)} className="gap-2 shrink-0">
@@ -242,16 +242,16 @@ export default function ReportsPage() {
       {!isOversight && (
       <div className="flex items-end gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-gray-600">Class</label>
+          <label className="text-xs font-medium text-text-secondary">Class</label>
           <select value={classId} onChange={e => setClassId(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
             {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
           </select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-gray-600">Term</label>
+          <label className="text-xs font-medium text-text-secondary">Term</label>
           <select value={termId} onChange={e => setTermId(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
             {terms.map(t => (
               <option key={t.termId} value={t.termId}>
                 {t.isCurrent ? "★ " : ""}Term {t.termNumber} {t.year}
@@ -263,7 +263,7 @@ export default function ReportsPage() {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-border">
         <nav className="-mb-px flex gap-0 overflow-x-auto">
           {tabs.filter(t => t.show !== false).map(t => (
             <button
@@ -271,8 +271,8 @@ export default function ReportsPage() {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 tab === t.id
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-secondary hover:text-text-primary hover:border-border"
               }`}
             >
               {t.icon}
@@ -292,89 +292,89 @@ export default function ReportsPage() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">
               <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
             </div>
           )}
 
           {loading && (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+              <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
             </div>
           )}
 
           {report && !loading && (
             <div className="space-y-4">
-              <div className="rounded-xl bg-blue-50 border border-blue-100 px-5 py-3 flex items-center justify-between">
+              <div className="rounded-xl bg-primary-50 border border-primary-100 px-5 py-3 flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-blue-900">{report.className} — Term {report.termNumber} {report.year}</p>
-                  <p className="text-xs text-blue-600 mt-0.5">
+                  <p className="font-semibold text-primary-900">{report.className} — Term {report.termNumber} {report.year}</p>
+                  <p className="text-xs text-primary mt-0.5">
                     {new Date(report.startDate).toLocaleDateString("en-ZA")} – {new Date(report.endDate).toLocaleDateString("en-ZA")} · {report.students.length} learner{report.students.length !== 1 ? "s" : ""}
                   </p>
                 </div>
                 {selectedTerm?.isCurrent && (
-                  <span className="text-xs font-medium bg-blue-600 text-white rounded-full px-2.5 py-1">Current Term</span>
+                  <span className="text-xs font-medium bg-primary text-white rounded-full px-2.5 py-1">Current Term</span>
                 )}
               </div>
 
               {report.students.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-                  <p className="text-gray-500">No learners enrolled or no grades recorded for this term.</p>
+                <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+                  <p className="text-text-secondary">No learners enrolled or no grades recorded for this term.</p>
                 </div>
               ) : report.students.map(s => (
-                <div key={s.studentId} className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
+                <div key={s.studentId} className="rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3 bg-surface-subtle border-b border-border">
                     <div>
-                      <p className="font-semibold text-gray-900">{s.name}</p>
-                      <p className="text-xs text-gray-400">{s.studentNumber}</p>
+                      <p className="font-semibold text-text-primary">{s.name}</p>
+                      <p className="text-xs text-text-muted">{s.studentNumber}</p>
                     </div>
                     <div className="flex items-center gap-4 text-right">
                       {s.overallAverage != null && (
                         <div>
-                          <p className="text-xl font-bold text-blue-600">{s.overallAverage}%</p>
-                          <p className="text-xs text-gray-400">Overall</p>
+                          <p className="text-xl font-bold text-primary">{s.overallAverage}%</p>
+                          <p className="text-xs text-text-muted">Overall</p>
                         </div>
                       )}
                       {s.attendancePercent != null && (
                         <div>
-                          <p className="text-xl font-bold text-emerald-600">{s.attendancePercent}%</p>
-                          <p className="text-xs text-gray-400">Attendance</p>
+                          <p className="text-xl font-bold text-text-primary">{s.attendancePercent}%</p>
+                          <p className="text-xs text-text-muted">Attendance</p>
                         </div>
                       )}
                     </div>
                   </div>
                   {s.subjectResults.length === 0 ? (
-                    <p className="px-5 py-4 text-sm text-gray-400">No graded tasks recorded this term.</p>
+                    <p className="px-5 py-4 text-sm text-text-muted">No graded tasks recorded this term.</p>
                   ) : (
                     <table className="w-full text-sm">
-                      <thead className="border-b border-gray-100">
-                        <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      <thead className="border-b border-border">
+                        <tr className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                           <th className="px-5 py-2.5 text-left">Subject</th>
                           <th className="px-4 py-2.5 text-center">Average</th>
                           <th className="px-4 py-2.5 text-center">CAPS Level</th>
                           <th className="px-4 py-2.5 text-center">Tasks</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-50">
+                      <tbody className="divide-y divide-border">
                         {s.subjectResults.map((r, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-surface-subtle">
                             <td className="px-5 py-3">
-                              <span className="font-medium text-gray-900">{r.subjectName}</span>
+                              <span className="font-medium text-text-primary">{r.subjectName}</span>
                               {r.capsPhase && (
-                                <span className="ml-2 text-[10px] text-gray-400">{r.capsPhase === "SeniorPhase" ? "Gr 7–9" : "Gr 10–12"}</span>
+                                <span className="ml-2 text-[10px] text-text-muted">{r.capsPhase === "SeniorPhase" ? "Gr 7–9" : "Gr 10–12"}</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-center font-semibold text-gray-800">{r.average}%</td>
+                            <td className="px-4 py-3 text-center font-semibold text-text-primary">{r.average}%</td>
                             <td className="px-4 py-3 text-center">
                               {r.capsLevel != null ? (
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${CAPS_LEVEL_COLOURS[r.capsLevel]}`}>
                                   {capsLevelLabel(r.capsLevel)}
                                 </span>
                               ) : (
-                                <span className="text-gray-300 text-xs">—</span>
+                                <span className="text-text-muted text-xs">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-center text-gray-500">{r.assignmentCount}</td>
+                            <td className="px-4 py-3 text-center text-text-secondary">{r.assignmentCount}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -391,7 +391,7 @@ export default function ReportsPage() {
       {tab === "at-risk" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-secondary">
               Learners with low attendance (&lt;80%), failing subjects (&lt;40%), or overall average below 50%.
             </p>
             <Button onClick={loadAtRisk} loading={atRiskLoading} size="sm" className="gap-2 shrink-0">
@@ -400,56 +400,56 @@ export default function ReportsPage() {
           </div>
 
           {atRiskError && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">
               <AlertTriangle className="h-4 w-4 shrink-0" /> {atRiskError}
             </div>
           )}
 
           {atRiskLoading && (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
+              <Loader2 className="h-7 w-7 animate-spin text-text-muted" />
             </div>
           )}
 
           {!atRiskLoading && atRisk.length === 0 && atRiskError === "" && (
-            <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-              <ShieldAlert className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No at-risk learners identified, or click Identify At-Risk to check.</p>
+            <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+              <ShieldAlert className="h-8 w-8 text-text-muted mx-auto mb-2" />
+              <p className="text-sm text-text-secondary">No at-risk learners identified, or click Identify At-Risk to check.</p>
             </div>
           )}
 
           {atRisk.length > 0 && !atRiskLoading && (
             <>
-              <p className="text-sm text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-4 py-2.5">
+              <p className="text-sm text-warning-700 bg-warning-100 rounded-lg px-4 py-2.5">
                 {atRisk.length} learner{atRisk.length !== 1 ? "s" : ""} flagged as at-risk for this term.
               </p>
-              <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+              <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  <thead className="bg-surface-subtle border-b border-border">
+                    <tr className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                       <th className="px-4 py-3 text-left">Learner</th>
                       <th className="px-4 py-3 text-center">Overall Avg</th>
                       <th className="px-4 py-3 text-center">Attendance</th>
                       <th className="px-4 py-3 text-left">Risk Flags</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
+                  <tbody className="divide-y divide-border bg-surface-card">
                     {atRisk.map(s => (
-                      <tr key={s.studentId} className="hover:bg-gray-50">
+                      <tr key={s.studentId} className="hover:bg-surface-subtle">
                         <td className="px-4 py-3">
-                          <p className="font-medium text-gray-900">{s.name}</p>
-                          <p className="text-xs text-gray-400">{s.studentNumber}</p>
+                          <p className="font-medium text-text-primary">{s.name}</p>
+                          <p className="text-xs text-text-muted">{s.studentNumber}</p>
                         </td>
                         <td className="px-4 py-3 text-center">
                           {s.overallAverage != null ? (
-                            <span className={`font-semibold ${s.overallAverage < 40 ? "text-red-600" : s.overallAverage < 50 ? "text-orange-600" : "text-gray-700"}`}>
+                            <span className={`font-semibold ${s.overallAverage < 40 ? "text-danger-700" : s.overallAverage < 50 ? "text-warning-700" : "text-text-primary"}`}>
                               {s.overallAverage}%
                             </span>
                           ) : "—"}
                         </td>
                         <td className="px-4 py-3 text-center">
                           {s.attendancePercent != null ? (
-                            <span className={`font-semibold ${s.attendancePercent < 80 ? "text-amber-700" : "text-emerald-700"}`}>
+                            <span className={`font-semibold ${s.attendancePercent < 80 ? "text-warning-700" : "text-success-700"}`}>
                               {s.attendancePercent}%
                             </span>
                           ) : "—"}
@@ -465,7 +465,7 @@ export default function ReportsPage() {
                               </span>
                             )}
                             {s.riskFlags.map(flag => {
-                              const meta = FLAG_LABELS[flag] ?? { label: flag, colour: "bg-gray-100 text-gray-700" };
+                              const meta = FLAG_LABELS[flag] ?? { label: flag, colour: "bg-gray-100 text-text-primary" };
                               return (
                                 <span key={flag} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.colour}`}>
                                   {meta.label}
@@ -488,7 +488,7 @@ export default function ReportsPage() {
       {tab === "ai-comments" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-secondary">
               Generate AI-powered professional report comments for at-risk learners.
             </p>
             {atRisk.length === 0 && (
@@ -500,14 +500,14 @@ export default function ReportsPage() {
 
           {atRiskLoading && (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-7 w-7 animate-spin text-gray-400" />
+              <Loader2 className="h-7 w-7 animate-spin text-text-muted" />
             </div>
           )}
 
           {!atRiskLoading && atRisk.length === 0 && (
-            <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-              <Sparkles className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Load at-risk learners first, then generate AI comments per learner.</p>
+            <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+              <Sparkles className="h-8 w-8 text-text-muted mx-auto mb-2" />
+              <p className="text-sm text-text-secondary">Load at-risk learners first, then generate AI comments per learner.</p>
             </div>
           )}
 
@@ -539,7 +539,7 @@ export default function ReportsPage() {
       {/* ── Tab: Principal Summary (Admin only) ── */}
       {tab === "principal-summary" && isAdmin && (
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-text-secondary">
             Generate an AI executive summary of this class&apos;s performance for the term.
           </p>
           <PrincipalSummaryCard

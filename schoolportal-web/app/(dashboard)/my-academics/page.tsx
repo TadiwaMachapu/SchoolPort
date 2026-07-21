@@ -48,11 +48,11 @@ export default function MyAcademicsPage() {
 
   return (
     <div className="p-6 lg:p-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-gray-900">My Academics</h1>
-      <p className="mt-1 text-sm text-gray-500">Your subjects, marks and tasks for this term.</p>
+      <h1 className="text-2xl font-semibold tracking-tight text-text-primary">My Academics</h1>
+      <p className="mt-1 text-sm text-text-secondary">Your subjects, marks and tasks for this term.</p>
 
       {/* Tab bar */}
-      <div className="mt-5 flex gap-1 rounded-xl bg-gray-100 p-1">
+      <div className="mt-5 flex gap-1 rounded-xl bg-surface-subtle p-1">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -62,7 +62,7 @@ export default function MyAcademicsPage() {
               onClick={() => setTab(t.id)}
               className={cn(
                 "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors",
-                active ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700",
+                active ? "bg-surface-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -77,9 +77,9 @@ export default function MyAcademicsPage() {
           <SkeletonCards count={6} />
         ) : error ? (
           <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <AlertCircle className="h-10 w-10 text-gray-300" />
-            <h3 className="mt-4 text-base font-semibold text-gray-900">Couldn't load your academics</h3>
-            <p className="mt-1 text-sm text-gray-500">Please check your connection and try again.</p>
+            <AlertCircle className="h-10 w-10 text-text-muted" />
+            <h3 className="mt-4 text-base font-semibold text-text-primary">Couldn't load your academics</h3>
+            <p className="mt-1 text-sm text-text-secondary">Please check your connection and try again.</p>
           </div>
         ) : data ? (
           <>

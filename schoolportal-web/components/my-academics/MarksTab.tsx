@@ -62,8 +62,8 @@ export function MarksTab({
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 transition-colors",
                 s.classSubjectId === selected?.classSubjectId
-                  ? "bg-blue-600 text-white ring-blue-600"
-                  : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50",
+                  ? "bg-primary text-white ring-primary"
+                  : "bg-surface-card text-text-secondary ring-border hover:bg-surface-subtle",
               )}
             >
               {s.subjectName}
@@ -74,7 +74,7 @@ export function MarksTab({
         <select
           value={selected?.classSubjectId}
           onChange={(e) => onSelectSubject(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full rounded-lg border border-border bg-surface-card px-3 py-2 text-sm font-medium text-text-primary shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         >
           {subjects.map((s) => (
             <option key={s.classSubjectId} value={s.classSubjectId}>{s.subjectName}</option>
@@ -90,7 +90,7 @@ export function MarksTab({
             onClick={() => setTerm(tn)}
             className={cn(
               "shrink-0 rounded-md px-3 py-1 text-xs font-semibold ring-1 transition-colors",
-              tn === term ? "bg-gray-900 text-white ring-gray-900" : "bg-white text-gray-500 ring-gray-200 hover:bg-gray-50",
+              tn === term ? "bg-text-primary text-white ring-text-primary" : "bg-surface-card text-text-secondary ring-border hover:bg-surface-subtle",
             )}
           >
             Term {tn}
@@ -113,22 +113,22 @@ export function MarksTab({
               <div
                 key={`${t.source}-${t.taskId}`}
                 className={cn(
-                  "rounded-xl border bg-white p-3.5 shadow-sm ring-1 ring-gray-100/50",
-                  pending ? "border-gray-100 opacity-70" : "border-gray-100",
+                  "rounded-xl border bg-surface-card p-3.5 shadow-sm ring-1 ring-border/50",
+                  pending ? "border-border opacity-70" : "border-border",
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className={cn("text-sm font-medium leading-tight", pending ? "text-gray-500" : "text-gray-900")}>{t.title}</p>
+                  <p className={cn("text-sm font-medium leading-tight", pending ? "text-text-secondary" : "text-text-primary")}>{t.title}</p>
                   <TypeBadge type={t.type} />
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <span className="text-xs text-gray-400">{fmtDate(t.date ?? t.dueAt)}</span>
+                  <span className="text-xs text-text-muted">{fmtDate(t.date ?? t.dueAt)}</span>
                   {pending ? (
-                    <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 ring-1 ring-gray-200/70">Pending</span>
+                    <span className="inline-flex items-center rounded-md bg-surface-subtle px-2 py-0.5 text-xs font-medium text-text-secondary ring-1 ring-border">Pending</span>
                   ) : (
                     <div className="flex items-center gap-2.5">
-                      <span className="text-xs tabular-nums text-gray-500">
-                        {t.score}<span className="text-gray-300"> / </span>{t.outOf}
+                      <span className="text-xs tabular-nums text-text-secondary">
+                        {t.score}<span className="text-text-muted"> / </span>{t.outOf}
                       </span>
                       <span className={cn("text-sm font-bold tabular-nums", percentColor(t.percent!))}>{Math.round(t.percent!)}%</span>
                       <CapsBadge percentage={t.percent!} compact />
@@ -142,19 +142,19 @@ export function MarksTab({
       )}
 
       {/* Sticky term summary bar */}
-      <div className="sticky bottom-2 z-10 flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white/95 px-4 py-3 shadow-md ring-1 ring-gray-100/50 backdrop-blur">
-        <span className="text-sm font-medium text-gray-600">Term {term} average</span>
+      <div className="sticky bottom-2 z-10 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-card/95 px-4 py-3 shadow-md ring-1 ring-border/50 backdrop-blur">
+        <span className="text-sm font-medium text-text-secondary">Term {term} average</span>
         <div className="flex items-center gap-2.5">
           {termAvg != null ? (
             <>
-              {isCurrent && (selected?.trend === "up" ? <TrendingUp className="h-4 w-4 text-emerald-600" />
-                : selected?.trend === "down" ? <TrendingDown className="h-4 w-4 text-rose-600" />
-                : selected?.trend === "flat" ? <Minus className="h-4 w-4 text-gray-400" /> : null)}
+              {isCurrent && (selected?.trend === "up" ? <TrendingUp className="h-4 w-4 text-success-500" />
+                : selected?.trend === "down" ? <TrendingDown className="h-4 w-4 text-danger-500" />
+                : selected?.trend === "flat" ? <Minus className="h-4 w-4 text-text-muted" /> : null)}
               <span className={cn("text-lg font-bold tabular-nums", percentColor(termAvg))}>{termAvg}%</span>
               <CapsBadge percentage={termAvg} />
             </>
           ) : (
-            <span className="text-sm text-gray-400">Not yet assessed</span>
+            <span className="text-sm text-text-muted">Not yet assessed</span>
           )}
         </div>
       </div>

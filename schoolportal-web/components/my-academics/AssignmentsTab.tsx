@@ -54,20 +54,20 @@ function TaskCard({ t, onSubmit }: { t: MyAcademicsTask; onSubmit: (t: MyAcademi
   return (
     <div className={cn(
       "rounded-xl border p-3.5 shadow-sm ring-1",
-      overdue ? "border-rose-200 bg-rose-50/60 ring-rose-100" : "border-gray-100 bg-white ring-gray-100/50",
+      overdue ? "border-danger-500/30 bg-danger-100/60 ring-danger-500/20" : "border-border bg-surface-card ring-border/50",
     )}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">{t.title}</p>
-          <p className="truncate text-xs text-gray-500">{t.subjectName}</p>
+          <p className="truncate text-sm font-semibold text-text-primary">{t.title}</p>
+          <p className="truncate text-xs text-text-secondary">{t.subjectName}</p>
         </div>
         <TypeBadge type={t.type} />
       </div>
 
       <div className="mt-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs">
-          <CalendarClock className={cn("h-3.5 w-3.5", overdue ? "text-rose-500" : bucket === "soon" ? "text-amber-500" : "text-gray-400")} />
-          <span className={cn(overdue ? "font-semibold text-rose-600" : bucket === "soon" ? "font-medium text-amber-600" : "text-gray-500")}>
+          <CalendarClock className={cn("h-3.5 w-3.5", overdue ? "text-danger-500" : bucket === "soon" ? "text-warning-500" : "text-text-muted")} />
+          <span className={cn(overdue ? "font-semibold text-danger-700" : bucket === "soon" ? "font-medium text-warning-700" : "text-text-secondary")}>
             {overdue ? "Overdue" : bucket === "soon" ? "Due soon" : "Due"} · {fmtDate(t.dueAt)}
           </span>
         </div>
@@ -100,7 +100,7 @@ function Section({
   const [open, setOpen] = useState(!collapsible);
   if (tasks.length === 0) return null;
   const toneCls = {
-    red: "text-rose-600", amber: "text-amber-600", gray: "text-gray-500", green: "text-emerald-600",
+    red: "text-danger-700", amber: "text-warning-700", gray: "text-text-secondary", green: "text-success-700",
   }[tone];
   return (
     <section>
@@ -111,8 +111,8 @@ function Section({
       >
         <Icon className={cn("h-4 w-4", toneCls)} />
         <h2 className={cn("text-xs font-bold uppercase tracking-wider", toneCls)}>{title}</h2>
-        <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">{tasks.length}</span>
-        {collapsible && <ChevronDown className={cn("ml-auto h-4 w-4 text-gray-400 transition-transform", open && "rotate-180")} />}
+        <span className="rounded-full bg-surface-subtle px-1.5 py-0.5 text-[10px] font-semibold text-text-secondary">{tasks.length}</span>
+        {collapsible && <ChevronDown className={cn("ml-auto h-4 w-4 text-text-muted transition-transform", open && "rotate-180")} />}
       </button>
       {open && (
         <div className="space-y-2">
@@ -142,26 +142,26 @@ function SubmitModal({ task, onClose, onDone }: { task: MyAcademicsTask; onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h3 className="text-base font-semibold text-gray-900">Submit task</h3>
-          <button onClick={onClose} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><X className="h-5 w-5" /></button>
+      <div className="w-full max-w-md rounded-t-2xl bg-surface-card shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="text-base font-semibold text-text-primary">Submit task</h3>
+          <button onClick={onClose} className="rounded-md p-1 text-text-muted hover:bg-surface-subtle hover:text-text-secondary"><X className="h-5 w-5" /></button>
         </div>
         <div className="space-y-3 px-5 py-4">
           <div>
-            <p className="text-sm font-medium text-gray-900">{task.title}</p>
-            <p className="text-xs text-gray-500">{task.subjectName}</p>
+            <p className="text-sm font-medium text-text-primary">{task.title}</p>
+            <p className="text-xs text-text-secondary">{task.subjectName}</p>
           </div>
           <textarea
             value={comments}
             onChange={(e) => setComments(e.target.value)}
             placeholder="Add a comment for your teacher (optional)…"
             rows={4}
-            className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-danger-700">{error}</p>}
         </div>
-        <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
+        <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button onClick={submit} loading={busy}>Submit task</Button>
         </div>

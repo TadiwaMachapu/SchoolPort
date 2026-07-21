@@ -157,10 +157,10 @@ export default function GradebookPage() {
   if (!hasGradebook) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <BarChart2 className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">Gradebook not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable the Gradebook feature in Settings to use this page.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <BarChart2 className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">Gradebook not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable the Gradebook feature in Settings to use this page.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -191,8 +191,8 @@ function StudentGradebook() {
     <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">My Gradebook</h1>
-          <p className="text-sm text-gray-500 mt-1">Your grades and academic performance</p>
+          <h1 className="text-2xl font-semibold text-text-primary tracking-tight">My Gradebook</h1>
+          <p className="text-sm text-text-secondary mt-1">Your grades and academic performance</p>
         </div>
         {!loading && grades.length > 0 && (
           <Button variant="outline" onClick={() => printWindow(reportCardHtml(filtered, avg))} className="shrink-0 flex items-center gap-2">
@@ -202,19 +202,19 @@ function StudentGradebook() {
         )}
       </div>
 
-      {error && <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+      {error && <div className="mb-4 rounded-lg bg-danger-100 p-3 text-sm text-danger-700">{error}</div>}
 
       {!loading && grades.length > 0 && (
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: "Overall Average", value: `${avg}%`,            color: "text-blue-600" },
-            { label: "Graded",          value: filtered.length,       color: "text-gray-900" },
-            { label: "Overall Grade",   value: gradeLetter(avg).letter, color: "text-green-600" },
+            { label: "Overall Average", value: `${avg}%`,            color: "text-text-primary" },
+            { label: "Graded",          value: filtered.length,       color: "text-text-primary" },
+            { label: "Overall Grade",   value: gradeLetter(avg).letter, color: "text-text-primary" },
           ].map(s => (
             <Card key={s.label}>
               <CardContent className="p-4 text-center">
                 <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
-                <p className="text-sm text-gray-500 mt-1">{s.label}</p>
+                <p className="text-sm text-text-secondary mt-1">{s.label}</p>
               </CardContent>
             </Card>
           ))}
@@ -224,7 +224,7 @@ function StudentGradebook() {
       {subjects.length > 1 && (
         <div className="mb-4">
           <select value={filterSubject} onChange={e => setFilterSubject(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="">All subjects</option>
             {subjects.map(s => <option key={s}>{s}</option>)}
           </select>
@@ -234,42 +234,42 @@ function StudentGradebook() {
       {loading ? (
         <SkeletonTable rows={6} cols={6} />
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
           <div className="flex justify-center mb-4">
-            <BarChart2 className="h-10 w-10 text-gray-300" />
+            <BarChart2 className="h-10 w-10 text-text-muted" />
           </div>
-          <p className="text-lg font-medium text-gray-700">No grades yet</p>
-          <p className="text-sm text-gray-400 mt-1">Grades will appear here once assignments are marked</p>
+          <p className="text-lg font-medium text-text-primary">No grades yet</p>
+          <p className="text-sm text-text-muted mt-1">Grades will appear here once assignments are marked</p>
         </div>
       ) : (
         <Card>
           <CardContent className="p-0">
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
+              <thead className="border-b border-border bg-surface-subtle">
                 <tr>
                   {["Assignment", "Subject", "Class", "Score", "Grade", "Graded On"].map(h => (
-                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {filtered.map(g => {
                   const gl = gradeLetter(g.percentage);
                   return (
-                    <tr key={g.gradeId} className="hover:bg-gray-50">
+                    <tr key={g.gradeId} className="hover:bg-surface-subtle">
                       <td className="px-6 py-4">
-                        <p className="font-medium text-gray-900">{g.assignmentTitle}</p>
-                        {g.feedback && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{g.feedback}</p>}
+                        <p className="font-medium text-text-primary">{g.assignmentTitle}</p>
+                        {g.feedback && <p className="text-xs text-text-muted mt-0.5 line-clamp-1">{g.feedback}</p>}
                       </td>
-                      <td className="px-6 py-4 text-gray-600">{g.subject}</td>
-                      <td className="px-6 py-4 text-gray-600">{g.class}</td>
+                      <td className="px-6 py-4 text-text-secondary">{g.subject}</td>
+                      <td className="px-6 py-4 text-text-secondary">{g.class}</td>
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-gray-900">{g.score}</span>
-                        <span className="text-gray-400">/{g.maxMarks}</span>
-                        <span className="text-xs text-gray-500 ml-1">({g.percentage}%)</span>
+                        <span className="font-semibold text-text-primary">{g.score}</span>
+                        <span className="text-text-muted">/{g.maxMarks}</span>
+                        <span className="text-xs text-text-muted ml-1">({g.percentage}%)</span>
                       </td>
                       <td className="px-6 py-4"><Badge variant={gl.variant}>{gl.letter}</Badge></td>
-                      <td className="px-6 py-4 text-gray-500 text-xs">{new Date(g.gradedAt).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-text-muted text-xs">{new Date(g.gradedAt).toLocaleDateString()}</td>
                     </tr>
                   );
                 })}
@@ -322,16 +322,16 @@ function TeacherGradebook() {
     <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Gradebook</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Gradebook</h1>
+          <p className="text-sm text-text-secondary mt-1">
             {mode === "capture" ? "Capture and manage assessment marks" : "Class performance overview"}
           </p>
         </div>
-        <div className="flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+        <div className="flex rounded-lg border border-border p-0.5 bg-surface-subtle">
           {([["capture", "Capture Marks"], ["overview", "Overview"]] as const).map(([m, labelText]) => (
             <button key={m} onClick={() => setMode(m)}
               className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                mode === m ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                mode === m ? "bg-surface-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}>
               {labelText}
             </button>
           ))}
@@ -346,7 +346,7 @@ function TeacherGradebook() {
         <div className="flex items-center gap-3 flex-wrap">
           {terms.length > 0 && (
             <select value={termId} onChange={e => setTermId(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
               <option value="">All terms</option>
               {terms.map(t => (
                 <option key={t.termId} value={t.termId}>
@@ -357,7 +357,7 @@ function TeacherGradebook() {
           )}
           {!classLoading && classes.length > 0 && (
             <select value={classId} onChange={e => setClassId(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
               {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
             </select>
           )}
@@ -373,20 +373,20 @@ function TeacherGradebook() {
       {classLoading || loading ? (
         <SkeletonTable rows={6} cols={5} />
       ) : !gradebook ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
           <div className="flex justify-center mb-4">
-            <BarChart2 className="h-10 w-10 text-gray-300" />
+            <BarChart2 className="h-10 w-10 text-text-muted" />
           </div>
-          <p className="text-lg font-medium text-gray-700">No gradebook data</p>
-          <p className="text-sm text-gray-400 mt-1">Grades will appear here once assignments are created and marked</p>
+          <p className="text-lg font-medium text-text-primary">No gradebook data</p>
+          <p className="text-sm text-text-muted mt-1">Grades will appear here once assignments are created and marked</p>
         </div>
       ) : gradebook.students.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
           <div className="flex justify-center mb-4">
-            <Users className="h-10 w-10 text-gray-300" />
+            <Users className="h-10 w-10 text-text-muted" />
           </div>
-          <p className="text-lg font-medium text-gray-700">No students enrolled</p>
-          <p className="text-sm text-gray-400 mt-1">Students need to be enrolled in {selectedClass?.name} to appear here</p>
+          <p className="text-lg font-medium text-text-primary">No students enrolled</p>
+          <p className="text-sm text-text-muted mt-1">Students need to be enrolled in {selectedClass?.name} to appear here</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -394,14 +394,14 @@ function TeacherGradebook() {
           <div className="grid grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">{gradebook.students.length}</p>
-                <p className="text-sm text-gray-500 mt-1">Learners</p>
+                <p className="text-3xl font-bold text-text-primary">{gradebook.students.length}</p>
+                <p className="text-sm text-text-secondary mt-1">Learners</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-gray-900">{gradebook.assignments.length}</p>
-                <p className="text-sm text-gray-500 mt-1">Assignments</p>
+                <p className="text-3xl font-bold text-text-primary">{gradebook.assignments.length}</p>
+                <p className="text-sm text-text-secondary mt-1">Assignments</p>
               </CardContent>
             </Card>
             <Card>
@@ -411,8 +411,8 @@ function TeacherGradebook() {
                   const classAvg = avgs.length > 0 ? Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length) : null;
                   return (
                     <>
-                      <p className="text-3xl font-bold text-green-600">{classAvg !== null ? `${classAvg}%` : "—"}</p>
-                      <p className="text-sm text-gray-500 mt-1">Class Average</p>
+                      <p className="text-3xl font-bold text-text-primary">{classAvg !== null ? `${classAvg}%` : "—"}</p>
+                      <p className="text-sm text-text-secondary mt-1">Class Average</p>
                     </>
                   );
                 })()}
@@ -427,42 +427,42 @@ function TeacherGradebook() {
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b border-gray-200 bg-gray-50">
+                <thead className="border-b border-border bg-surface-subtle">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 min-w-[160px]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider sticky left-0 bg-surface-subtle min-w-[160px]">
                       Student
                     </th>
                     {gradebook.assignments.map(a => (
-                      <th key={a.assignmentId} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 min-w-[90px]">
+                      <th key={a.assignmentId} className="px-3 py-3 text-center text-xs font-semibold text-text-muted min-w-[90px]">
                         <div className="truncate max-w-[80px]" title={a.title}>{a.title}</div>
-                        <div className="text-gray-400 font-normal">/{a.maxMarks}</div>
+                        <div className="text-text-muted font-normal">/{a.maxMarks}</div>
                       </th>
                     ))}
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[80px]">
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider min-w-[80px]">
                       Average
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-border">
                   {gradebook.students.map(s => {
                     const avg = s.average != null ? Math.round(s.average) : null;
                     const gl  = avg != null ? gradeLetter(avg) : null;
                     return (
-                      <tr key={s.studentId} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 sticky left-0 bg-white hover:bg-gray-50">
-                          <p className="font-medium text-gray-900">{s.name}</p>
-                          <p className="text-xs text-gray-400">{s.studentNumber}</p>
+                      <tr key={s.studentId} className="hover:bg-surface-subtle">
+                        <td className="px-4 py-3 sticky left-0 bg-surface-card hover:bg-surface-subtle">
+                          <p className="font-medium text-text-primary">{s.name}</p>
+                          <p className="text-xs text-text-muted">{s.studentNumber}</p>
                         </td>
                         {s.grades.map((g, i) => (
                           <td key={i} className="px-3 py-3 text-center">
                             {g.score != null ? (
                               <div>
-                                <span className="font-semibold text-gray-900">{g.score}</span>
-                                <span className="text-gray-400 text-xs">/{g.maxMarks}</span>
-                                <div className="text-xs text-gray-500 mt-0.5">{g.percentage}%</div>
+                                <span className="font-semibold text-text-primary">{g.score}</span>
+                                <span className="text-text-muted text-xs">/{g.maxMarks}</span>
+                                <div className="text-xs text-text-muted mt-0.5">{g.percentage}%</div>
                               </div>
                             ) : (
-                              <span className="text-gray-300 text-xs">—</span>
+                              <span className="text-text-muted text-xs">—</span>
                             )}
                           </td>
                         ))}
@@ -470,11 +470,11 @@ function TeacherGradebook() {
                           {gl && avg != null ? (
                             <div className="flex flex-col items-center gap-1">
                               <Badge variant={gl.variant}>{gl.letter}</Badge>
-                              <span className="text-xs text-gray-500">{avg}%</span>
-                              <span className="text-[10px] text-purple-600 font-medium">{CAPS_LEVEL_LABEL[capsLevel(avg)]}</span>
+                              <span className="text-xs text-text-muted">{avg}%</span>
+                              <span className="text-[10px] text-text-secondary font-medium">{CAPS_LEVEL_LABEL[capsLevel(avg)]}</span>
                             </div>
                           ) : (
-                            <span className="text-gray-300 text-xs">—</span>
+                            <span className="text-text-muted text-xs">—</span>
                           )}
                         </td>
                       </tr>

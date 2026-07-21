@@ -60,21 +60,21 @@ export function NewTaskModal({ classSubjectId, onClose, onCreated }: {
     }
   };
 
-  const field = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-  const label = "block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1";
+  const field = "w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
+  const label = "block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="rounded-2xl bg-white shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">New Assessment Task</h2>
-          <button onClick={onClose} className="rounded-md p-1 hover:bg-gray-100" aria-label="Close">
-            <X className="h-5 w-5 text-gray-400" />
+    <div className="fixed inset-0 z-50 bg-text-primary/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="rounded-2xl bg-surface-card shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-lg font-semibold text-text-primary">New Assessment Task</h2>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-surface-subtle" aria-label="Close">
+            <X className="h-5 w-5 text-text-muted" />
           </button>
         </div>
 
         <div className="p-5 space-y-4">
-          {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+          {error && <div className="rounded-lg bg-danger-100 p-3 text-sm text-danger-700">{error}</div>}
 
           <div>
             <label className={label}>Task name</label>
@@ -103,9 +103,9 @@ export function NewTaskModal({ classSubjectId, onClose, onCreated }: {
               <input className={field} inputMode="decimal" value={sbaWeight} onChange={(e) => setSbaWeight(e.target.value)} placeholder="e.g. 25" />
             </div>
             <div className="flex items-end pb-1">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-text-secondary">
                 <input type="checkbox" checked={hasRubric} onChange={(e) => setHasRubric(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  className="h-4 w-4 rounded border-border accent-primary focus:ring-primary" />
                 Has rubric (criteria)
               </label>
             </div>
@@ -118,21 +118,21 @@ export function NewTaskModal({ classSubjectId, onClose, onCreated }: {
                 <div key={i} className="flex items-center gap-2">
                   <input className={field} placeholder="Criterion name" value={c.name}
                     onChange={(e) => setCriteria(criteria.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-                  <input className="w-20 rounded-md border border-gray-300 px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  <input className="w-20 rounded-md border border-border px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary"
                     inputMode="decimal" placeholder="/10" value={c.maxMark}
                     onChange={(e) => setCriteria(criteria.map((x, j) => (j === i ? { ...x, maxMark: e.target.value } : x)))} />
                   <button onClick={() => setCriteria(criteria.filter((_, j) => j !== i))} disabled={criteria.length === 1}
-                    className="rounded-md p-2 hover:bg-red-50 disabled:opacity-30" aria-label="Remove criterion">
-                    <Trash2 className="h-4 w-4 text-red-400" />
+                    className="rounded-md p-2 hover:bg-danger-100 disabled:opacity-30" aria-label="Remove criterion">
+                    <Trash2 className="h-4 w-4 text-danger-500" />
                   </button>
                 </div>
               ))}
               <div className="flex items-center justify-between">
                 <button onClick={() => setCriteria([...criteria, { name: "", maxMark: "" }])}
-                  className="flex items-center gap-1 text-sm text-blue-600 hover:underline">
+                  className="flex items-center gap-1 text-sm text-primary hover:underline">
                   <Plus className="h-4 w-4" /> Add criterion
                 </button>
-                <span className="text-sm text-gray-500">Total: <span className="font-semibold text-gray-900">/{rubricTotal}</span></span>
+                <span className="text-sm text-text-secondary">Total: <span className="font-semibold text-text-primary">/{rubricTotal}</span></span>
               </div>
             </div>
           ) : (
@@ -143,7 +143,7 @@ export function NewTaskModal({ classSubjectId, onClose, onCreated }: {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 p-5 border-t border-gray-100">
+        <div className="flex justify-end gap-2 p-5 border-t border-border">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={submit} disabled={saving}>{saving ? "Creating…" : "Create Task"}</Button>
         </div>

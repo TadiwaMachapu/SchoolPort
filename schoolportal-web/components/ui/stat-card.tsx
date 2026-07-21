@@ -2,15 +2,25 @@ import * as React from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type StatCardColor = "blue" | "green" | "purple" | "orange" | "red" | "teal";
+type StatCardColor = "neutral" | "blue" | "green" | "purple" | "orange" | "red" | "teal";
 
+// Token-backed.
+// - "neutral" is the DEFAULT for a plain count (My classes, Assignments…): surface-subtle
+//   grey, NOT a primary tint. Primary tint means "this is branded/primary", not "this is a
+//   container"; and since primary-100 === success-100 (#EAF3DE), tinting neutrals with
+//   primary makes success unreadable. See CLAUDE.md "Neutral UI uses surface-subtle".
+// - status colours (green/orange/red) are ONLY for genuine state (0 needs-grading = success,
+//   overdue = danger) — never decorative. See CLAUDE.md "status colour never decorative".
+// NOTE: purple→secondary(coral) and teal→primary — the palette has no violet/teal token
+// family, so those two keys intentionally collapse onto brand tokens. Flagged for review.
 const colorMap: Record<StatCardColor, { bg: string; icon: string }> = {
-  blue:   { bg: "bg-indigo-50",  icon: "text-indigo-600" },
-  green:  { bg: "bg-emerald-50", icon: "text-emerald-600" },
-  purple: { bg: "bg-violet-50",  icon: "text-violet-600" },
-  orange: { bg: "bg-amber-50",   icon: "text-amber-600" },
-  red:    { bg: "bg-rose-50",    icon: "text-rose-600" },
-  teal:   { bg: "bg-teal-50",    icon: "text-teal-600" },
+  neutral: { bg: "bg-surface-subtle", icon: "text-text-secondary" },
+  blue:   { bg: "bg-primary-100",   icon: "text-primary-700" },
+  green:  { bg: "bg-success-100",   icon: "text-success-700" },
+  purple: { bg: "bg-secondary-100", icon: "text-secondary-700" },
+  orange: { bg: "bg-warning-100",   icon: "text-warning-700" },
+  red:    { bg: "bg-danger-100",    icon: "text-danger-700" },
+  teal:   { bg: "bg-primary-100",   icon: "text-primary-700" },
 };
 
 interface StatCardProps {
@@ -26,18 +36,18 @@ export function StatCard({ icon: Icon, label, value, color, trend, className }: 
   const { bg, icon } = colorMap[color];
   return (
     <div className={cn(
-      "rounded-xl border border-gray-100 bg-white shadow-sm ring-1 ring-gray-100/50 p-4",
+      "rounded-lg bg-surface-card shadow-card p-4",
       className
     )}>
       <div className="flex items-start gap-3">
-        <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", bg)}>
+        <div className={cn("h-10 w-10 rounded-md flex items-center justify-center shrink-0", bg)}>
           <Icon className={cn("h-5 w-5", icon)} />
         </div>
         <div className="min-w-0">
-          <p className="text-2xl font-bold text-gray-900 leading-tight">{value}</p>
-          <p className="text-xs text-gray-500 uppercase tracking-wide mt-0.5">{label}</p>
+          <p className="text-2xl font-bold text-text-primary leading-tight">{value}</p>
+          <p className="text-xs text-text-secondary mt-0.5">{label}</p>
           {trend && (
-            <p className="text-xs text-gray-400 mt-0.5">{trend}</p>
+            <p className="text-[11px] text-text-secondary mt-0.5">{trend}</p>
           )}
         </div>
       </div>

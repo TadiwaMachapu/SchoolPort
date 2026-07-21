@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Sprint 1.6 throwaway render harness — NEVER commit. Local-only helpers for capturing
+# screenshots (and a Node mock API used only when SAC blocks the real .NET backend).
+/mock-api.mjs
+/shot-*.mjs
+/screenshots/

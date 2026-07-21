@@ -11,18 +11,18 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", loading, children, disabled, ...props }, ref) => {
     const base =
-      "inline-flex items-center justify-center rounded-md font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none";
+      "inline-flex items-center justify-center rounded-pill font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none";
     const variants = {
-      default:     "bg-blue-600 text-white hover:bg-blue-700 shadow-sm",
-      secondary:   "bg-gray-100 text-gray-700 hover:bg-gray-200",
-      outline:     "border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 shadow-sm",
-      ghost:       "hover:bg-gray-100 text-gray-600",
-      destructive: "bg-rose-600 text-white hover:bg-rose-700 shadow-sm",
+      default:     "bg-primary text-white hover:brightness-95",
+      secondary:   "bg-primary-100 text-primary-800 hover:bg-primary-200",
+      outline:     "border border-border bg-surface-card text-text-secondary hover:bg-surface-subtle",
+      ghost:       "text-text-secondary hover:bg-surface-subtle",
+      destructive: "bg-danger-500 text-white hover:brightness-95",
     };
     const sizes = {
-      default: "h-10 py-2 px-4 text-sm",
+      default: "h-9 py-2 px-4 text-[13px]",
       sm:      "h-8 px-3 text-xs",
-      lg:      "h-12 px-8 text-base",
+      lg:      "h-11 px-6 text-sm",
     };
     return (
       <button

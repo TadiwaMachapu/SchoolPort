@@ -102,11 +102,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSPA", policy =>
     {
+        // Origins come from the CorsOrigins config (dev localhost list here; prod MUST add its
+        // own origin — the allowlist is now authoritative). WithOrigins + AllowCredentials is
+        // sufficient for SignalR WebSockets; do NOT re-add SetIsOriginAllowed(_ => true) — that
+        // predicate overrides the allowlist and permits CREDENTIALED requests from ANY origin.
         policy.WithOrigins(builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" })
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials()
-              .SetIsOriginAllowed(_ => true); // required for SignalR WebSocket
+              .AllowCredentials();
     });
 });
 

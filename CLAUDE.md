@@ -203,6 +203,8 @@ dotnet user-secrets set "Gemini:ApiKey" "<key>"
 
 Or set env var `CONNECTIONSTRINGS__DEFAULTCONNECTION` at runtime.
 
+**⚠️ Deployment prerequisite — CORS origins.** `CorsOrigins` in `appsettings.json` is **localhost-only**; the CORS policy (`Program.cs`, `AllowSPA`) is an authoritative allowlist (no wildcard/`SetIsOriginAllowed`). **Production deploy MUST add the real SPA origin to `CorsOrigins`** (via `appsettings.Production.json` or the `CorsOrigins__N` env vars) **or SignalR will fail in prod** (the notification hub negotiate is a credentialed cross-origin request — it is rejected if the origin isn't allowlisted).
+
 ## Backend Architecture
 
 ### Multi-tenancy
@@ -344,23 +346,45 @@ The `useEffect` is required because `getClientRole()` reads `document.cookie` an
 
 **Icons:** All icons are `lucide-react` — no emoji in any UI content.
 
-**Component palette:**
-- `components/ui/stat-card.tsx` — KPI metric card with colored icon box, large value, uppercase label, optional trend line. Props: `icon`, `label`, `value`, `color` (`"blue"|"green"|"purple"|"orange"|"red"|"teal"`), `trend?`.
-- `components/ui/skeleton.tsx` — exports `Skeleton`, `SkeletonTable`, `SkeletonCards`, `SkeletonKPIs`.
-- `components/ui/badge.tsx` — `rounded-md` (not `rounded-full`), ring-based borders. Variants: `default`, `success`, `warning`, `destructive`, `outline`.
-- `components/ui/button.tsx` — variants: `default`, `secondary`, `outline`, `ghost`, `destructive`.
-- `components/ui/card.tsx` — exports `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`.
+**Component palette** (all token-backed after the Sprint 1.6 overhaul — see "Frontend design tokens"):
+- `components/ui/stat-card.tsx` — KPI card. Props unchanged: `color` (`"blue"|"green"|"purple"|"orange"|"red"|"teal"`), but the map is now token-backed (blue→primary, green→success, orange→warning, red→danger; **purple→secondary and teal→primary intentionally collapse** — no violet/teal token family).
+- `components/ui/skeleton.tsx` — `Skeleton`, `SkeletonTable`, `SkeletonCards`, `SkeletonKPIs`.
+- `components/ui/badge.tsx` — **`rounded-pill`**, tinted bg + dark same-hue text (no ring). Variants: `default`, `success`, `warning`, `destructive`, `outline`.
+- `components/ui/button.tsx` — **`rounded-pill`**; primary = `bg-primary` white text, secondary = `bg-primary-100 text-primary-800`, ghost = transparent. Variants: `default`, `secondary`, `outline`, `ghost`, `destructive`.
+- `components/ui/card.tsx` — `Card`/`CardHeader`/`CardTitle`/`CardDescription`/`CardContent`; `rounded-lg bg-surface-card shadow-card`, **no border**.
+- `components/ui/empty-state.tsx`, `avatar.tsx`, `modal.tsx`, `page-with-rail.tsx` — new (see design-tokens section).
 
-**Patterns:**
-- Empty states: centered `<Icon className="h-10 w-10 text-gray-300" />` + title + description + optional CTA
-- Modals: `fixed inset-0 z-50 bg-black/40 backdrop-blur-sm` overlay, `rounded-2xl bg-white shadow-2xl` panel, close button top-right
-- Page titles: `text-2xl font-semibold text-gray-900 tracking-tight`
-- Table headers: `text-xs font-semibold text-gray-500 uppercase tracking-wider`
-- Page padding: `p-6 lg:p-8`
-- Cards: `rounded-xl border border-gray-100 shadow-sm ring-1 ring-gray-100/50`
+**Patterns (target — new work should follow these; un-migrated pages still use the old ones):**
+- Empty states: use the `EmptyState` primitive (56px lucide icon in a 96px tinted circle). GOOD-NEWS empties (zero at-risk) use `tone="positive"` + positive copy.
+- Modals: use the `Modal` primitive (`bg-text-primary/40 backdrop-blur` overlay, `rounded-xl bg-surface-card shadow-card` panel).
+- Page titles: `text-[20px] font-semibold text-text-primary tracking-tight`.
+- Table headers: `text-[11px] font-semibold text-text-muted uppercase tracking-wider`; 0.5px `divide-border` rows, no vertical rules.
+- Sentence case everywhere (page titles, section headings, **stat-card labels**, buttons); ALL CAPS only for table column labels.
+- Cards: `rounded-lg bg-surface-card shadow-card`.
+- **Status colour is NEVER decorative.** `danger`/`warning`/`success` (red/amber/green) carry meaning the CAPS bands and at-risk flags depend on — do not assign them to convey variety or to distinguish neutral counts. A KPI icon tile for a plain count ("20 assignments") uses **neutral** (see next rule), not a random status hue; colour a tile red/amber/green ONLY when the number reflects that real state (0 needs-grading = success; overdue = danger). For genuine decorative variety use the brand `secondary` (coral), never status colours — and never the primary green tint on a neutral (see next rule).
+- **Neutral UI elements use `surface-subtle`, not `primary` tint.** Primary tint means "this is branded/primary", not "this is a container". Because primary IS green and success is green — indeed `primary-100` and `success-100` are the same `#EAF3DE` — tinting neutrals with primary makes the whole surface read green and makes success unreadable. A plain-count KPI tile, a neutral icon chip, a generic container → `bg-surface-subtle` with `text-text-secondary` icons (`StatCard color="neutral"`). Reserve `primary-100`/`bg-primary` for genuinely primary/branded elements (the active CTA, the brand mark, a selected state). This is the single biggest lever against a green-wash across the platform at rollout scale.
+- **In-card empty states use `EmptyState size="compact"`** (small circle, tight padding); the large default is for full-page empties only.
 
 ### Sidebar navigation
-`components/sidebar.tsx` uses lucide-react icons, grouped nav sections (main / learn / tools / admin), dark navy (`#0f172a`) background via `--sidebar-bg` CSS variable, and active items styled with the school's primary color. Nav items are defined as `NavItem[]` with `group` and `feature` fields — `feature` is matched against `school.features` (jsonb) to show/hide feature-flagged items.
+`components/sidebar.tsx` uses lucide-react icons, grouped nav sections (main / learn / tools / admin), and derives its items from `deriveNav(identity, positions, permissions, features, context)` in `lib/nav.ts` (the shared source of truth for both desktop sidebar and `mobile-nav.tsx` — restyle only, never change gating). As of the Sprint 1.6 visual overhaul it is a **light floating card** (`bg-surface-card rounded-lg`, floated by the `p-3` wrapper in `app/(dashboard)/layout.tsx`), active items use `bg-primary-100 text-primary-800`, and a help card is pinned bottom. The logo/avatar still use the school's `theme.primaryColor` (brand layer). Nav items are `NavItem[]` with `group` and `feature` fields — `feature` is matched against `school.features` (jsonb) to show/hide feature-flagged items.
+
+### Frontend design tokens (Sprint 1.6 visual foundation)
+The visual system is token-driven. **Single source of truth: the Tailwind v4 `@theme` block in `app/globals.css`.** No hardcoded hex outside that file. Palette: `primary` (green, 50–900), `secondary` (coral — decorative variety only, never status), semantic `danger`/`warning`/`success` (CAPS bands depend on these — kept distinct from brand), `surface`/`text`/`border` neutrals, radii, and `--shadow-card` (cards separate by contrast, not shadow). Typography is **Plus Jakarta Sans** loaded via `next/font/google` in `app/layout.tsx` (weights 400/500/600/700), exposed as `--font-jakarta` → `--font-sans`.
+
+**BRAND vs CRAFT split (the governing principle):**
+- **Brand layer — school-configurable at runtime:** logo, primary colour, name. A school overrides `--color-primary` via the inline style injected in `app/(dashboard)/layout.tsx` (`style={{ "--color-primary": theme.primaryColor }}`). `bg-primary`/`text-primary`/`border-primary`/`ring-primary` all resolve to that var, so per-school branding works without touching components. Only the primary *hue* is overridden; the tint scale (`primary-100…900`) is craft.
+- **Craft layer — SchoolPort-owned, NOT school-configurable:** typography, spacing, radii, component design. **`SchoolTheme.FontFamily` is deliberately UNCONSUMED by the frontend** — the font loads globally via `next/font`; a school changing the typeface would break the design quality. It is seeded (`Plus Jakarta Sans` on Greendale) only for correctness. **Follow-up (branding sprint): consider removing `FontFamily` from `SchoolTheme`** — nothing reads it.
+
+**Shared primitives (`components/ui/`):** `Button` (pill), `Card`, `Badge` (pill), `Input` (borderless, subtle bg), `StatCard`, `Skeleton`, plus new ones added in this overhaul — `EmptyState` (icon-in-tinted-circle; has a `tone="positive"` GOOD-NEWS variant for empty states that are healthy, e.g. zero at-risk), `Avatar`, `Modal` (replaces the ~8 inline modal copies as pages are restyled), `PageWithRail` (opt-in right-rail layout slot — dashboards render it; data-dense screens omit it and get full width). `Select`/`Tabs`/`Table` primitives are still deferred (promote when a restyled screen needs them).
+
+**⚠️ Hardcoded colour utilities BLOCK per-school branding.** As of the Sprint 1.6 foundation, **~1,997 hardcoded palette utilities (`bg-blue-*`, `text-gray-*`, etc.) remain across 58 `.tsx` files** (was 2,214 / 71 before the overhaul; the 3 migrated screens + shell + primitives are clean). **A school changing their primary colour will leave every one of these elements blue/grey** — they don't read `--color-primary`. Migrating them to `bg-primary`/`text-primary`/token utilities is a **prerequisite for the branding sprint**, not merely "31 pages of restyle remaining". **Scope it as its own sizeable work item** — ~1,997 utilities across 58 files is the actual blocker to per-school branding shipping, not a footnote to the rollout. Budget the branding sprint around this migration, not around adding new colour-picker UI. Heaviest remaining offenders: `pathways/page.tsx` (107), `matric/page.tsx` (95), `quizzes/page.tsx` (90), `onboarding/page.tsx` (81), `reports/page.tsx` (76), `users/page.tsx` (70), `parent/page.tsx` (69), `school-pay` (67), `attendance`/`gradebook` (65). The `(dashboard)/layout.tsx` API-unreachable error screen (6) is also un-migrated — an acceptable edge state, retoken during rollout.
+
+**Restyle verification procedure (STANDARD for every remaining screen with interaction logic).** A visual-only restyle of an interactive component MUST be proven to change nothing but presentation, using both checks:
+1. **Insertion/deletion symmetry** — `git diff --stat <file>` must show **equal insertions and deletions** (an N/N line swap). Any asymmetry means lines were added/removed = structural/logic change → investigate.
+2. **Handler-token grep of the diff** — `git diff <file> | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -iE 'useState|useEffect|useCallback|useRef|useMemo|onChange|onClick|onKeyDown|=>|<handler names>'`. Every surviving line must differ **only** inside its `className`/style string; the handler/hook/ref/state text on the `-` and `+` sides must be byte-identical. If a match shows changed logic, STOP and report rather than working around it.
+This is how `CaptureGrid.tsx` was verified (58/58 swap; only the `onBack` button's className differed). Apply it to every interactive screen in the page rollout.
+
+**Done so far (Sprint 1.6 Step 6):** tokens + type + primitives + app shell (sidebar/header/mobile-nav) + three screens — **Login**, **teacher Dashboard** (welcome banner + CTA, saturated `My classes` cards, KPIs, grading queue, upcoming-assessments table, right rail = profile + mini-calendar + teacher-scoped "needs attention"), and the **Marks Capture grid** (`CaptureGrid.tsx`/`CaptureTab.tsx`, full-width, restyle-only — zero behaviour change). **Note:** the brief's "at-risk alerts" in the dashboard rail is school-wide (`analytics.view_school`) and teachers deliberately don't hold it — so the teacher rail shows teacher-scoped signals instead; true at-risk belongs on the Principal/HOD dashboards (follow-up).
 
 ## Sprint 1.5.1 — Pathways v1 (Complete)
 

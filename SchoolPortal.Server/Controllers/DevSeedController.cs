@@ -80,6 +80,12 @@ public class DevSeedController : ControllerBase
                 SchoolChat = true, WhatsApp = true, PopiaCentre = true,
             },
             Settings = new SchoolSettings { Timezone = "Africa/Johannesburg", Locale = "en-ZA" },
+            // DEMO DATA: Greendale is demo data, not a real school's brand. Seed the SchoolPort
+            // primary green so the demo exercises the real per-school theme override path
+            // (layout injects Theme.PrimaryColor as the runtime --color-primary). FontFamily is
+            // set for correctness but is DELIBERATELY UNCONSUMED — typography is craft, not brand,
+            // and loads globally via next/font (see CLAUDE.md → Frontend design tokens).
+            Theme = new SchoolTheme { PrimaryColor = "#4A8C2A", FontFamily = "Plus Jakarta Sans" },
         };
         _db.Schools.Add(school);
 
@@ -412,6 +418,17 @@ public class DevSeedController : ControllerBase
         if (school == null)
             return NotFound(new { message = "Greendale High School not found — run POST /api/dev/seed first." });
         var schoolId = school.SchoolId;
+
+        // DEMO DATA: reconcile Greendale's brand colour to the SchoolPort green even on DBs seeded
+        // before the theme was added to the base seed. Runs ahead of the assessment-marker early
+        // return below so re-hitting this endpoint always flips an existing demo school to green.
+        // Idempotent. (FontFamily set for correctness but deliberately unconsumed — see base seed.)
+        if (school.Theme.PrimaryColor != "#4A8C2A")
+        {
+            school.Theme = new SchoolTheme { PrimaryColor = "#4A8C2A", FontFamily = "Plus Jakarta Sans" };
+            _db.Entry(school).Property(s => s.Theme).IsModified = true;
+            await _db.SaveChangesAsync();
+        }
 
         // Idempotency marker: one of the demo assessments this block creates.
         if (await _db.Assignments.AnyAsync(a => a.SchoolId == schoolId && a.Title == "Functions & Graphs Test"))

@@ -1,28 +1,92 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --color-primary: #1E40AF;
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  --sidebar-bg: #0f172a;
-  --sidebar-border: #1e293b;
+/*
+  SchoolPort design tokens (visual foundation — Sprint 1.6 overhaul).
+
+  BRAND vs CRAFT split:
+    - Brand layer (school-configurable at runtime): logo, primary colour, name.
+      A school overrides --color-primary via the inline style set in
+      app/(dashboard)/layout.tsx. Only the primary *hue* is school-controlled;
+      the tint scale (primary-100…900) and every other token below are craft.
+    - Craft layer (SchoolPort-owned, NOT school-configurable): typography,
+      spacing, radii, component design. Typography loads globally via next/font
+      (see app/layout.tsx) — SchoolTheme.FontFamily is deliberately unconsumed.
+
+  Every component reads from these tokens. No hardcoded hex outside this file.
+*/
+@theme {
+  /* ─ Brand: Primary (green) ─ */
+  --color-primary-50:  #F2F8EC;
+  --color-primary-100: #EAF3DE;
+  --color-primary-200: #CFE5B8;
+  --color-primary-300: #A8CE86;
+  --color-primary-400: #7CB356;
+  --color-primary-500: #4A8C2A;
+  --color-primary-600: #3D7522;
+  --color-primary-700: #2E6B14;
+  --color-primary-800: #2C5215;
+  --color-primary-900: #1F3A0E;
+
+  /* Primary alias. Registering it makes bg-primary/text-primary/border-primary/
+     ring-primary resolve as utilities. Defaults to primary-500; overridden
+     per-school at runtime by injecting --color-primary on the shell wrapper. */
+  --color-primary: var(--color-primary-500);
+
+  /* ─ Brand: Secondary (coral) — variety on feature cards, NEVER for status ─ */
+  --color-secondary-100: #FDE7DF;
+  --color-secondary-300: #F5B79F;
+  --color-secondary-500: #E07B5F;
+  --color-secondary-700: #A34119;
+
+  /* ─ Status (semantic — CAPS bands depend on these; kept distinct from brand) ─ */
+  --color-danger-100:  #FDECEC;
+  --color-danger-500:  #E05252;
+  --color-danger-700:  #A32D2D;
+  --color-danger-900:  #501313;
+  --color-warning-100: #FDF0DC;
+  --color-warning-500: #D99425;
+  --color-warning-700: #854F0B;
+  --color-warning-900: #412402;
+  --color-success-100: #EAF3DE;
+  --color-success-500: #4A8C2A;
+  --color-success-700: #2C5215;
+
+  /* ─ Neutrals ─ */
+  --color-surface-page:   #EEF1F6;
+  --color-surface-card:   #FFFFFF;
+  --color-surface-subtle: #F3F5F9;
+  --color-border:         #EDEFF3;
+  --color-text-primary:   #1A1D23;
+  --color-text-secondary: #5C6472;
+  --color-text-muted:     #9199A6;
+
+  /* ─ Radii ─ */
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   14px;
+  --radius-xl:   18px;
+  --radius-pill: 9999px;
+
+  /* ─ Shadows — minimal. Cards separate by contrast with the page, not shadow. ─ */
+  --shadow-card: 0 1px 2px rgba(26, 29, 35, 0.04);
+
+  /* ─ Typography — Plus Jakarta Sans loaded via next/font, exposed as --font-jakarta ─ */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  background: var(--color-surface-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 13px;   /* body base — see type scale in CLAUDE.md */
+  line-height: 1.45;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
 * { box-sizing: border-box; }

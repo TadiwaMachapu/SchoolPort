@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { Search } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { MobileNav } from "@/components/mobile-nav";
 import { NotificationBell } from "@/components/notification-bell";
@@ -116,32 +117,46 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const hasGrade12Child: boolean = me.hasGrade12Child ?? false;
   const navContext = { gradeLevel, hasGrade12Child };
 
+  const today = new Date().toLocaleDateString("en-ZA", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+
   return (
     <div
-      className="flex h-screen overflow-hidden"
+      className="flex h-screen overflow-hidden bg-surface-page"
       style={{ "--color-primary": theme.primaryColor } as React.CSSProperties}
     >
-      {/* Sidebar — desktop only */}
-      <div className="hidden md:flex">
+      {/* Sidebar — desktop only; floats as its own card via the wrapper padding */}
+      <div className="hidden md:flex p-3 pr-0">
         <Sidebar user={me.user} school={{ ...me.school, theme, features }} identity={identity} positions={positionKeys} permissions={permissions} context={navContext} />
       </div>
 
       {/* Right column: header + scrollable content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
 
-        {/* Sticky top header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-100 bg-white px-4 md:px-6 gap-4">
+        {/* Top bar */}
+        <header className="flex h-16 shrink-0 items-center justify-between px-4 md:px-6 gap-4">
           {/* Left: breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs text-gray-400 font-medium hidden sm:block truncate">{me.school?.name ?? "School Portal"}</span>
-            <span className="text-gray-300 hidden sm:block">/</span>
-            <h2 className="text-sm font-semibold text-gray-900 truncate">{pageTitle}</h2>
+            <span className="text-[11px] text-text-muted font-medium hidden sm:block truncate">{me.school?.name ?? "School Portal"}</span>
+            <span className="text-text-muted hidden sm:block">/</span>
+            <h2 className="text-sm font-semibold text-text-primary truncate">{pageTitle}</h2>
           </div>
 
-          {/* Right: notification bell + user */}
+          {/* Right: search pill + date + bell + user */}
           <div className="flex items-center gap-3 shrink-0">
+            <div className="hidden lg:flex items-center gap-2 rounded-pill bg-surface-card px-3.5 h-9 w-56 shadow-card">
+              <Search className="h-4 w-4 text-text-muted shrink-0" />
+              <input
+                type="search"
+                placeholder="Search"
+                aria-label="Search"
+                className="w-full bg-transparent text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none"
+              />
+            </div>
+            <span className="hidden xl:block text-[11px] text-text-muted whitespace-nowrap">{today}</span>
             <NotificationBell />
-            <div className="flex items-center gap-2.5 pl-3 border-l border-gray-100">
+            <div className="flex items-center gap-2.5 pl-3 border-l border-border">
               <div
                 className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                 style={{ backgroundColor: theme.primaryColor }}
@@ -149,17 +164,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 {me.user.firstName?.[0]}{me.user.lastName?.[0]}
               </div>
               <div className="hidden sm:block leading-tight">
-                <p className="text-sm font-semibold text-gray-900 leading-none">
+                <p className="text-[13px] font-semibold text-text-primary leading-none">
                   {me.user.firstName} {me.user.lastName}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">{me.user.role}</p>
+                <p className="text-[11px] text-text-muted mt-0.5">{me.user.role}</p>
               </div>
             </div>
           </div>
         </header>
 
         {/* Main content — extra bottom padding on mobile for the nav bar */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 pb-16 md:pb-0">
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-3">
           <AuthProvider value={{ identity, positions, permissions, gradeLevel, hasGrade12Child, user: { firstName: me.user?.firstName ?? "", lastName: me.user?.lastName ?? "" } }}>
             <FeaturesProvider features={features}>{children}</FeaturesProvider>
             <FinanceSessionGuard />

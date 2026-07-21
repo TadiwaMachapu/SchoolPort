@@ -192,17 +192,17 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
   }, [rows, marks]);
 
   const inputCls = (invalid: boolean) =>
-    `w-16 rounded-md border px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ` +
-    (invalid ? "border-red-400 bg-red-50 text-red-700" : "border-gray-300");
+    `w-16 rounded-md border px-2 py-1.5 text-[13px] text-center focus:outline-none focus:ring-2 focus:ring-primary/40 ` +
+    (invalid ? "border-danger-500 bg-danger-100 text-danger-700" : "border-transparent bg-surface-subtle");
 
   const renderCapsBadge = (total: number | null) => {
-    if (total == null) return <span className="text-gray-300 text-xs">—</span>;
+    if (total == null) return <span className="text-text-muted text-xs">—</span>;
     const pct = (total / marks.maxMarks) * 100;
     const lvl = getCapsCode(pct);
     return (
       <div className="flex flex-col items-center gap-0.5">
         <Badge variant={capsBadgeVariant(lvl)}>L{lvl}</Badge>
-        <span className="text-[10px] text-gray-500">{CAPS_LEVEL_LABEL[lvl]}</span>
+        <span className="text-[10px] text-text-secondary">{CAPS_LEVEL_LABEL[lvl]}</span>
       </div>
     );
   };
@@ -212,12 +212,12 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="rounded-md border border-gray-300 p-2 hover:bg-gray-50" aria-label="Back to tasks">
-            <ArrowLeft className="h-4 w-4 text-gray-600" />
+          <button onClick={onBack} className="rounded-md border border-border p-2 hover:bg-surface-subtle" aria-label="Back to tasks">
+            <ArrowLeft className="h-4 w-4 text-text-secondary" />
           </button>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">{marks.title}</h2>
-            <p className="text-xs text-gray-500">
+            <h2 className="text-lg font-semibold text-text-primary">{marks.title}</h2>
+            <p className="text-xs text-text-secondary">
               {marks.taskType}{marks.termNumber ? ` · Term ${marks.termNumber}` : ""} · Total /{marks.maxMarks}
               {marks.sbaWeight != null ? ` · SBA ${marks.sbaWeight}%` : ""}
               {marks.hasRubric ? " · Rubric" : ""}
@@ -226,9 +226,9 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
         </div>
         <div className="flex items-center gap-2">
           {savedAt && !anyDirty && (
-            <span className="text-xs text-gray-400">Saved {savedAt.toLocaleTimeString()}</span>
+            <span className="text-xs text-text-muted">Saved {savedAt.toLocaleTimeString()}</span>
           )}
-          {anyDirty && <span className="text-xs font-medium text-amber-600">Unsaved changes</span>}
+          {anyDirty && <span className="text-xs font-medium text-warning-700">Unsaved changes</span>}
           <Button variant="outline" disabled={saving || !anyDirty} onClick={() => save()} className="flex items-center gap-2">
             <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save Draft"}
           </Button>
@@ -241,56 +241,56 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
         </div>
       </div>
 
-      {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
-      {firstInvalid && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{firstInvalid}</div>}
+      {error && <div className="rounded-lg bg-danger-100 p-3 text-sm text-danger-700">{error}</div>}
+      {firstInvalid && <div className="rounded-lg bg-danger-100 p-3 text-sm text-danger-700">{firstInvalid}</div>}
       {warnings.map((w) => (
-        <div key={w} className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+        <div key={w} className="flex items-center gap-2 rounded-lg bg-warning-100 p-3 text-sm text-warning-700">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {w}
         </div>
       ))}
 
       {/* Desktop grid */}
-      <div className="hidden md:block rounded-xl border border-gray-100 shadow-sm ring-1 ring-gray-100/50 bg-white overflow-x-auto">
+      <div className="hidden md:block rounded-lg bg-surface-card shadow-card overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50">
+          <thead className="border-b border-border bg-surface-subtle">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 min-w-[180px]">Learner</th>
-              <th className="px-2 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-14">ABS</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold text-text-muted uppercase tracking-wider sticky left-0 bg-surface-subtle min-w-[180px]">Learner</th>
+              <th className="px-2 py-3 text-center text-[11px] font-semibold text-text-muted uppercase tracking-wider w-14">ABS</th>
               {marks.hasRubric ? (
                 marks.criteria.map((c) => (
-                  <th key={c.criteriaId} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 min-w-[90px]">
+                  <th key={c.criteriaId} className="px-3 py-3 text-center text-[11px] font-semibold text-text-muted min-w-[90px]">
                     <div className="truncate max-w-[140px] mx-auto" title={c.name}>{c.name}</div>
-                    <div className="text-gray-400 font-normal">/{c.maxMark}</div>
+                    <div className="text-text-muted font-normal">/{c.maxMark}</div>
                   </th>
                 ))
               ) : (
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[90px]">
-                  Mark <span className="text-gray-400 font-normal">/{marks.maxMarks}</span>
+                <th className="px-3 py-3 text-center text-[11px] font-semibold text-text-muted uppercase tracking-wider min-w-[90px]">
+                  Mark <span className="text-text-muted font-normal">/{marks.maxMarks}</span>
                 </th>
               )}
               {marks.hasRubric && (
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[70px]">Total</th>
+                <th className="px-3 py-3 text-center text-[11px] font-semibold text-text-muted uppercase tracking-wider min-w-[70px]">Total</th>
               )}
-              <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[90px]">CAPS Level</th>
+              <th className="px-3 py-3 text-center text-[11px] font-semibold text-text-muted uppercase tracking-wider min-w-[90px]">CAPS Level</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-border">
             {rows.map((row, r) => {
               const total = rowTotal(row, marks);
               const invalidMsg = rowInvalid(row, marks);
               return (
                 <tr key={row.studentId}
-                  className={`hover:bg-gray-50 ${row.dirty ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"} ${row.isAbsent ? "bg-gray-50" : ""}`}>
-                  <td className="px-4 py-2.5 sticky left-0 bg-white hover:bg-gray-50">
-                    <p className={`font-medium ${row.isAbsent ? "text-gray-400" : "text-gray-900"}`}>{row.surname}, {row.name}</p>
-                    <p className="text-xs text-gray-400">{row.studentNumber}</p>
+                  className={`hover:bg-surface-subtle ${row.dirty ? "border-l-4 border-l-warning-500" : "border-l-4 border-l-transparent"} ${row.isAbsent ? "bg-surface-subtle" : ""}`}>
+                  <td className="px-4 py-2.5 sticky left-0 bg-surface-card">
+                    <p className={`font-medium ${row.isAbsent ? "text-text-muted" : "text-text-primary"}`}>{row.surname}, {row.name}</p>
+                    <p className="text-xs text-text-muted">{row.studentNumber}</p>
                   </td>
                   <td className="px-2 py-2.5 text-center">
                     <input type="checkbox" checked={row.isAbsent} onChange={() => toggleAbsent(row)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" aria-label={`Mark ${row.surname} absent`} />
+                      className="h-4 w-4 rounded border-border accent-[var(--color-primary)] focus:ring-primary" aria-label={`Mark ${row.surname} absent`} />
                   </td>
                   {row.isAbsent ? (
-                    <td colSpan={marks.hasRubric ? marks.criteria.length + 1 : 1} className="px-3 py-2.5 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    <td colSpan={marks.hasRubric ? marks.criteria.length + 1 : 1} className="px-3 py-2.5 text-center text-xs font-medium text-text-muted uppercase tracking-wider">
                       Absent
                     </td>
                   ) : marks.hasRubric ? (
@@ -307,9 +307,9 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
                           />
                         </td>
                       ))}
-                      <td className="px-3 py-2.5 text-center font-semibold text-gray-900">
-                        {total != null ? total : <span className="text-gray-300 font-normal">—</span>}
-                        <span className="text-xs text-gray-400 font-normal">/{marks.maxMarks}</span>
+                      <td className="px-3 py-2.5 text-center font-semibold text-text-primary">
+                        {total != null ? total : <span className="text-text-muted font-normal">—</span>}
+                        <span className="text-xs text-text-muted font-normal">/{marks.maxMarks}</span>
                       </td>
                     </>
                   ) : (
@@ -324,7 +324,7 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
                       />
                     </td>
                   )}
-                  <td className="px-3 py-2.5 text-center">{row.isAbsent ? <span className="text-gray-300 text-xs">—</span> : renderCapsBadge(total)}</td>
+                  <td className="px-3 py-2.5 text-center">{row.isAbsent ? <span className="text-text-muted text-xs">—</span> : renderCapsBadge(total)}</td>
                 </tr>
               );
             })}
@@ -333,7 +333,7 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
       </div>
 
       {/* Mobile: one learner at a time */}
-      <div className="md:hidden rounded-xl border border-gray-100 shadow-sm ring-1 ring-gray-100/50 bg-white p-4">
+      <div className="md:hidden rounded-lg bg-surface-card shadow-card p-4">
         {rows.length > 0 && (() => {
           const idx = Math.min(mobileIndex, rows.length - 1);
           const row = rows[idx];
@@ -342,22 +342,22 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <button onClick={() => setMobileIndex(Math.max(0, idx - 1))} disabled={idx === 0}
-                  className="rounded-md border border-gray-300 p-2 disabled:opacity-30" aria-label="Previous learner">
+                  className="rounded-md border border-border p-2 disabled:opacity-30" aria-label="Previous learner">
                   <ChevronLeft className="h-5 w-5" />
                 </button>
                 <div className="text-center">
-                  <p className="text-lg font-semibold text-gray-900">{row.surname}, {row.name}</p>
-                  <p className="text-xs text-gray-400">{row.studentNumber} · {idx + 1} of {rows.length}</p>
+                  <p className="text-lg font-semibold text-text-primary">{row.surname}, {row.name}</p>
+                  <p className="text-xs text-text-muted">{row.studentNumber} · {idx + 1} of {rows.length}</p>
                 </div>
                 <button onClick={() => setMobileIndex(Math.min(rows.length - 1, idx + 1))} disabled={idx === rows.length - 1}
-                  className="rounded-md border border-gray-300 p-2 disabled:opacity-30" aria-label="Next learner">
+                  className="rounded-md border border-border p-2 disabled:opacity-30" aria-label="Next learner">
                   <ChevronRight className="h-5 w-5" />
                 </button>
               </div>
 
-              <label className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 py-2.5 text-sm font-medium text-gray-700">
+              <label className="flex items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-medium text-text-secondary">
                 <input type="checkbox" checked={row.isAbsent} onChange={() => toggleAbsent(row)}
-                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  className="h-5 w-5 rounded border-border accent-[var(--color-primary)] focus:ring-primary" />
                 Absent
               </label>
 
@@ -365,12 +365,12 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
                 <div className="space-y-3">
                   {marks.criteria.map((c) => (
                     <div key={c.criteriaId} className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-gray-700 flex-1">{c.name}</span>
+                      <span className="text-sm text-text-secondary flex-1">{c.name}</span>
                       <div className="flex items-center gap-1">
                         <input inputMode="decimal" value={row.criteria[c.criteriaId] ?? ""}
                           onChange={(e) => setRow(row.studentId, { criteria: { ...row.criteria, [c.criteriaId]: e.target.value } })}
                           className={inputCls(false)} />
-                        <span className="text-xs text-gray-400">/{c.maxMark}</span>
+                        <span className="text-xs text-text-muted">/{c.maxMark}</span>
                       </div>
                     </div>
                   ))}
@@ -379,15 +379,15 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
                 <div className="flex items-center justify-center gap-2">
                   <input inputMode="decimal" value={row.score}
                     onChange={(e) => setRow(row.studentId, { score: e.target.value })}
-                    className="w-24 rounded-md border border-gray-300 px-3 py-2 text-xl text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <span className="text-gray-400">/{marks.maxMarks}</span>
+                    className="w-24 rounded-md border border-transparent bg-surface-subtle px-3 py-2 text-xl text-center focus:outline-none focus:ring-2 focus:ring-primary/40" />
+                  <span className="text-text-muted">/{marks.maxMarks}</span>
                 </div>
               ))}
 
-              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                <span className="text-sm text-gray-500">Total</span>
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <span className="text-sm text-text-secondary">Total</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold text-gray-900">
+                  <span className="text-lg font-bold text-text-primary">
                     {row.isAbsent ? "Absent" : total != null ? `${total}/${marks.maxMarks}` : "—"}
                   </span>
                   {!row.isAbsent && renderCapsBadge(total)}
@@ -399,31 +399,31 @@ export function CaptureGrid({ marks, onBack, onSaved }: {
       </div>
 
       {/* Class statistics bar — live; this becomes the HOD moderation view's core in Week 3 */}
-      <div className="rounded-xl border border-gray-100 shadow-sm ring-1 ring-gray-100/50 bg-white p-4">
+      <div className="rounded-lg bg-surface-card shadow-card p-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-6">
             <div>
-              <p className="text-2xl font-bold text-blue-600">{stats.avg != null ? `${Math.round(stats.avg)}%` : "—"}</p>
-              <p className="text-xs text-gray-500">Class average</p>
+              <p className="text-2xl font-bold text-primary">{stats.avg != null ? `${Math.round(stats.avg)}%` : "—"}</p>
+              <p className="text-xs text-text-secondary">Class average</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{stats.marked}<span className="text-sm text-gray-400 font-normal">/{rows.length}</span></p>
-              <p className="text-xs text-gray-500">Marked</p>
+              <p className="text-2xl font-bold text-text-primary">{stats.marked}<span className="text-sm text-text-muted font-normal">/{rows.length}</span></p>
+              <p className="text-xs text-text-secondary">Marked</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-500">{stats.absent}</p>
-              <p className="text-xs text-gray-500">Absent</p>
+              <p className="text-2xl font-bold text-text-secondary">{stats.absent}</p>
+              <p className="text-xs text-text-secondary">Absent</p>
             </div>
           </div>
           <div className="flex items-end gap-1.5" aria-label="CAPS level distribution">
             {stats.dist.map(({ lvl, count }) => (
               <div key={lvl} className="flex flex-col items-center gap-0.5">
-                <span className="text-[10px] text-gray-500">{count > 0 ? count : ""}</span>
+                <span className="text-[10px] text-text-secondary">{count > 0 ? count : ""}</span>
                 <div
-                  className={`w-6 rounded-t ${lvl >= 5 ? "bg-green-400" : lvl >= 3 ? "bg-amber-400" : "bg-red-400"}`}
+                  className={`w-6 rounded-t ${lvl >= 5 ? "bg-success-500" : lvl >= 3 ? "bg-warning-500" : "bg-danger-500"}`}
                   style={{ height: `${4 + (count / stats.maxCount) * 40}px` }}
                 />
-                <span className="text-[10px] text-gray-400">L{lvl}</span>
+                <span className="text-[10px] text-text-muted">L{lvl}</span>
               </div>
             ))}
           </div>

@@ -36,15 +36,15 @@ function StatusBadge({ status }: { status: "Green" | "Amber" | "Red" }) {
 }
 
 const PHASE_BADGE: Record<string, string> = {
-  SeniorPhase: "bg-blue-100 text-blue-700",
-  FET: "bg-purple-100 text-purple-700",
+  SeniorPhase: "bg-primary-100 text-primary-700",
+  FET: "bg-secondary-100 text-secondary-700",
 };
 const PHASE_LABEL: Record<string, string> = { SeniorPhase: "Gr 7–9", FET: "Gr 10–12" };
 
 function PhaseBadge({ phase }: { phase?: string }) {
   if (!phase) return null;
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${PHASE_BADGE[phase] ?? "bg-gray-100 text-gray-600"}`}>
+    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${PHASE_BADGE[phase] ?? "bg-surface-subtle text-text-secondary"}`}>
       {PHASE_LABEL[phase] ?? phase}
     </span>
   );
@@ -137,23 +137,23 @@ function CareerGoalsTab() {
     return matchSearch && matchCat;
   });
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>;
-  if (error) return <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>;
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-text-muted" /></div>;
+  if (error) return <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>;
 
   return (
     <div className="space-y-8">
       {/* ── Saved goals ─────────────────────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-gray-900">My Career Goals</h2>
-          <span className="text-xs text-gray-400">{goals.length}/5 saved</span>
+          <h2 className="text-base font-semibold text-text-primary">My Career Goals</h2>
+          <span className="text-xs text-text-muted">{goals.length}/5 saved</span>
         </div>
 
         {goals.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-            <Target className="h-10 w-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-600">No career goals saved yet</p>
-            <p className="text-xs text-gray-400 mt-1">Browse universities below and save up to 5 goals to track your progress.</p>
+          <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+            <Target className="h-10 w-10 text-text-muted mx-auto mb-3" />
+            <p className="text-sm font-medium text-text-secondary">No career goals saved yet</p>
+            <p className="text-xs text-text-muted mt-1">Browse universities below and save up to 5 goals to track your progress.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -162,24 +162,24 @@ function CareerGoalsTab() {
               const tracking = trackingData[goal.learnerCareerGoalId];
 
               return (
-                <div key={goal.learnerCareerGoalId} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div key={goal.learnerCareerGoalId} className="rounded-xl border border-border bg-surface-card shadow-sm overflow-hidden">
                   {/* Goal header */}
                   <div className="flex items-center gap-3 px-4 py-4">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{goal.courseName}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{goal.universityName} · APS {goal.minimumAps} required · You: {goal.currentAps}</p>
+                      <p className="font-semibold text-text-primary truncate">{goal.courseName}</p>
+                      <p className="text-xs text-text-secondary mt-0.5">{goal.universityName} · APS {goal.minimumAps} required · You: {goal.currentAps}</p>
                     </div>
                     <StatusBadge status={goal.status} />
                     <button
                       onClick={() => toggleExpand(goal.learnerCareerGoalId)}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-surface-subtle text-text-muted hover:text-text-secondary transition-colors"
                     >
                       {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
                     <button
                       onClick={() => removeGoal(goal.learnerCareerGoalId)}
                       disabled={deletingGoal === goal.learnerCareerGoalId}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
+                      className="p-1.5 rounded-lg hover:bg-danger-100 text-text-muted hover:text-danger-500 transition-colors disabled:opacity-50"
                     >
                       {deletingGoal === goal.learnerCareerGoalId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                     </button>
@@ -187,43 +187,43 @@ function CareerGoalsTab() {
 
                   {/* Expanded detail */}
                   {expanded && (
-                    <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-4">
+                    <div className="border-t border-border px-4 pb-4 pt-3 space-y-4">
                       {!tracking ? (
-                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-text-muted" /></div>
                       ) : (
                         <>
                           {/* APS progress */}
                           <div className="flex items-center gap-3">
                             <div className="flex-1">
-                              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                              <div className="flex justify-between text-xs text-text-secondary mb-1">
                                 <span>APS Score</span>
                                 <span>{tracking.currentAps} / {tracking.minimumAps}</span>
                               </div>
-                              <div className="h-2 rounded-full bg-gray-100">
+                              <div className="h-2 rounded-full bg-surface-subtle">
                                 <div
-                                  className={`h-2 rounded-full transition-all ${tracking.apsGap === 0 ? "bg-emerald-500" : tracking.apsGap <= 3 ? "bg-amber-400" : "bg-red-400"}`}
+                                  className={`h-2 rounded-full transition-all ${tracking.apsGap === 0 ? "bg-success-500" : tracking.apsGap <= 3 ? "bg-warning-500" : "bg-danger-500"}`}
                                   style={{ width: `${Math.min(100, (tracking.currentAps / tracking.minimumAps) * 100)}%` }}
                                 />
                               </div>
                             </div>
                             {tracking.apsGap === 0 ? (
-                              <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                              <CheckCircle2 className="h-5 w-5 text-success-500 shrink-0" />
                             ) : (
-                              <span className="text-xs text-gray-500 shrink-0">need +{tracking.apsGap}</span>
+                              <span className="text-xs text-text-secondary shrink-0">need +{tracking.apsGap}</span>
                             )}
                           </div>
 
                           {/* Subject gaps */}
                           {tracking.subjectGaps.length > 0 && (
                             <div className="space-y-2">
-                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Required Subjects</p>
+                              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Required Subjects</p>
                               {tracking.subjectGaps.map(gap => (
                                 <div key={gap.subjectName} className="flex items-center gap-2 text-xs">
                                   {gap.met
-                                    ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                    : <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                                  <span className="flex-1 text-gray-700">{gap.subjectName}</span>
-                                  <span className={gap.met ? "text-emerald-600" : "text-amber-600"}>
+                                    ? <CheckCircle2 className="h-3.5 w-3.5 text-success-500 shrink-0" />
+                                    : <AlertTriangle className="h-3.5 w-3.5 text-warning-500 shrink-0" />}
+                                  <span className="flex-1 text-text-primary">{gap.subjectName}</span>
+                                  <span className={gap.met ? "text-success-700" : "text-warning-700"}>
                                     {gap.currentPercent !== undefined ? `${gap.currentPercent.toFixed(0)}%` : "no data"} / {gap.requiredPercent}%
                                   </span>
                                 </div>
@@ -232,7 +232,7 @@ function CareerGoalsTab() {
                           )}
 
                           {tracking.apsNotes && (
-                            <p className="text-xs text-gray-500 italic">{tracking.apsNotes}</p>
+                            <p className="text-xs text-text-secondary italic">{tracking.apsNotes}</p>
                           )}
 
                           {/* AI gap analysis */}
@@ -251,16 +251,16 @@ function CareerGoalsTab() {
       {/* ── Browse universities ──────────────────────────────────────── */}
       {goals.length < 5 && (
         <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-3">Browse University Courses</h2>
+          <h2 className="text-base font-semibold text-text-primary mb-3">Browse University Courses</h2>
 
           <div className="flex flex-wrap gap-3 mb-4">
             {/* University picker */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Building2 className="h-3 w-3" /> University</label>
+              <label className="text-xs font-medium text-text-secondary flex items-center gap-1"><Building2 className="h-3 w-3" /> University</label>
               <select
                 value={browseUni}
                 onChange={e => setBrowseUni(e.target.value)}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">Select a university…</option>
                 {universities.map(u => (
@@ -272,11 +272,11 @@ function CareerGoalsTab() {
             {/* Category filter */}
             {browseUni && uniCourses.length > 0 && (
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Briefcase className="h-3 w-3" /> Field</label>
+                <label className="text-xs font-medium text-text-secondary flex items-center gap-1"><Briefcase className="h-3 w-3" /> Field</label>
                 <select
                   value={categoryFilter}
                   onChange={e => setCategoryFilter(e.target.value)}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="">All fields</option>
                   {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -287,12 +287,12 @@ function CareerGoalsTab() {
             {/* Search */}
             {browseUni && (
               <div className="space-y-1 flex-1 min-w-48">
-                <label className="text-xs font-medium text-gray-600 flex items-center gap-1"><Search className="h-3 w-3" /> Search</label>
+                <label className="text-xs font-medium text-text-secondary flex items-center gap-1"><Search className="h-3 w-3" /> Search</label>
                 <input
                   value={searchQ}
                   onChange={e => setSearchQ(e.target.value)}
                   placeholder="e.g. Medicine, Computer Science…"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             )}
@@ -300,10 +300,10 @@ function CareerGoalsTab() {
 
           {browseUni && (
             coursesLoading ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>
+              <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-text-muted" /></div>
             ) : filteredCourses.length === 0 ? (
-              <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-                <p className="text-sm text-gray-500">No courses match your search.</p>
+              <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+                <p className="text-sm text-text-secondary">No courses match your search.</p>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -311,17 +311,17 @@ function CareerGoalsTab() {
                   const alreadySaved = savedCourseIds.has(course.universityCourseId);
                   const adding = addingCourse === course.universityCourseId;
                   return (
-                    <div key={course.universityCourseId} className={`rounded-xl border ${alreadySaved ? "border-emerald-200 bg-emerald-50" : "border-gray-200 bg-white"} p-4 shadow-sm space-y-2`}>
+                    <div key={course.universityCourseId} className={`rounded-xl border ${alreadySaved ? "border-primary-200 bg-primary-50" : "border-border bg-surface-card"} p-4 shadow-sm space-y-2`}>
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm leading-tight">{course.name}</p>
-                        {course.faculty && <p className="text-xs text-gray-500 mt-0.5">{course.faculty}</p>}
+                        <p className="font-semibold text-text-primary text-sm leading-tight">{course.name}</p>
+                        {course.faculty && <p className="text-xs text-text-secondary mt-0.5">{course.faculty}</p>}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 font-medium">APS {course.minimumAps}</span>
-                        {course.careerCategory && <span className="text-xs bg-blue-50 text-blue-600 rounded-full px-2 py-0.5">{course.careerCategory}</span>}
+                        <span className="text-xs bg-surface-subtle text-text-secondary rounded-full px-2 py-0.5 font-medium">APS {course.minimumAps}</span>
+                        {course.careerCategory && <span className="text-xs bg-primary-50 text-primary rounded-full px-2 py-0.5">{course.careerCategory}</span>}
                       </div>
                       {course.subjectRequirements.length > 0 && (
-                        <div className="text-[11px] text-gray-500 space-y-0.5">
+                        <div className="text-[11px] text-text-secondary space-y-0.5">
                           {course.subjectRequirements.slice(0, 3).map(r => (
                             <div key={r.subjectName}>• {r.subjectName}{r.minimumPercent ? `: min ${r.minimumPercent}%` : ""}</div>
                           ))}
@@ -332,10 +332,10 @@ function CareerGoalsTab() {
                         disabled={alreadySaved || adding || goals.length >= 5}
                         className={`w-full text-xs font-medium rounded-lg py-1.5 transition-colors
                           ${alreadySaved
-                            ? "bg-emerald-100 text-emerald-700 cursor-default"
+                            ? "bg-primary-100 text-primary-800 cursor-default"
                             : goals.length >= 5
-                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                              : "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                              ? "bg-surface-subtle text-text-muted cursor-not-allowed"
+                              : "bg-primary text-white hover:bg-primary-700 disabled:opacity-60"
                           }`}
                       >
                         {adding ? <Loader2 className="h-3 w-3 animate-spin mx-auto" /> : alreadySaved ? "Saved" : "Save goal"}
@@ -368,8 +368,8 @@ function Gr9AdvisorTab() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>;
-  if (error) return <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>;
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-text-muted" /></div>;
+  if (error) return <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>;
   if (!profile?.isGrade9) return null;
 
   const eligibilityColour = {
@@ -396,15 +396,15 @@ function Gr9AdvisorTab() {
     <div className="space-y-6">
       {/* Gr 9 marks summary */}
       {profile.marks.length > 0 && (
-        <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-100 px-4 py-2.5">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Your Current Grade 9 Marks</p>
+        <div className="rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden">
+          <div className="bg-surface-subtle border-b border-border px-4 py-2.5">
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Your Current Grade 9 Marks</p>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-border">
             {profile.marks.map(m => (
               <div key={m.subjectName} className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-sm text-gray-800">{m.subjectName}</span>
-                <span className={`text-sm font-bold ${m.averagePercent >= 60 ? "text-emerald-600" : m.averagePercent >= 40 ? "text-amber-600" : "text-red-600"}`}>
+                <span className="text-sm text-text-primary">{m.subjectName}</span>
+                <span className={`text-sm font-bold ${m.averagePercent >= 60 ? "text-success-700" : m.averagePercent >= 40 ? "text-warning-700" : "text-danger-700"}`}>
                   {m.averagePercent.toFixed(0)}%
                 </span>
               </div>
@@ -415,7 +415,7 @@ function Gr9AdvisorTab() {
 
       {/* FET eligibility columns */}
       <div>
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">FET Subject Eligibility (Grade 10–12)</p>
+        <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">FET Subject Eligibility (Grade 10–12)</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {(["Recommended", "Borderline", "NotRecommended"] as const).map(cat => (
             <div key={cat} className="space-y-1.5">
@@ -424,7 +424,7 @@ function Gr9AdvisorTab() {
               </p>
               <div className="space-y-1">
                 {grouped[cat].length === 0 && (
-                  <p className="text-xs text-gray-400 pl-1">None</p>
+                  <p className="text-xs text-text-muted pl-1">None</p>
                 )}
                 {grouped[cat].map(e => (
                   <div key={e.fetSubject} className={`rounded-lg border px-2.5 py-2 text-xs ${eligibilityColour[e.eligibility]}`}>
@@ -506,48 +506,48 @@ function MatrixView() {
     <div className="space-y-4">
       <div className="flex items-end gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-gray-600">Class</label>
+          <label className="text-xs font-medium text-text-secondary">Class</label>
           <select
             value={classId}
             onChange={e => setClassId(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
           </select>
         </div>
       </div>
 
-      {error && <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
-      {loading && <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}
+      {error && <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
+      {loading && <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-text-muted" /></div>}
 
       {matrix && !loading && (
         <div className="space-y-3">
-          <p className="text-xs text-gray-500">Showing subject enrolments for {matrix.year} · {matrix.students.length} learner{matrix.students.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-text-secondary">Showing subject enrolments for {matrix.year} · {matrix.students.length} learner{matrix.students.length !== 1 ? "s" : ""}</p>
           {matrix.subjects.length === 0 && (
-            <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-              <p className="text-gray-500 text-sm">No subject enrolments recorded for this class yet.</p>
+            <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+              <p className="text-text-secondary text-sm">No subject enrolments recorded for this class yet.</p>
             </div>
           )}
           {matrix.subjects.length > 0 && matrix.students.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+            <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
               <table className="min-w-full text-sm border-collapse">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-surface-subtle border-b border-border">
                   <tr>
-                    <th className="sticky left-0 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[180px]">Learner</th>
+                    <th className="sticky left-0 bg-surface-subtle px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider min-w-[180px]">Learner</th>
                     {matrix.subjects.map(s => (
-                      <th key={s.subjectId} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider min-w-[110px]">
+                      <th key={s.subjectId} className="px-3 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wider min-w-[110px]">
                         <div>{s.subjectName}</div>
                         {s.capsPhase && <div className="mt-0.5"><PhaseBadge phase={s.capsPhase} /></div>}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
+                <tbody className="divide-y divide-border bg-surface-card">
                   {matrix.students.map(student => (
-                    <tr key={student.studentId} className="hover:bg-gray-50">
+                    <tr key={student.studentId} className="hover:bg-surface-subtle">
                       <td className="sticky left-0 bg-inherit px-4 py-3">
-                        <p className="font-medium text-gray-900">{student.name}</p>
-                        <p className="text-xs text-gray-400">{student.studentNumber}</p>
+                        <p className="font-medium text-text-primary">{student.name}</p>
+                        <p className="text-xs text-text-muted">{student.studentNumber}</p>
                       </td>
                       {matrix.subjects.map(subject => {
                         const enrolled = student.enrolledSubjectIds.includes(subject.subjectId);
@@ -556,7 +556,7 @@ function MatrixView() {
                         return (
                           <td key={subject.subjectId} className="px-3 py-3 text-center">
                             <button onClick={() => toggle(student.studentId, subject.subjectId, student.enrolledSubjectIds)} disabled={busy} className="inline-flex items-center justify-center w-7 h-7 rounded-full transition-colors disabled:opacity-50">
-                              {busy ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : enrolled ? <CheckCircle2 className="h-5 w-5 text-emerald-500 hover:text-red-400 transition-colors" /> : <XCircle className="h-5 w-5 text-gray-200 hover:text-emerald-400 transition-colors" />}
+                              {busy ? <Loader2 className="h-4 w-4 animate-spin text-text-muted" /> : enrolled ? <CheckCircle2 className="h-5 w-5 text-primary hover:text-danger-500 transition-colors" /> : <XCircle className="h-5 w-5 text-text-muted hover:text-primary transition-colors" />}
                             </button>
                           </td>
                         );
@@ -586,8 +586,8 @@ function MySubjectsView() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>;
-  if (error) return <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>;
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-text-muted" /></div>;
+  if (error) return <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>;
 
   const enrolledIds = new Set(mySubjects.map(s => s.subjectId));
   const availableFet = allSubjects.filter(s => s.capsPhase === "FET" && !enrolledIds.has(s.subjectId));
@@ -595,23 +595,23 @@ function MySubjectsView() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-gray-900 mb-3">My Subjects</h2>
+        <h2 className="text-base font-semibold text-text-primary mb-3">My Subjects</h2>
         {mySubjects.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-            <BookOpen className="h-8 w-8 text-gray-200 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">You have not been enrolled in any subjects yet.</p>
-            <p className="text-xs text-gray-400 mt-1">Contact your teacher or administrator to be enrolled.</p>
+          <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+            <BookOpen className="h-8 w-8 text-text-muted mx-auto mb-2" />
+            <p className="text-sm text-text-secondary">You have not been enrolled in any subjects yet.</p>
+            <p className="text-xs text-text-muted mt-1">Contact your teacher or administrator to be enrolled.</p>
           </div>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {mySubjects.map(s => (
-              <div key={s.learnerSubjectId} className="rounded-lg bg-white border border-gray-200 px-4 py-3 shadow-sm flex items-start gap-3">
-                <BookOpen className="h-5 w-5 text-blue-400 mt-0.5 shrink-0" />
+              <div key={s.learnerSubjectId} className="rounded-lg bg-surface-card border border-border px-4 py-3 shadow-sm flex items-start gap-3">
+                <BookOpen className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{s.subjectName}</p>
+                  <p className="font-medium text-text-primary truncate">{s.subjectName}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <PhaseBadge phase={s.capsPhase} />
-                    <span className="text-xs text-gray-400">{s.year}</span>
+                    <span className="text-xs text-text-muted">{s.year}</span>
                   </div>
                 </div>
               </div>
@@ -621,17 +621,17 @@ function MySubjectsView() {
       </div>
       {availableFet.length > 0 && (
         <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-1">Available FET Subjects</h2>
-          <p className="text-xs text-gray-500 mb-3">Contact your teacher or administrator to request enrolment.</p>
+          <h2 className="text-base font-semibold text-text-primary mb-1">Available FET Subjects</h2>
+          <p className="text-xs text-text-secondary mb-3">Contact your teacher or administrator to request enrolment.</p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {availableFet.map(s => (
-              <div key={s.subjectId} className="rounded-lg bg-gray-50 border border-dashed border-gray-200 px-4 py-3 flex items-start gap-3">
-                <BookOpen className="h-5 w-5 text-gray-300 mt-0.5 shrink-0" />
+              <div key={s.subjectId} className="rounded-lg bg-surface-subtle border border-dashed border-border px-4 py-3 flex items-start gap-3">
+                <BookOpen className="h-5 w-5 text-text-muted mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-600 truncate">{s.name}</p>
+                  <p className="font-medium text-text-secondary truncate">{s.name}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <PhaseBadge phase={s.capsPhase} />
-                    {s.code && <span className="text-xs text-gray-400">{s.code}</span>}
+                    {s.code && <span className="text-xs text-text-muted">{s.code}</span>}
                   </div>
                 </div>
               </div>
@@ -664,10 +664,10 @@ export default function PathwaysPage() {
   if (!hasPathways) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <Route className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">Pathways not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable the Pathways feature in Settings.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <Route className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">Pathways not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable the Pathways feature in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -677,15 +677,15 @@ export default function PathwaysPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Pathways</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Pathways</h1>
+        <p className="text-sm text-text-secondary mt-1">
           {isStaff ? "Subject enrolment management" : "Track your career goals and subject progress"}
         </p>
       </div>
 
       {/* Tab bar — students and staff see different tabs */}
       {identity === "Learner" && (
-        <div className="flex gap-1 border-b border-gray-200">
+        <div className="flex gap-1 border-b border-border">
           {([
             { id: "goals",      label: "Career Goals",      icon: Target,         show: true    },
             { id: "enrolment",  label: "Subject Enrolment", icon: BookOpen,       show: true    },
@@ -698,8 +698,8 @@ export default function PathwaysPage() {
                 onClick={() => setTab(id)}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors
                   ${tab === id
-                    ? "border-blue-600 text-blue-700"
-                    : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                    ? "border-primary text-primary"
+                    : "border-transparent text-text-secondary hover:text-text-primary"}`}
               >
                 <Icon className="h-4 w-4" />
                 {label}

@@ -81,14 +81,14 @@ export function FinanceSessionGuard() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-          <ShieldAlert className="h-6 w-6 text-amber-600" />
+      <div className="w-full max-w-sm rounded-2xl bg-surface-card p-6 shadow-2xl">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-warning-100">
+          <ShieldAlert className="h-6 w-6 text-warning-700" />
         </div>
-        <h2 className="text-center text-lg font-semibold text-gray-900">Your session is about to expire</h2>
-        <p className="mt-1.5 text-center text-sm text-gray-500">
+        <h2 className="text-center text-lg font-semibold text-text-primary">Your session is about to expire</h2>
+        <p className="mt-1.5 text-center text-sm text-text-secondary">
           For security, Finance sessions time out after a period of inactivity. You&apos;ll be signed out in{" "}
-          <span className="font-semibold text-gray-900 tabular-nums">
+          <span className="font-semibold text-text-primary tabular-nums">
             {mins}:{secs.toString().padStart(2, "0")}
           </span>
           .

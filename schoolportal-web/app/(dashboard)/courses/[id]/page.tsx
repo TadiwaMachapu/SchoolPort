@@ -95,13 +95,13 @@ export default function CourseDetailPage() {
       {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
     </div>
   );
-  if (error) return <div className="p-8 text-red-600">{error}</div>;
+  if (error) return <div className="p-8 text-danger-700">{error}</div>;
   if (!course) return null;
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
       {/* Back + header */}
-      <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 mb-4 transition-colors">
+      <button onClick={() => router.back()} className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary mb-4 transition-colors">
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
@@ -111,13 +111,13 @@ export default function CourseDetailPage() {
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">{course.title}</h1>
+            <h1 className="text-2xl font-semibold text-text-primary tracking-tight">{course.title}</h1>
             <Badge variant={course.isPublished ? "success" : "outline"}>
               {course.isPublished ? "Published" : "Draft"}
             </Badge>
           </div>
-          {course.description && <p className="text-sm text-gray-500 mt-1">{course.description}</p>}
-          <div className="flex items-center gap-3 mt-2 text-sm text-gray-400">
+          {course.description && <p className="text-sm text-text-secondary mt-1">{course.description}</p>}
+          <div className="flex items-center gap-3 mt-2 text-sm text-text-muted">
             <span className="flex items-center gap-1"><Layers className="h-3.5 w-3.5" /> {course.moduleCount} modules</span>
             <span className="flex items-center gap-1"><PlayCircle className="h-3.5 w-3.5" /> {course.lessonCount} lessons</span>
             <span>by {course.createdByName}</span>
@@ -135,20 +135,20 @@ export default function CourseDetailPage() {
         {course.modules.map((mod, idx) => {
           const isOpen = expandedModule === mod.moduleId;
           return (
-            <Card key={mod.moduleId} className={isOpen ? "ring-1 ring-blue-200" : ""}>
+            <Card key={mod.moduleId} className={isOpen ? "ring-1 ring-primary-200" : ""}>
               <CardHeader
-                className="cursor-pointer select-none py-4 hover:bg-gray-50 rounded-t-lg transition-colors"
+                className="cursor-pointer select-none py-4 hover:bg-surface-subtle rounded-t-lg transition-colors"
                 onClick={() => setExpandedModule(isOpen ? null : mod.moduleId)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-xs font-bold">
                       {idx + 1}
                     </div>
                     <CardTitle className="text-base">{mod.title}</CardTitle>
-                    <span className="text-xs text-gray-400">{mod.lessons.length} lesson{mod.lessons.length !== 1 ? "s" : ""}</span>
+                    <span className="text-xs text-text-muted">{mod.lessons.length} lesson{mod.lessons.length !== 1 ? "s" : ""}</span>
                   </div>
-                  <svg className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  <svg className={`h-4 w-4 text-text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -159,11 +159,11 @@ export default function CourseDetailPage() {
                 <CardContent className="pt-0 pb-4 space-y-1.5">
                   {mod.lessons.map((lesson, li) => (
                     <div key={lesson.lessonId}
-                      className="flex items-center gap-3 rounded-lg p-3 hover:bg-gray-50 transition-colors group">
+                      className="flex items-center gap-3 rounded-lg p-3 hover:bg-surface-subtle transition-colors group">
                       <span className="text-lg w-6 text-center">{LESSON_ICONS[lesson.type] ?? "📄"}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{lesson.title}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-sm font-medium text-text-primary truncate">{lesson.title}</p>
+                        <p className="text-xs text-text-muted">
                           {lesson.type}{lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ""}
                         </p>
                       </div>
@@ -175,12 +175,12 @@ export default function CourseDetailPage() {
 
                   {canEdit && (
                     addingLesson === mod.moduleId ? (
-                      <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+                      <div className="mt-2 rounded-xl border border-primary-200 bg-primary-50 p-4 space-y-3">
                         <Input placeholder="Lesson title" value={lessonForm.title}
                           onChange={e => setLessonForm(f => ({ ...f, title: e.target.value }))} autoFocus />
                         <select value={lessonForm.type}
                           onChange={e => setLessonForm(f => ({ ...f, type: e.target.value }))}
-                          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                          className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                           <option value="RichText">📄 Rich Text</option>
                           <option value="Video">▶️ Video (YouTube)</option>
                           <option value="PDF">📋 PDF Document</option>
@@ -193,7 +193,7 @@ export default function CourseDetailPage() {
                         {lessonForm.type === "RichText" && (
                           <textarea placeholder="Lesson content…" value={lessonForm.content}
                             onChange={e => setLessonForm(f => ({ ...f, content: e.target.value }))}
-                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" rows={4} />
+                            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none" rows={4} />
                         )}
                         {(lessonForm.type === "PDF" || lessonForm.type === "Link") && (
                           <Input placeholder="URL" value={lessonForm.externalUrl}
@@ -206,7 +206,7 @@ export default function CourseDetailPage() {
                       </div>
                     ) : (
                       <button onClick={() => setAddingLesson(mod.moduleId)}
-                        className="mt-1 w-full rounded-lg border border-dashed border-gray-300 py-2 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                        className="mt-1 w-full rounded-lg border border-dashed border-border py-2 text-sm text-text-muted hover:border-primary-400 hover:text-primary transition-colors">
                         + Add lesson
                       </button>
                     )
@@ -231,18 +231,18 @@ export default function CourseDetailPage() {
             </Card>
           ) : (
             <button onClick={() => setAddingModule(true)}
-              className="w-full rounded-xl border-2 border-dashed border-gray-300 py-4 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-600 transition-colors">
+              className="w-full rounded-xl border-2 border-dashed border-border py-4 text-sm text-text-muted hover:border-primary-400 hover:text-primary transition-colors">
               + Add Module
             </button>
           )
         )}
 
         {course.modules.length === 0 && !canEdit && (
-          <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
+          <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
             <div className="flex justify-center mb-3">
-              <Layers className="h-10 w-10 text-gray-300" />
+              <Layers className="h-10 w-10 text-text-muted" />
             </div>
-            <p className="text-gray-500">No modules yet</p>
+            <p className="text-text-secondary">No modules yet</p>
           </div>
         )}
       </div>

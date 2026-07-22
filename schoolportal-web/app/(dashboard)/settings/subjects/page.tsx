@@ -18,10 +18,10 @@ const PHASE_LABELS: Record<string, string> = {
 
 function PhaseBadge({ phase }: { phase?: string }) {
   if (phase === "SeniorPhase")
-    return <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-medium text-purple-700 ring-1 ring-inset ring-purple-200">Senior Phase</span>;
+    return <span className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-medium text-primary-700 ring-1 ring-inset ring-primary-200">Senior Phase</span>;
   if (phase === "FET")
-    return <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-200">FET</span>;
-  return <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-0.5 text-[10px] font-medium text-gray-500 ring-1 ring-inset ring-gray-200">All phases</span>;
+    return <span className="inline-flex items-center rounded-full bg-secondary-100 px-2 py-0.5 text-[10px] font-medium text-secondary-700 ring-1 ring-inset ring-secondary-300">FET</span>;
+  return <span className="inline-flex items-center rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-medium text-text-secondary ring-1 ring-inset ring-border">All phases</span>;
 }
 
 const EMPTY_FORM: SubjectForm = { name: "", code: "", description: "", capsPhase: "" };
@@ -143,11 +143,11 @@ export default function SubjectsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <button onClick={() => router.push("/settings")}
-            className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-2 transition-colors">
+            className="flex items-center gap-1 text-sm text-text-muted hover:text-text-secondary mb-2 transition-colors">
             <ChevronLeft className="h-3.5 w-3.5" /> Settings
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Subjects</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Subjects</h1>
+          <p className="text-sm text-text-secondary mt-1">
             Manage your school's subject list. {subjects.length} subject{subjects.length !== 1 ? "s" : ""} configured.
           </p>
         </div>
@@ -165,12 +165,12 @@ export default function SubjectsPage() {
 
       {/* Seed result banner */}
       {seedResult && (
-        <div className="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+        <div className="flex items-center justify-between rounded-lg bg-success-100 border border-success-500/20 px-4 py-3 text-sm text-success-700">
           <span>
             <span className="font-semibold">{seedResult.created}</span> subjects added
-            {seedResult.skipped > 0 && <span className="text-emerald-600"> · {seedResult.skipped} already existed (skipped)</span>}
+            {seedResult.skipped > 0 && <span className="text-success-700"> · {seedResult.skipped} already existed (skipped)</span>}
           </span>
-          <button onClick={() => setSeedResult(null)} className="text-emerald-600 hover:text-emerald-800">
+          <button onClick={() => setSeedResult(null)} className="text-success-700 hover:text-success-500">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -178,20 +178,20 @@ export default function SubjectsPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">{error}</div>
       )}
 
       {/* Add / Edit form */}
       {form && (
-        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">{editingId ? "Edit subject" : "New subject"}</h2>
-            <button onClick={cancelForm} className="text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+        <div className="rounded-2xl bg-surface-card border border-border shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-base font-semibold text-text-primary">{editingId ? "Edit subject" : "New subject"}</h2>
+            <button onClick={cancelForm} className="text-text-muted hover:text-text-secondary"><X className="h-4 w-4" /></button>
           </div>
           <div className="px-6 py-5 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Name <span className="text-red-500">*</span></label>
+                <label className="text-sm font-medium text-text-primary">Name <span className="text-danger-500">*</span></label>
                 <Input
                   value={form.name}
                   onChange={e => setForm(f => f && ({ ...f, name: e.target.value }))}
@@ -200,7 +200,7 @@ export default function SubjectsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Code</label>
+                <label className="text-sm font-medium text-text-primary">Code</label>
                 <Input
                   value={form.code}
                   onChange={e => setForm(f => f && ({ ...f, code: e.target.value }))}
@@ -209,11 +209,11 @@ export default function SubjectsPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">CAPS Phase</label>
+              <label className="text-sm font-medium text-text-primary">CAPS Phase</label>
               <select
                 value={form.capsPhase}
                 onChange={e => setForm(f => f && ({ ...f, capsPhase: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">All phases / Languages</option>
                 <option value="SeniorPhase">Senior Phase (Gr 7–9)</option>
@@ -221,20 +221,20 @@ export default function SubjectsPage() {
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Description</label>
+              <label className="text-sm font-medium text-text-primary">Description</label>
               <Input
                 value={form.description}
                 onChange={e => setForm(f => f && ({ ...f, description: e.target.value }))}
                 placeholder="Optional description"
               />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-danger-700">{error}</p>}
             <div className="flex items-center gap-3 pt-1">
               <Button onClick={save} loading={saving} className="gap-1.5">
                 <Check className="h-3.5 w-3.5" />
                 {editingId ? "Save changes" : "Create subject"}
               </Button>
-              <button onClick={cancelForm} className="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+              <button onClick={cancelForm} className="text-sm text-text-secondary hover:text-text-primary">Cancel</button>
             </div>
           </div>
         </div>
@@ -248,15 +248,15 @@ export default function SubjectsPage() {
           placeholder="Search subjects…"
           className="sm:max-w-xs"
         />
-        <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 self-start">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-surface-card p-1 self-start">
           {PHASE_TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setPhaseFilter(tab.key)}
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 phaseFilter === tab.key
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-text-secondary hover:bg-surface-subtle"
               }`}
             >
               {tab.label}
@@ -266,26 +266,26 @@ export default function SubjectsPage() {
       </div>
 
       {/* Subject list */}
-      <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+      <div className="rounded-2xl bg-surface-card border border-border shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-gray-400">
+          <div className="flex items-center justify-center py-16 text-text-muted">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <BookOpen className="h-10 w-10 text-gray-200 mb-3" />
-            <p className="text-sm font-medium text-gray-500">
+            <BookOpen className="h-10 w-10 text-text-muted mb-3" />
+            <p className="text-sm font-medium text-text-secondary">
               {subjects.length === 0 ? "No subjects yet" : "No subjects match your filter"}
             </p>
             {subjects.length === 0 && (
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-text-muted mt-1">
                 Use "Seed CAPS subjects" to add the standard South African curriculum, or add subjects manually.
               </p>
             )}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-[1fr_80px_120px_80px] gap-2 px-5 py-2.5 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <div className="grid grid-cols-[1fr_80px_120px_80px] gap-2 px-5 py-2.5 border-b border-border text-xs font-medium text-text-muted uppercase tracking-wider">
               <span>Name</span>
               <span>Code</span>
               <span>Phase</span>
@@ -293,33 +293,33 @@ export default function SubjectsPage() {
             </div>
             {filtered.map(s => (
               <div key={s.subjectId}
-                className="grid grid-cols-[1fr_80px_120px_80px] gap-2 items-center px-5 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 group">
+                className="grid grid-cols-[1fr_80px_120px_80px] gap-2 items-center px-5 py-3 border-b border-border last:border-0 hover:bg-surface-subtle group">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{s.name}</p>
-                  {s.description && <p className="text-xs text-gray-400 truncate">{s.description}</p>}
+                  <p className="text-sm font-medium text-text-primary">{s.name}</p>
+                  {s.description && <p className="text-xs text-text-muted truncate">{s.description}</p>}
                 </div>
-                <span className="font-mono text-xs text-gray-500">{s.code ?? "—"}</span>
+                <span className="font-mono text-xs text-text-secondary">{s.code ?? "—"}</span>
                 <PhaseBadge phase={s.capsPhase} />
                 <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                   {deletingId === s.subjectId ? (
                     <>
                       <button onClick={() => confirmDelete(s.subjectId)}
-                        className="h-7 px-2 rounded text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition-colors">
+                        className="h-7 px-2 rounded text-xs font-medium text-white bg-danger-500 hover:bg-danger-700 transition-colors">
                         Delete
                       </button>
                       <button onClick={() => setDeletingId(null)}
-                        className="h-7 px-2 rounded text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+                        className="h-7 px-2 rounded text-xs font-medium text-text-secondary hover:bg-surface-subtle transition-colors">
                         Cancel
                       </button>
                     </>
                   ) : (
                     <>
                       <button onClick={() => openEdit(s)}
-                        className="h-7 w-7 rounded flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                        className="h-7 w-7 rounded flex items-center justify-center text-text-muted hover:text-primary hover:bg-primary-50 transition-colors">
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button onClick={() => setDeletingId(s.subjectId)}
-                        className="h-7 w-7 rounded flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                        className="h-7 w-7 rounded flex items-center justify-center text-text-muted hover:text-danger-500 hover:bg-danger-100 transition-colors">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </>
@@ -332,7 +332,7 @@ export default function SubjectsPage() {
       </div>
 
       {filtered.length > 0 && (
-        <p className="text-xs text-gray-400 text-center">
+        <p className="text-xs text-text-muted text-center">
           Showing {filtered.length} of {subjects.length} subject{subjects.length !== 1 ? "s" : ""}
           {phaseFilter !== "all" && ` · filtered by ${phaseFilter === "none" ? "no phase" : PHASE_LABELS[phaseFilter] ?? phaseFilter}`}
         </p>

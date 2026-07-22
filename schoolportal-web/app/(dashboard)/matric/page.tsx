@@ -75,12 +75,12 @@ function StaffDashboard() {
       {/* Class selector */}
       <div className="flex items-end gap-3 flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-gray-600">Grade 12 Class</label>
+          <label className="text-xs font-medium text-text-secondary">Grade 12 Class</label>
           {classes.length === 0 ? (
-            <p className="text-sm text-gray-400 py-2">No Grade 12 classes found. Set GradeLevel = 12 on a class to use Matric Hub.</p>
+            <p className="text-sm text-text-muted py-2">No Grade 12 classes found. Set GradeLevel = 12 on a class to use Matric Hub.</p>
           ) : (
             <select value={classId} onChange={e => setClassId(e.target.value)}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
               {classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
             </select>
           )}
@@ -88,12 +88,12 @@ function StaffDashboard() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
         </div>
       )}
 
-      {loading && <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}
+      {loading && <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-text-muted" /></div>}
 
       {data && !loading && (
         <>
@@ -114,21 +114,21 @@ function StaffDashboard() {
           )}
 
           {data.learners.length === 0 ? (
-            <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-              <p className="text-gray-500">No learners with grade data in this class.</p>
+            <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+              <p className="text-text-secondary">No learners with grade data in this class.</p>
             </div>
           ) : (
             <div className="space-y-2">
               {data.learners.map(l => (
-                <div key={l.studentId} className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+                <div key={l.studentId} className="rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden">
                   <button
                     onClick={() => setExpanded(e => e === l.studentId ? null : l.studentId)}
-                    className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-surface-subtle transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div>
-                        <p className="font-semibold text-gray-900">{l.name}</p>
-                        <p className="text-xs text-gray-400">{l.studentNumber}</p>
+                        <p className="font-semibold text-text-primary">{l.name}</p>
+                        <p className="text-xs text-text-muted">{l.studentNumber}</p>
                       </div>
                       <OverallBadge status={l.overallStatus} />
                     </div>
@@ -136,29 +136,29 @@ function StaffDashboard() {
                       <div className="flex gap-1.5 items-center">
                         {l.subjects.slice(0, 7).map((s, i) => <SubjectStatusDot key={i} status={s.status} />)}
                       </div>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-text-muted">
                         {l.passCount}P · {l.atRiskCount}AR · {l.failCount}F
                       </span>
                     </div>
                   </button>
 
                   {expanded === l.studentId && (
-                    <div className="border-t border-gray-100">
+                    <div className="border-t border-border">
                       <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        <thead className="bg-surface-subtle">
+                          <tr className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                             <th className="px-5 py-2.5 text-left">Subject</th>
                             <th className="px-4 py-2.5 text-center">Average</th>
                             <th className="px-4 py-2.5 text-center">Status</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody className="divide-y divide-border">
                           {l.subjects.map((s, i) => {
                             const cfg = STATUS_CONFIG[s.status] ?? STATUS_CONFIG.NoData;
                             return (
-                              <tr key={i} className="hover:bg-gray-50">
-                                <td className="px-5 py-2.5 font-medium text-gray-800">{s.subjectName}</td>
-                                <td className="px-4 py-2.5 text-center font-semibold text-gray-800">{s.average}%</td>
+                              <tr key={i} className="hover:bg-surface-subtle">
+                                <td className="px-5 py-2.5 font-medium text-text-primary">{s.subjectName}</td>
+                                <td className="px-4 py-2.5 text-center font-semibold text-text-primary">{s.average}%</td>
                                 <td className="px-4 py-2.5 text-center">
                                   <span className={`inline-flex items-center gap-1 text-xs font-semibold ${cfg.colour}`}>
                                     <SubjectStatusDot status={s.status} /> {cfg.label}
@@ -169,7 +169,7 @@ function StaffDashboard() {
                           })}
                         </tbody>
                       </table>
-                      <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
+                      <div className="px-5 py-2.5 bg-surface-subtle border-t border-border text-xs text-text-muted">
                         NSC thresholds: Pass ≥ 40% · At Risk 30–39% · Fail &lt; 30%
                       </div>
                     </div>
@@ -189,9 +189,9 @@ function StaffDashboard() {
 function NscStatusTab({ data }: { data: MatricStudentResult }) {
   if (!data.isGrade12) {
     return (
-      <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-        <Award className="h-10 w-10 text-gray-200 mx-auto mb-3" />
-        <p className="text-gray-500">Matric Hub is available for Grade 12 learners only.</p>
+      <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+        <Award className="h-10 w-10 text-text-muted mx-auto mb-3" />
+        <p className="text-text-secondary">Matric Hub is available for Grade 12 learners only.</p>
       </div>
     );
   }
@@ -213,26 +213,26 @@ function NscStatusTab({ data }: { data: MatricStudentResult }) {
       </div>
 
       {data.subjects.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-          <p className="text-sm text-gray-400">No graded assessments yet.</p>
+        <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+          <p className="text-sm text-text-muted">No graded assessments yet.</p>
         </div>
       ) : (
-        <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <div className="rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <thead className="bg-surface-subtle border-b border-border">
+              <tr className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                 <th className="px-5 py-3 text-left">Subject</th>
                 <th className="px-4 py-3 text-center">Average</th>
                 <th className="px-4 py-3 text-center">NSC Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-border">
               {data.subjects.map((s, i) => {
                 const scfg = STATUS_CONFIG[s.status] ?? STATUS_CONFIG.NoData;
                 return (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-800">{s.subjectName}</td>
-                    <td className="px-4 py-3 text-center font-bold text-gray-900">{s.average}%</td>
+                  <tr key={i} className="hover:bg-surface-subtle">
+                    <td className="px-5 py-3 font-medium text-text-primary">{s.subjectName}</td>
+                    <td className="px-4 py-3 text-center font-bold text-text-primary">{s.average}%</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center gap-1 text-xs font-semibold ${scfg.colour}`}>
                         <SubjectStatusDot status={s.status} /> {scfg.label}
@@ -243,7 +243,7 @@ function NscStatusTab({ data }: { data: MatricStudentResult }) {
               })}
             </tbody>
           </table>
-          <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-500">
+          <div className="px-5 py-2.5 bg-surface-subtle border-t border-border text-xs text-text-muted">
             NSC thresholds: Pass ≥ 40% · At Risk 30–39% · Fail &lt; 30%
           </div>
         </div>
@@ -292,16 +292,16 @@ function PastPapersTab({ subjects, enrolledSubjects = [] }: { subjects: string[]
   }, {});
 
   const paperGroup = (title: string, group: MatricPastPaper[], key: string) => (
-    <div key={key} className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-      <div className="bg-gray-50 border-b border-gray-100 px-4 py-2.5">
-        <p className="text-sm font-semibold text-gray-700">{title}</p>
+    <div key={key} className="rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden">
+      <div className="bg-surface-subtle border-b border-border px-4 py-2.5">
+        <p className="text-sm font-semibold text-text-primary">{title}</p>
       </div>
-      <div className="divide-y divide-gray-50">
+      <div className="divide-y divide-border">
         {group.map(p => (
           <div key={p.matricPastPaperId} className="flex items-center justify-between px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-gray-800">Paper {p.paperNumber}</p>
-              {p.notes && <p className="text-xs text-gray-400">{p.notes}</p>}
+              <p className="text-sm font-medium text-text-primary">Paper {p.paperNumber}</p>
+              {p.notes && <p className="text-xs text-text-muted">{p.notes}</p>}
             </div>
             <div className="flex items-center gap-2">
               {p.hasMemo && p.memoUrl && (
@@ -309,7 +309,7 @@ function PastPapersTab({ subjects, enrolledSubjects = [] }: { subjects: string[]
                   href={p.memoUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-gray-500 border border-gray-200 rounded-md px-2 py-1 hover:border-gray-400 transition-colors"
+                  className="text-xs text-text-secondary border border-border rounded-md px-2 py-1 hover:border-text-muted transition-colors"
                 >
                   Memo
                 </a>
@@ -318,7 +318,7 @@ function PastPapersTab({ subjects, enrolledSubjects = [] }: { subjects: string[]
                 href={p.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs font-medium text-blue-600 border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 transition-colors"
+                className="flex items-center gap-1 text-xs font-medium text-primary border border-primary-200 rounded-md px-2 py-1 hover:bg-primary-50 transition-colors"
               >
                 Question Paper <ExternalLink className="h-3 w-3" />
               </a>
@@ -332,11 +332,11 @@ function PastPapersTab({ subjects, enrolledSubjects = [] }: { subjects: string[]
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <label className="text-xs font-medium text-gray-600">Subject</label>
+        <label className="text-xs font-medium text-text-secondary">Subject</label>
         <select
           value={selected}
           onChange={e => setSelected(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         >
           {enrolledSet.size > 0 ? (
             <>
@@ -351,34 +351,34 @@ function PastPapersTab({ subjects, enrolledSubjects = [] }: { subjects: string[]
             orderedSubjects.map(s => <option key={s} value={s}>{s}</option>)
           )}
         </select>
-        <label className="text-xs font-medium text-gray-600">Year</label>
+        <label className="text-xs font-medium text-text-secondary">Year</label>
         <select
           value={yearFilter}
           onChange={e => setYearFilter(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">All years</option>
           {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        <label className="text-xs font-medium text-gray-600">Type</label>
+        <label className="text-xs font-medium text-text-secondary">Type</label>
         <select
           value={typeFilter}
           onChange={e => setTypeFilter(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         >
           <option value="">All types</option>
           <option value="NSCNovember">November NSC</option>
           <option value="Exemplar">2014 NSC Exemplars</option>
         </select>
-        <span className="text-xs text-gray-400">All papers link to the official DBE website</span>
+        <span className="text-xs text-text-muted">All papers link to the official DBE website</span>
       </div>
 
-      {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>}
+      {loading && <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-text-muted" /></div>}
 
       {!loading && filtered.length === 0 && (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-          <FileText className="h-10 w-10 text-gray-200 mx-auto mb-2" />
-          <p className="text-sm text-gray-400">No past papers found for this subject.</p>
+        <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+          <FileText className="h-10 w-10 text-text-muted mx-auto mb-2" />
+          <p className="text-sm text-text-muted">No past papers found for this subject.</p>
         </div>
       )}
 
@@ -388,7 +388,7 @@ function PastPapersTab({ subjects, enrolledSubjects = [] }: { subjects: string[]
       {!loading && exemplars.length > 0 && (
         <div className="space-y-1.5">
           {paperGroup(`2014 NSC Exemplars — ${selected}`, exemplars, "exemplars-2014")}
-          <p className="text-xs text-gray-400 px-1">
+          <p className="text-xs text-text-muted px-1">
             Exemplars are model papers the DBE published in 2014 to show the current curriculum&apos;s
             exam format — use them as extra practice; they were never written as national exams.
           </p>
@@ -439,22 +439,22 @@ function QuizTab({ subjects }: { subjects: string[] }) {
           <select
             value={subject}
             onChange={e => setSubject(e.target.value)}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             {subjects.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <button
             onClick={startQuiz}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
             Start Quiz
           </button>
         </div>
-        <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-          <Brain className="h-10 w-10 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Select a subject and start a 10-question quiz.</p>
+        <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+          <Brain className="h-10 w-10 text-text-muted mx-auto mb-3" />
+          <p className="text-text-secondary text-sm">Select a subject and start a 10-question quiz.</p>
         </div>
       </div>
     );
@@ -472,15 +472,15 @@ function QuizTab({ subjects }: { subjects: string[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-700">{subject} — {questions.length} questions</p>
+        <p className="text-sm font-medium text-text-primary">{subject} — {questions.length} questions</p>
         {revealed && (
-          <span className={`text-sm font-bold ${score >= 7 ? "text-emerald-600" : score >= 5 ? "text-amber-600" : "text-red-600"}`}>
+          <span className={`text-sm font-bold ${score >= 7 ? "text-success-700" : score >= 5 ? "text-warning-700" : "text-danger-700"}`}>
             Score: {score}/{questions.length}
           </span>
         )}
         <button
           onClick={startQuiz}
-          className="text-xs text-gray-500 hover:text-gray-700 underline"
+          className="text-xs text-text-secondary hover:text-text-primary underline"
         >
           New quiz
         </button>
@@ -490,9 +490,9 @@ function QuizTab({ subjects }: { subjects: string[] }) {
         {questions.map((q, idx) => {
           const chosen = answers[q.matricQuizQuestionId];
           return (
-            <div key={q.matricQuizQuestionId} className="rounded-xl bg-white border border-gray-200 shadow-sm p-4 space-y-3">
-              <p className="text-sm font-medium text-gray-900">
-                <span className="text-gray-400 mr-2">{idx + 1}.</span>
+            <div key={q.matricQuizQuestionId} className="rounded-xl bg-surface-card border border-border shadow-sm p-4 space-y-3">
+              <p className="text-sm font-medium text-text-primary">
+                <span className="text-text-muted mr-2">{idx + 1}.</span>
                 {q.questionText}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -506,8 +506,8 @@ function QuizTab({ subjects }: { subjects: string[] }) {
                       disabled={revealed}
                       className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors
                         ${isChosen
-                          ? "border-blue-500 bg-blue-50 text-blue-800 font-medium"
-                          : "border-gray-200 hover:border-gray-400 text-gray-700"}`}
+                          ? "border-primary bg-primary-50 text-primary-800 font-medium"
+                          : "border-border hover:border-text-muted text-text-secondary"}`}
                     >
                       <span className="w-5 h-5 flex items-center justify-center rounded-full border border-current text-xs font-bold shrink-0">
                         {key}
@@ -517,7 +517,7 @@ function QuizTab({ subjects }: { subjects: string[] }) {
                   );
                 })}
               </div>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-text-muted">
                 Difficulty: {q.difficulty}
               </p>
             </div>
@@ -529,14 +529,14 @@ function QuizTab({ subjects }: { subjects: string[] }) {
         <button
           onClick={() => setRevealed(true)}
           disabled={!allAnswered}
-          className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+          className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-40 transition-colors"
         >
           {allAnswered ? "Submit & See Results" : `Answer all questions (${Object.keys(answers).length}/${questions.length})`}
         </button>
       )}
 
       {revealed && (
-        <div className={`rounded-xl border px-5 py-4 text-center ${score >= 7 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : score >= 5 ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-red-50 border-red-200 text-red-800"}`}>
+        <div className={`rounded-xl border px-5 py-4 text-center ${score >= 7 ? "bg-success-100 border-success-500/30 text-success-700" : score >= 5 ? "bg-warning-100 border-warning-500/30 text-warning-700" : "bg-danger-100 border-danger-500/30 text-danger-700"}`}>
           <p className="text-2xl font-bold">{score}/{questions.length}</p>
           <p className="text-sm mt-1">
             {score >= 7 ? "Excellent work! Keep it up." : score >= 5 ? "Good effort. Review the topics you missed." : "Keep practising — review the subject material and try again."}
@@ -569,13 +569,13 @@ function StudentMatricView() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>;
-  if (error || !data) return <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error || "Failed to load"}</div>;
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-text-muted" /></div>;
+  if (error || !data) return <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error || "Failed to load"}</div>;
   if (!data.isGrade12) {
     return (
-      <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-        <Award className="h-10 w-10 text-gray-200 mx-auto mb-3" />
-        <p className="text-gray-500">Matric Hub is available for Grade 12 learners only.</p>
+      <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+        <Award className="h-10 w-10 text-text-muted mx-auto mb-3" />
+        <p className="text-text-secondary">Matric Hub is available for Grade 12 learners only.</p>
       </div>
     );
   }
@@ -592,7 +592,7 @@ function StudentMatricView() {
   return (
     <div className="space-y-4">
       {/* Tab bar */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+      <div className="flex gap-1 bg-surface-subtle p-1 rounded-xl">
         {tabs.map(t => {
           const Icon = t.icon;
           return (
@@ -600,7 +600,7 @@ function StudentMatricView() {
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors
-                ${tab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                ${tab === t.key ? "bg-surface-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
             >
               <Icon className="h-3.5 w-3.5" /> {t.label}
             </button>
@@ -633,7 +633,7 @@ function StaffMatricView() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl max-w-md">
+      <div className="flex gap-1 bg-surface-subtle p-1 rounded-xl max-w-md">
         {tabs.map(t => {
           const Icon = t.icon;
           return (
@@ -641,7 +641,7 @@ function StaffMatricView() {
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors
-                ${tab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                ${tab === t.key ? "bg-surface-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
             >
               <Icon className="h-3.5 w-3.5" /> {t.label}
             </button>
@@ -666,10 +666,10 @@ export default function MatricPage() {
   if (!hasMatric) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <Award className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">Matric Hub not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable Matric Hub in Settings.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <Award className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">Matric Hub not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable Matric Hub in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -677,8 +677,8 @@ export default function MatricPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Matric Hub</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Matric Hub</h1>
+        <p className="text-sm text-text-secondary mt-1">
           {identity === "Learner"
             ? "Track your Grade 12 NSC subject results and readiness."
             : "Monitor Grade 12 learner progress against NSC pass requirements."}

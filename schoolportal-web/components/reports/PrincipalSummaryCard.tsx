@@ -15,8 +15,8 @@ interface Props {
 function renderMarkdown(text: string): string {
   return text
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/^## (.+)$/gm, '<p class="font-semibold text-gray-900 mt-3 mb-1">$1</p>')
-    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-gray-700">$1</li>')
+    .replace(/^## (.+)$/gm, '<p class="font-semibold text-text-primary mt-3 mb-1">$1</p>')
+    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-text-primary">$1</li>')
     .replace(/\n\n/g, '</p><p class="mb-2">')
     .replace(/\n/g, " ");
 }
@@ -47,15 +47,15 @@ export function PrincipalSummaryCard({ classId, termId, className, termNumber, y
   }
 
   return (
-    <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+    <div className="rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 bg-primary-50 border-b border-primary-100">
         <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-blue-100 p-2">
-            <FileText className="h-5 w-5 text-blue-700" />
+          <div className="rounded-lg bg-primary-100 p-2">
+            <FileText className="h-5 w-5 text-primary-700" />
           </div>
           <div>
-            <p className="font-semibold text-gray-900">{className} — Executive Summary</p>
-            <p className="text-xs text-gray-500">Term {termNumber} {year} · Admin view</p>
+            <p className="font-semibold text-text-primary">{className} — Executive Summary</p>
+            <p className="text-xs text-text-secondary">Term {termNumber} {year} · Admin view</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -63,7 +63,7 @@ export function PrincipalSummaryCard({ classId, termId, className, termNumber, y
             <button
               onClick={() => generate(true)}
               title="Regenerate"
-              className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
+              className="p-1.5 text-text-muted hover:text-text-secondary rounded"
             >
               <RefreshCw className="h-4 w-4" />
             </button>
@@ -75,7 +75,7 @@ export function PrincipalSummaryCard({ classId, termId, className, termNumber, y
             </Button>
           )}
           {state === "loading" && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" /> Generating…
             </div>
           )}
@@ -84,13 +84,13 @@ export function PrincipalSummaryCard({ classId, termId, className, termNumber, y
 
       {state === "idle" && (
         <div className="px-5 py-8 text-center">
-          <Sparkles className="h-8 w-8 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Click Generate Summary to create an AI-powered executive overview of this class&apos;s performance.</p>
+          <Sparkles className="h-8 w-8 text-text-muted mx-auto mb-3" />
+          <p className="text-sm text-text-secondary">Click Generate Summary to create an AI-powered executive overview of this class&apos;s performance.</p>
         </div>
       )}
 
       {state === "error" && (
-        <div className="px-5 py-4 text-sm text-red-700 bg-red-50">
+        <div className="px-5 py-4 text-sm text-danger-700 bg-danger-100">
           {error}
         </div>
       )}
@@ -98,11 +98,11 @@ export function PrincipalSummaryCard({ classId, termId, className, termNumber, y
       {state === "done" && summary && (
         <div className="px-5 py-5">
           <div
-            className="text-sm text-gray-800 leading-relaxed prose-sm"
+            className="text-sm text-text-primary leading-relaxed prose-sm"
             dangerouslySetInnerHTML={{ __html: `<p class="mb-2">${renderMarkdown(summary)}</p>` }}
           />
           {fromCache && (
-            <p className="text-[10px] text-gray-400 mt-3 pt-3 border-t border-gray-100">
+            <p className="text-[10px] text-text-muted mt-3 pt-3 border-t border-border">
               Cached response · Term {termNumber} {year}
             </p>
           )}

@@ -52,11 +52,11 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
   }
 
   return (
-    <div className="rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-start justify-between px-5 py-4 bg-gray-50 border-b border-gray-200 gap-3">
+    <div className="rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden">
+      <div className="flex items-start justify-between px-5 py-4 bg-surface-subtle border-b border-border gap-3">
         <div className="min-w-0">
-          <p className="font-semibold text-gray-900 truncate">{student.name}</p>
-          <p className="text-xs text-gray-400">{student.studentNumber}</p>
+          <p className="font-semibold text-text-primary truncate">{student.name}</p>
+          <p className="text-xs text-text-muted">{student.studentNumber}</p>
           <div className="flex flex-wrap gap-1.5 mt-2">
             {student.interventionBand && (
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -67,7 +67,7 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
               </span>
             )}
             {student.riskFlags.map(flag => {
-              const meta = FLAG_LABELS[flag] ?? { label: flag, colour: "bg-gray-100 text-gray-700" };
+              const meta = FLAG_LABELS[flag] ?? { label: flag, colour: "bg-surface-subtle text-text-primary" };
               return (
                 <span key={flag} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.colour}`}>
                   {meta.label}
@@ -81,7 +81,7 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
             <button
               onClick={() => generate(true)}
               title="Regenerate"
-              className="p-1.5 text-gray-400 hover:text-gray-600 rounded"
+              className="p-1.5 text-text-muted hover:text-text-secondary rounded"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
@@ -98,7 +98,7 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
             </Button>
           )}
           {state === "loading" && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…
             </div>
           )}
@@ -106,7 +106,7 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
       </div>
 
       {state === "error" && (
-        <div className="px-5 py-3 text-sm text-red-700 bg-red-50">
+        <div className="px-5 py-3 text-sm text-danger-700 bg-danger-100">
           {error}
         </div>
       )}
@@ -118,13 +118,13 @@ export function ReportCommentCard({ student, termId, termNumber, year }: Props) 
             <button
               onClick={copy}
               title="Copy comment"
-              className="shrink-0 p-1.5 text-gray-400 hover:text-gray-700 rounded mt-0.5"
+              className="shrink-0 p-1.5 text-text-muted hover:text-text-primary rounded mt-0.5"
             >
-              {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+              {copied ? <Check className="h-4 w-4 text-success-500" /> : <Copy className="h-4 w-4" />}
             </button>
           </div>
           {fromCache && (
-            <p className="text-[10px] text-gray-400 mt-2">Cached response · Term {termNumber} {year}</p>
+            <p className="text-[10px] text-text-muted mt-2">Cached response · Term {termNumber} {year}</p>
           )}
         </div>
       )}

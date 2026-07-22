@@ -46,10 +46,10 @@ export default function CoursesPage() {
   if (!hasVirtualClassroom) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <BookOpen className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">Virtual Classroom not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable the Virtual Classroom feature in Settings.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <BookOpen className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">Virtual Classroom not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable the Virtual Classroom feature in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -74,25 +74,25 @@ export default function CoursesPage() {
     <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Courses</h1>
-          <p className="text-sm text-gray-500 mt-1">{total} course{total !== 1 ? "s" : ""}</p>
+          <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Courses</h1>
+          <p className="text-sm text-text-secondary mt-1">{total} course{total !== 1 ? "s" : ""}</p>
         </div>
         {canCreate && <Button onClick={() => setShowCreate(true)}>+ New Course</Button>}
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-lg bg-danger-100 p-3 text-sm text-danger-700">{error}</div>
       )}
 
       {loading ? (
         <SkeletonCards count={6} />
       ) : courses.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
+        <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
           <div className="flex justify-center mb-4">
-            <BookOpen className="h-10 w-10 text-gray-300" />
+            <BookOpen className="h-10 w-10 text-text-muted" />
           </div>
-          <p className="text-lg font-medium text-gray-700">No courses yet</p>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-lg font-medium text-text-primary">No courses yet</p>
+          <p className="text-sm text-text-muted mt-1">
             {canCreate ? "Create your first course to get started" : "Published courses from your teachers will appear here"}
           </p>
           {canCreate && <Button className="mt-4" onClick={() => setShowCreate(true)}>Create Course</Button>}
@@ -111,15 +111,15 @@ export default function CoursesPage() {
                 )}
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">{c.title}</h3>
+                    <h3 className="font-semibold text-text-primary group-hover:text-primary transition-colors line-clamp-2">{c.title}</h3>
                     <Badge variant={c.isPublished ? "success" : "outline"} className="shrink-0">
                       {c.isPublished ? "Live" : "Draft"}
                     </Badge>
                   </div>
                   {c.description && (
-                    <p className="text-sm text-gray-500 line-clamp-2 mb-3">{c.description}</p>
+                    <p className="text-sm text-text-secondary line-clamp-2 mb-3">{c.description}</p>
                   )}
-                  <div className="flex items-center justify-between text-xs text-gray-400 mt-auto pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-xs text-text-muted mt-auto pt-2 border-t border-border">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
                         <Layers className="h-3.5 w-3.5" />
@@ -168,27 +168,27 @@ function CreateCourseModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">New Course</h2>
-          <button onClick={onClose} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+      <div className="w-full max-w-md rounded-2xl bg-surface-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h2 className="text-lg font-semibold text-text-primary">New Course</h2>
+          <button onClick={onClose} className="rounded-full p-1 text-text-muted hover:bg-surface-subtle hover:text-text-secondary transition-colors">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         <form onSubmit={submit} className="p-6 space-y-4">
-          {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+          {error && <div className="rounded-lg bg-danger-100 p-3 text-sm text-danger-700">{error}</div>}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Course title</label>
+            <label className="text-sm font-medium text-text-primary">Course title</label>
             <Input placeholder="e.g. Introduction to Algebra" value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required autoFocus />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="text-sm font-medium text-text-primary">Description <span className="text-text-muted font-normal">(optional)</span></label>
             <textarea rows={3} placeholder="What will students learn?" value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full rounded-md border border-border px-3 py-2 text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
           </div>
           <div className="flex gap-3 pt-1">
             <Button type="submit" className="flex-1" loading={saving}>Create Course</Button>

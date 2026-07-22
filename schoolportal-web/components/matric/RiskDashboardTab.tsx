@@ -38,15 +38,15 @@ export function BandChip({ band }: { band: string | null }) {
 }
 
 export function TrendIcon({ trend }: { trend: string }) {
-  if (trend === "declining") return <TrendingDown className="h-3.5 w-3.5 text-red-500" aria-label="Declining" />;
-  if (trend === "improving") return <TrendingUp className="h-3.5 w-3.5 text-emerald-500" aria-label="Improving" />;
-  if (trend === "stable") return <Minus className="h-3.5 w-3.5 text-gray-400" aria-label="Stable" />;
+  if (trend === "declining") return <TrendingDown className="h-3.5 w-3.5 text-danger-500" aria-label="Declining" />;
+  if (trend === "improving") return <TrendingUp className="h-3.5 w-3.5 text-success-500" aria-label="Improving" />;
+  if (trend === "stable") return <Minus className="h-3.5 w-3.5 text-text-muted" aria-label="Stable" />;
   return null;
 }
 
 export function ExportNote() {
   return (
-    <p className="flex items-center gap-1.5 text-xs text-gray-400">
+    <p className="flex items-center gap-1.5 text-xs text-text-muted">
       <FileText className="h-3.5 w-3.5 shrink-0" />
       For a printable report for pastoral discussions, use Smart Reports — this view is a live triage board.
     </p>
@@ -58,28 +58,28 @@ function LearnerRow({ learner }: { learner: LearnerRisk }) {
   const s = RISK_STYLES[learner.overallRisk] ?? RISK_STYLES.no_data;
 
   return (
-    <div className={`rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden ${s.border}`}>
+    <div className={`rounded-xl bg-surface-card border border-border shadow-sm overflow-hidden ${s.border}`}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-surface-subtle transition-colors"
       >
         <div className="flex items-center gap-3">
           <div>
-            <p className="font-semibold text-gray-900">{learner.name}</p>
-            <p className="text-xs text-gray-400">{learner.studentNumber} · {learner.className}</p>
+            <p className="font-semibold text-text-primary">{learner.name}</p>
+            <p className="text-xs text-text-muted">{learner.studentNumber} · {learner.className}</p>
           </div>
           <BandChip band={learner.interventionBand} />
           <RiskChip risk={learner.overallRisk} />
         </div>
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-text-muted">
             {learner.redCount}R · {learner.amberCount}A · {learner.greenCount}G
           </span>
           {learner.interventionBand && (
-            <span className="text-[11px] text-gray-500">
+            <span className="text-[11px] text-text-secondary">
               below 50% in {learner.subjectsBelowFifty} of {learner.capturedSubjectCount} captured
               {learner.capturedSubjectCount < learner.totalSubjectCount && (
-                <span className="text-amber-600"> · {learner.capturedSubjectCount}/{learner.totalSubjectCount} subjects captured</span>
+                <span className="text-warning-700"> · {learner.capturedSubjectCount}/{learner.totalSubjectCount} subjects captured</span>
               )}
             </span>
           )}
@@ -87,10 +87,10 @@ function LearnerRow({ learner }: { learner: LearnerRisk }) {
       </button>
 
       {open && learner.subjects.length > 0 && (
-        <div className="border-t border-gray-100">
+        <div className="border-t border-border">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <thead className="bg-surface-subtle">
+              <tr className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                 <th className="px-5 py-2.5 text-left">Subject</th>
                 <th className="px-4 py-2.5 text-center">Average</th>
                 <th className="px-4 py-2.5 text-center">Missing</th>
@@ -98,12 +98,12 @@ function LearnerRow({ learner }: { learner: LearnerRisk }) {
                 <th className="px-4 py-2.5 text-center">Risk</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-border">
               {learner.subjects.map(sub => (
-                <tr key={sub.subjectName} className="hover:bg-gray-50">
-                  <td className="px-5 py-2.5 font-medium text-gray-800">{sub.subjectName}</td>
-                  <td className="px-4 py-2.5 text-center font-semibold text-gray-800">{sub.average}%</td>
-                  <td className="px-4 py-2.5 text-center text-gray-600">{sub.missingAssessments || "—"}</td>
+                <tr key={sub.subjectName} className="hover:bg-surface-subtle">
+                  <td className="px-5 py-2.5 font-medium text-text-primary">{sub.subjectName}</td>
+                  <td className="px-4 py-2.5 text-center font-semibold text-text-primary">{sub.average}%</td>
+                  <td className="px-4 py-2.5 text-center text-text-secondary">{sub.missingAssessments || "—"}</td>
                   <td className="px-4 py-2.5"><div className="flex justify-center"><TrendIcon trend={sub.trend} /></div></td>
                   <td className="px-4 py-2.5 text-center"><RiskChip risk={sub.risk} /></td>
                 </tr>
@@ -131,10 +131,10 @@ export default function RiskDashboardTab() {
       .finally(() => setLoading(false));
   }, [classId]);
 
-  if (loading && !data) return <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-gray-400" /></div>;
+  if (loading && !data) return <div className="flex justify-center py-16"><Loader2 className="h-7 w-7 animate-spin text-text-muted" /></div>;
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+      <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">
         <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
       </div>
     );
@@ -145,11 +145,11 @@ export default function RiskDashboardTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <label className="text-xs font-medium text-gray-600">Grade 12 Class</label>
+          <label className="text-xs font-medium text-text-secondary">Grade 12 Class</label>
           <select
             value={classId}
             onChange={e => setClassId(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">All my classes</option>
             {data.classes.map(c => <option key={c.classId} value={c.classId}>{c.name}</option>)}
@@ -172,8 +172,8 @@ export default function RiskDashboardTab() {
       </div>
 
       {data.learners.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center">
-          <p className="text-gray-500">No Grade 12 learners in your scope yet.</p>
+        <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+          <p className="text-text-secondary">No Grade 12 learners in your scope yet.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -181,13 +181,13 @@ export default function RiskDashboardTab() {
         </div>
       )}
 
-      <div className="space-y-1 text-xs text-gray-400">
+      <div className="space-y-1 text-xs text-text-muted">
         <p>
-          <span className="font-semibold text-gray-500">Intervention band</span> (50% line, captured subjects only):
+          <span className="font-semibold text-text-secondary">Intervention band</span> (50% line, captured subjects only):
           Watch = below 50% in 1 subject · At Risk = 2 subjects · Priority = 3+ subjects or declining more than 10% since last term.
         </p>
         <p>
-          <span className="font-semibold text-gray-500">Per-subject</span> — Red: below 40%, 3+ missing, or declining below 60% ·
+          <span className="font-semibold text-text-secondary">Per-subject</span> — Red: below 40%, 3+ missing, or declining below 60% ·
           Amber: 40–49% or 1–2 missing · Green: 50%+ with nothing missing. Trend compares this term to last term (±5%).
         </p>
       </div>

@@ -192,28 +192,28 @@ export default function OnboardingPage() {
   const progress = ((step - 1) / 5) * 100;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-surface-page flex flex-col">
       {/* ── Top bar ─────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between shrink-0">
+      <header className="bg-surface-card border-b border-border px-6 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: primaryColor }}>
             {schoolName ? schoolName.charAt(0).toUpperCase() : "S"}
           </div>
           <div>
-            <p className="text-xs text-gray-400 font-medium">School Portal</p>
-            <p className="text-sm font-semibold text-gray-900 leading-none mt-0.5">{schoolName || "Setup Wizard"}</p>
+            <p className="text-xs text-text-muted font-medium">School Portal</p>
+            <p className="text-sm font-semibold text-text-primary leading-none mt-0.5">{schoolName || "Setup Wizard"}</p>
           </div>
         </div>
-        <button onClick={() => router.push("/dashboard")} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+        <button onClick={() => router.push("/dashboard")} className="text-sm text-text-muted hover:text-text-secondary transition-colors">
           Exit to dashboard →
         </button>
       </header>
 
       {/* ── Step progress ────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 px-6 py-4 shrink-0">
+      <div className="bg-surface-card border-b border-border px-6 py-4 shrink-0">
         {/* Bar */}
-        <div className="relative h-1 bg-gray-100 rounded-full mb-4 max-w-2xl mx-auto">
-          <div className="absolute left-0 top-0 h-full rounded-full bg-blue-600 transition-all duration-500"
+        <div className="relative h-1 bg-surface-subtle rounded-full mb-4 max-w-2xl mx-auto">
+          <div className="absolute left-0 top-0 h-full rounded-full bg-primary transition-all duration-500"
             style={{ width: `${progress}%` }} />
         </div>
         {/* Steps */}
@@ -224,14 +224,14 @@ export default function OnboardingPage() {
             return (
               <div key={n} className="flex flex-col items-center gap-1.5">
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-all ${
-                  done    ? "bg-emerald-500 text-white" :
-                  current ? "bg-blue-600 text-white ring-4 ring-blue-100" :
-                            "bg-gray-100 text-gray-400"
+                  done    ? "bg-success-500 text-white" :
+                  current ? "bg-primary text-white ring-4 ring-primary-100" :
+                            "bg-surface-subtle text-text-muted"
                 }`}>
                   {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </div>
                 <span className={`text-[10px] font-medium hidden sm:block ${
-                  current ? "text-blue-700" : done ? "text-emerald-600" : "text-gray-400"
+                  current ? "text-primary" : done ? "text-success-700" : "text-text-muted"
                 }`}>{label}</span>
               </div>
             );
@@ -243,7 +243,7 @@ export default function OnboardingPage() {
       <main className="flex-1 flex flex-col items-center px-4 py-8">
         <div className="w-full max-w-2xl space-y-6">
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">{error}</div>
           )}
 
           {step === 1 && (
@@ -337,7 +337,7 @@ function Step1SchoolInfo({ schoolName, setSchoolName, schoolDomain, setSchoolDom
           </Field>
           <Field label="Welcome message">
             <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="Welcome to our school portal!"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full rounded-md border border-border px-3 py-2 text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
           </Field>
         </div>
       </WizardCard>
@@ -347,7 +347,7 @@ function Step1SchoolInfo({ schoolName, setSchoolName, schoolDomain, setSchoolDom
           <Field label="Primary colour">
             <div className="flex items-center gap-3">
               <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)}
-                className="h-10 w-14 rounded border border-gray-300 cursor-pointer" />
+                className="h-10 w-14 rounded border border-border cursor-pointer" />
               <div className="flex-1 h-10 rounded-lg flex items-center px-4 text-sm font-medium text-white shadow-sm"
                 style={{ backgroundColor: primaryColor }}>
                 Preview — sidebar active state
@@ -358,9 +358,9 @@ function Step1SchoolInfo({ schoolName, setSchoolName, schoolDomain, setSchoolDom
             <Input value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://yourschool.com/logo.png" />
           </Field>
           {logoUrl && (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-              <img src={logoUrl} alt="Logo preview" className="h-10 w-10 rounded object-contain border border-gray-200 bg-white" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-              <span className="text-sm text-gray-500">Logo preview</span>
+            <div className="flex items-center gap-3 p-3 bg-surface-subtle rounded-lg border border-border">
+              <img src={logoUrl} alt="Logo preview" className="h-10 w-10 rounded object-contain border border-border bg-surface-card" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              <span className="text-sm text-text-secondary">Logo preview</span>
             </div>
           )}
         </div>
@@ -370,13 +370,13 @@ function Step1SchoolInfo({ schoolName, setSchoolName, schoolDomain, setSchoolDom
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {SIZE_OPTIONS.map(o => (
             <button key={o.key} type="button" onClick={() => setSizePreset(o.key)}
-              className={`rounded-xl border p-4 text-left transition-all ${sizePreset === o.key ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/40" : "border-gray-200 hover:border-gray-300"}`}>
-              <p className="text-sm font-semibold text-gray-900">{o.label}</p>
-              <p className="mt-1 text-xs text-gray-500">{o.hint}</p>
+              className={`rounded-xl border p-4 text-left transition-all ${sizePreset === o.key ? "border-primary ring-2 ring-primary/30 bg-primary-50/40" : "border-border hover:border-text-muted"}`}>
+              <p className="text-sm font-semibold text-text-primary">{o.label}</p>
+              <p className="mt-1 text-xs text-text-secondary">{o.hint}</p>
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-gray-400">The preset is just a starting point — the Positions admin can assign any position regardless of size.</p>
+        <p className="mt-3 text-xs text-text-muted">The preset is just a starting point — the Positions admin can assign any position regardless of size.</p>
       </WizardCard>
 
       <StepNav saving={saving} onNext={onNext} onSkip={onSkip} nextLabel="Save & Continue" />
@@ -408,23 +408,23 @@ function Step2Structure({ classes, setClasses, saving, onNext, onBack, onSkip }:
           {/* Add form */}
           <div className="grid grid-cols-12 gap-2 items-end">
             <div className="col-span-5">
-              <label className="text-xs font-medium text-gray-600 block mb-1">Class name *</label>
+              <label className="text-xs font-medium text-text-secondary block mb-1">Class name *</label>
               <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="Grade 7A" onKeyDown={e => e.key === "Enter" && add()} autoFocus />
             </div>
             <div className="col-span-3">
-              <label className="text-xs font-medium text-gray-600 block mb-1">Grade level</label>
+              <label className="text-xs font-medium text-text-secondary block mb-1">Grade level</label>
               <Input type="number" min={1} max={13} value={form.gradeLevel}
                 onChange={e => setForm(f => ({ ...f, gradeLevel: e.target.value }))} placeholder="7" />
             </div>
             <div className="col-span-3">
-              <label className="text-xs font-medium text-gray-600 block mb-1">Capacity</label>
+              <label className="text-xs font-medium text-text-secondary block mb-1">Capacity</label>
               <Input type="number" min={1} value={form.maxCapacity}
                 onChange={e => setForm(f => ({ ...f, maxCapacity: e.target.value }))} placeholder="30" />
             </div>
             <div className="col-span-1">
               <button onClick={add} disabled={!form.name.trim()}
-                className="h-10 w-10 rounded-lg bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 transition-colors">
+                className="h-10 w-10 rounded-lg bg-primary text-white flex items-center justify-center hover:bg-primary-700 disabled:opacity-40 transition-colors">
                 <Plus className="h-4 w-4" />
               </button>
             </div>
@@ -432,31 +432,31 @@ function Step2Structure({ classes, setClasses, saving, onNext, onBack, onSkip }:
 
           {/* Class list */}
           {classes.length > 0 ? (
-            <div className="border border-gray-200 rounded-lg overflow-hidden mt-2">
+            <div className="border border-border rounded-lg overflow-hidden mt-2">
               {classes.map((c, i) => (
-                <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-border last:border-0 hover:bg-surface-subtle">
                   <div className="flex items-center gap-3">
-                    <div className="h-7 w-7 rounded-md bg-blue-50 flex items-center justify-center">
-                      <BookOpen className="h-3.5 w-3.5 text-blue-600" />
+                    <div className="h-7 w-7 rounded-md bg-primary-50 flex items-center justify-center">
+                      <BookOpen className="h-3.5 w-3.5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{c.name}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-sm font-medium text-text-primary">{c.name}</p>
+                      <p className="text-xs text-text-muted">
                         {c.gradeLevel ? `Grade ${c.gradeLevel}` : "No grade"} · {c.maxCapacity ? `${c.maxCapacity} students` : "No capacity limit"}
-                        {c.classId && <span className="ml-2 text-emerald-600">✓ saved</span>}
+                        {c.classId && <span className="ml-2 text-success-700">✓ saved</span>}
                       </p>
                     </div>
                   </div>
-                  <button onClick={() => remove(i)} className="p-1.5 rounded-md text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+                  <button onClick={() => remove(i)} className="p-1.5 rounded-md text-text-muted hover:bg-danger-100 hover:text-danger-500 transition-colors">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-gray-200 rounded-xl">
-              <GraduationCap className="h-8 w-8 text-gray-300 mb-2" />
-              <p className="text-sm text-gray-500">No classes yet — add your first class above</p>
+            <div className="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-border rounded-xl">
+              <GraduationCap className="h-8 w-8 text-text-muted mb-2" />
+              <p className="text-sm text-text-secondary">No classes yet — add your first class above</p>
             </div>
           )}
         </div>
@@ -516,31 +516,31 @@ function StepCsvImport({ role, displayRole, result, setResult, onNext, onBack, o
           <div className={`flex items-start gap-4 p-4 rounded-xl bg-${color}-50 border border-${color}-100`}>
             <Icon className={`h-5 w-5 text-${color}-600 mt-0.5 shrink-0`} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">1. Download the template</p>
-              <p className="text-xs text-gray-500 mt-0.5">Fill in FirstName, LastName, Email, Role (must be <code className="bg-white px-1 rounded">{role}</code>)</p>
+              <p className="text-sm font-medium text-text-primary">1. Download the template</p>
+              <p className="text-xs text-text-secondary mt-0.5">Fill in FirstName, LastName, Email, Role (must be <code className="bg-surface-card px-1 rounded">{role}</code>)</p>
             </div>
             <button onClick={downloadTemplate}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors shrink-0">
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-surface-card px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-surface-subtle transition-colors shrink-0">
               <Download className="h-3.5 w-3.5" /> Template
             </button>
           </div>
 
           {/* Upload zone */}
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">2. Upload your CSV</p>
+            <p className="text-sm font-medium text-text-primary mb-2">2. Upload your CSV</p>
             <div
               onClick={() => inputRef.current?.click()}
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl py-8 px-4 cursor-pointer transition-colors ${
-                file ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                file ? "border-primary bg-primary-50" : "border-border hover:border-primary-300 hover:bg-surface-subtle"
               }`}
             >
-              <Upload className="h-7 w-7 text-gray-400 mb-2" />
+              <Upload className="h-7 w-7 text-text-muted mb-2" />
               {file ? (
-                <p className="text-sm text-blue-700 font-medium">{file.name}</p>
+                <p className="text-sm text-primary font-medium">{file.name}</p>
               ) : (
                 <>
-                  <p className="text-sm text-gray-600">Click to select CSV</p>
-                  <p className="text-xs text-gray-400 mt-1">.csv files only</p>
+                  <p className="text-sm text-text-secondary">Click to select CSV</p>
+                  <p className="text-xs text-text-muted mt-1">.csv files only</p>
                 </>
               )}
               <input ref={inputRef} type="file" accept=".csv" className="hidden"
@@ -556,23 +556,23 @@ function StepCsvImport({ role, displayRole, result, setResult, onNext, onBack, o
           </div>
 
           {/* Results */}
-          {error && <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">{error}</div>}
+          {error && <div className="rounded-lg bg-danger-100 px-3 py-2 text-sm text-danger-700">{error}</div>}
           {result && (
-            <div className="rounded-xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border-b border-gray-200">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            <div className="rounded-xl border border-border overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 bg-success-100 border-b border-border">
+                <CheckCircle2 className="h-5 w-5 text-success-700" />
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{result.created} {label.toLowerCase()}{result.created !== 1 ? "s" : ""} created</p>
+                  <p className="text-sm font-semibold text-text-primary">{result.created} {label.toLowerCase()}{result.created !== 1 ? "s" : ""} created</p>
                   {result.failed.length > 0 && (
-                    <p className="text-xs text-amber-600 mt-0.5">{result.failed.length} row{result.failed.length > 1 ? "s" : ""} skipped</p>
+                    <p className="text-xs text-warning-700 mt-0.5">{result.failed.length} row{result.failed.length > 1 ? "s" : ""} skipped</p>
                   )}
                 </div>
               </div>
               {result.failed.length > 0 && (
                 <div className="px-4 py-3 space-y-1 max-h-32 overflow-y-auto">
                   {result.failed.map((f, i) => (
-                    <p key={i} className="text-xs text-gray-600">
-                      <span className="font-medium text-gray-800">Row {f.row}:</span> {f.reason}
+                    <p key={i} className="text-xs text-text-secondary">
+                      <span className="font-medium text-text-primary">Row {f.row}:</span> {f.reason}
                     </p>
                   ))}
                 </div>
@@ -601,8 +601,8 @@ function Step5Assign({ classes, teachers, assignments, setAssignments, saving, o
       <div className="space-y-6">
         <WizardCard title="Assign Teachers" subtitle="No classes were created in the previous step">
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <BookOpen className="h-10 w-10 text-gray-300 mb-3" />
-            <p className="text-sm text-gray-500">You can assign teachers to classes later from the Classes page.</p>
+            <BookOpen className="h-10 w-10 text-text-muted mb-3" />
+            <p className="text-sm text-text-secondary">You can assign teachers to classes later from the Classes page.</p>
           </div>
         </WizardCard>
         <StepNav onNext={onSkip} onBack={onBack} nextLabel="Continue" />
@@ -615,19 +615,19 @@ function Step5Assign({ classes, teachers, assignments, setAssignments, saving, o
       <WizardCard title="Assign Teachers to Classes" subtitle="Match each class with a lead teacher — you can change this anytime">
         <div className="space-y-3">
           {teachers.length === 0 ? (
-            <div className="text-sm text-gray-500 py-4 text-center">
+            <div className="text-sm text-text-secondary py-4 text-center">
               No teachers imported yet — you can assign teachers from the Classes page later.
             </div>
           ) : savedClasses.map(cls => (
-            <div key={cls.classId} className="flex items-center gap-3 py-2.5 border-b border-gray-100 last:border-0">
-              <div className="h-8 w-8 rounded-md bg-blue-50 flex items-center justify-center shrink-0">
-                <BookOpen className="h-4 w-4 text-blue-600" />
+            <div key={cls.classId} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+              <div className="h-8 w-8 rounded-md bg-primary-50 flex items-center justify-center shrink-0">
+                <BookOpen className="h-4 w-4 text-primary" />
               </div>
-              <p className="text-sm font-medium text-gray-900 flex-1 truncate">{cls.name}</p>
+              <p className="text-sm font-medium text-text-primary flex-1 truncate">{cls.name}</p>
               <select
                 value={assignments[cls.classId!] ?? ""}
                 onChange={e => setAssignments({ ...assignments, [cls.classId!]: e.target.value })}
-                className="rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[200px]"
+                className="rounded-md border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary max-w-[200px]"
               >
                 <option value="">— unassigned —</option>
                 {teachers.map(t => (
@@ -697,19 +697,19 @@ function FeatureToggle({ flag, label, description, hint, features, setFeatures }
   features: Features; setFeatures: (f: Features) => void;
 }) {
   return (
-    <div className="flex items-start justify-between py-2.5 border-b border-gray-100 last:border-0 gap-4">
+    <div className="flex items-start justify-between py-2.5 border-b border-border last:border-0 gap-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-gray-900">{label}</p>
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-sm font-medium text-text-primary">{label}</p>
+        <p className="text-xs text-text-secondary">{description}</p>
         {hint && features[flag] && (
-          <p className="text-xs text-blue-600 mt-0.5">{hint}</p>
+          <p className="text-xs text-primary mt-0.5">{hint}</p>
         )}
       </div>
       <button
         onClick={() => setFeatures({ ...features, [flag]: !features[flag] })}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none mt-0.5 ${features[flag] ? "bg-blue-600" : "bg-gray-200"}`}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none mt-0.5 ${features[flag] ? "bg-primary" : "bg-border"}`}
       >
-        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${features[flag] ? "translate-x-4" : "translate-x-0.5"}`} />
+        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-surface-card shadow transition-transform ${features[flag] ? "translate-x-4" : "translate-x-0.5"}`} />
       </button>
     </div>
   );
@@ -736,7 +736,7 @@ function Step6Launch({ classes, teacherResult, studentResult, features, setFeatu
         <div className="space-y-5">
           {PILLARS.map(({ pillar, modules }) => (
             <div key={pillar}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">{pillar}</p>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">{pillar}</p>
               <div>
                 {modules.map(({ key, label, description, hint }) => (
                   <FeatureToggle
@@ -757,10 +757,10 @@ function Step6Launch({ classes, teacherResult, studentResult, features, setFeatu
 
       {/* Launch button */}
       <div className="flex items-center gap-3 justify-between">
-        <button onClick={onBack} className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <button onClick={onBack} className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-subtle transition-colors">
           <ChevronLeft className="h-4 w-4" /> Back
         </button>
-        <Button onClick={onLaunch} loading={saving} size="lg" className="gap-2 px-8 bg-emerald-600 hover:bg-emerald-700">
+        <Button onClick={onLaunch} loading={saving} size="lg" className="gap-2 px-8 bg-success-500 hover:bg-success-700">
           <Rocket className="h-4 w-4" />
           Launch School Portal
         </Button>
@@ -772,10 +772,10 @@ function Step6Launch({ classes, teacherResult, studentResult, features, setFeatu
 // ── Shared helpers ───────────────────────────────────────────────
 function WizardCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-white border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100">
-        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-        {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+    <div className="rounded-2xl bg-surface-card border border-border shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-border">
+        <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+        {subtitle && <p className="text-sm text-text-secondary mt-0.5">{subtitle}</p>}
       </div>
       <div className="px-6 py-5">{children}</div>
     </div>
@@ -785,8 +785,8 @@ function WizardCard({ title, subtitle, children }: { title: string; subtitle?: s
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-gray-700">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      <label className="text-sm font-medium text-text-primary">
+        {label}{required && <span className="text-danger-500 ml-0.5">*</span>}
       </label>
       {children}
     </div>
@@ -800,13 +800,13 @@ function StepNav({ saving, onNext, onBack, onSkip, nextLabel = "Next" }: {
   return (
     <div className="flex items-center justify-between gap-3">
       {onBack ? (
-        <button onClick={onBack} className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+        <button onClick={onBack} className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-subtle transition-colors">
           <ChevronLeft className="h-4 w-4" /> Back
         </button>
       ) : <div />}
       <div className="flex items-center gap-3">
         {onSkip && (
-          <button onClick={onSkip} className="text-sm text-gray-400 hover:text-gray-600 transition-colors px-3 py-2">
+          <button onClick={onSkip} className="text-sm text-text-muted hover:text-text-secondary transition-colors px-3 py-2">
             Skip for now
           </button>
         )}
@@ -820,10 +820,10 @@ function StepNav({ saving, onNext, onBack, onSkip, nextLabel = "Next" }: {
 
 function SummaryStat({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color: string }) {
   return (
-    <div className="flex flex-col items-center gap-1 py-4 bg-gray-50 rounded-xl border border-gray-100">
+    <div className="flex flex-col items-center gap-1 py-4 bg-surface-subtle rounded-xl border border-border">
       <Icon className={`h-6 w-6 text-${color}-500`} />
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-500 font-medium">{label}</p>
+      <p className="text-2xl font-bold text-text-primary">{value}</p>
+      <p className="text-xs text-text-secondary font-medium">{label}</p>
     </div>
   );
 }

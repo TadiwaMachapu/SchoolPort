@@ -10,9 +10,9 @@ import { EmptyState } from "./EmptyState";
 // card opens that subject's detailed marks (Tab 2).
 
 function TrendIcon({ trend }: { trend: MyAcademicsSubject["trend"] }) {
-  if (trend === "up") return <TrendingUp className="h-4 w-4 text-emerald-600" aria-label="Improving" />;
-  if (trend === "down") return <TrendingDown className="h-4 w-4 text-rose-600" aria-label="Declining" />;
-  if (trend === "flat") return <Minus className="h-4 w-4 text-gray-400" aria-label="Steady" />;
+  if (trend === "up") return <TrendingUp className="h-4 w-4 text-success-500" aria-label="Improving" />;
+  if (trend === "down") return <TrendingDown className="h-4 w-4 text-danger-500" aria-label="Declining" />;
+  if (trend === "flat") return <Minus className="h-4 w-4 text-text-muted" aria-label="Steady" />;
   return null;
 }
 
@@ -42,11 +42,11 @@ export function SubjectsTab({
           <button
             key={s.classSubjectId}
             onClick={() => onSelectSubject(s.classSubjectId)}
-            className="group flex flex-col rounded-xl border border-gray-100 bg-white p-4 text-left shadow-sm ring-1 ring-gray-100/50 transition-all hover:border-gray-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="group flex flex-col rounded-xl border border-border bg-surface-card p-4 text-left shadow-sm ring-1 ring-border/50 transition-all hover:border-border hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <div className="min-w-0">
-              <h3 className="truncate text-base font-semibold leading-tight text-gray-900">{s.subjectName}</h3>
-              <p className="mt-0.5 truncate text-xs text-gray-500">{s.teacherName ?? "Unassigned"}</p>
+              <h3 className="truncate text-base font-semibold leading-tight text-text-primary">{s.subjectName}</h3>
+              <p className="mt-0.5 truncate text-xs text-text-secondary">{s.teacherName ?? "Unassigned"}</p>
             </div>
 
             <div className="mt-3 flex min-h-8 items-end gap-2">
@@ -57,19 +57,19 @@ export function SubjectsTab({
                   <CapsBadge percentage={avg!} compact className="ml-auto" />
                 </>
               ) : (
-                <span className="text-sm font-medium text-gray-400">No marks yet</span>
+                <span className="text-sm font-medium text-text-muted">No marks yet</span>
               )}
             </div>
 
             <div className="mt-3">
               {/* 4px track, light-grey, always visible so it reads as a progress bar even at 0%. */}
-              <div className="h-1 w-full overflow-hidden rounded-full bg-gray-200">
+              <div className="h-1 w-full overflow-hidden rounded-full bg-surface-subtle">
                 <div
-                  className={cn("h-full rounded-full transition-all", hasAvg ? "bg-blue-500" : "bg-gray-300")}
+                  className={cn("h-full rounded-full transition-all", hasAvg ? "bg-primary" : "bg-text-muted")}
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-[11px] text-gray-500">
+              <p className="mt-1.5 text-[11px] text-text-secondary">
                 {s.tasksAssessed} of {s.tasksTotal} {s.tasksTotal === 1 ? "task" : "tasks"} assessed
               </p>
             </div>

@@ -61,48 +61,48 @@ function SettingsPanel() {
     }
   }
 
-  if (!config) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>;
+  if (!config) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-text-muted" /></div>;
 
   return (
     <div className="space-y-6">
       {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
         </div>
       )}
 
       {/* Provider config */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
-        <h3 className="font-semibold text-gray-900">Provider Configuration</h3>
+      <div className="rounded-xl border border-border bg-surface-card shadow-sm p-5 space-y-4">
+        <h3 className="font-semibold text-text-primary">Provider Configuration</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">Provider</label>
+            <label className="text-xs font-medium text-text-secondary">Provider</label>
             <select value={config.provider} onChange={e => setConfig(c => c && ({ ...c, provider: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
               {PROVIDERS.map(p => <option key={p}>{p}</option>)}
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">Phone Number ID</label>
+            <label className="text-xs font-medium text-text-secondary">Phone Number ID</label>
             <Input value={config.phoneNumberId ?? ""} onChange={e => setConfig(c => c && ({ ...c, phoneNumberId: e.target.value }))}
               placeholder="From Meta / provider dashboard" />
           </div>
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs font-medium text-gray-600">API Key / Auth Token</label>
+            <label className="text-xs font-medium text-text-secondary">API Key / Auth Token</label>
             <Input type="password" value={config.apiKey ?? ""} onChange={e => setConfig(c => c && ({ ...c, apiKey: e.target.value }))}
               placeholder="Keep secret — stored encrypted" />
           </div>
         </div>
         {config.provider === "None" && (
-          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded px-3 py-2">
+          <p className="text-xs text-warning-700 bg-warning-100 border border-warning-500/20 rounded px-3 py-2">
             No provider configured. Messages will be logged as <strong>Simulated</strong> — useful for testing the message flow without real delivery.
           </p>
         )}
       </div>
 
       {/* Triggers */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
-        <h3 className="font-semibold text-gray-900">Automatic Triggers</h3>
+      <div className="rounded-xl border border-border bg-surface-card shadow-sm p-5 space-y-4">
+        <h3 className="font-semibold text-text-primary">Automatic Triggers</h3>
         {[
           { key: "triggerAbsence" as const,      label: "Absent learner alert",   desc: "Notifies parent when their child is marked absent" },
           { key: "triggerFeeReminder" as const,  label: "Fee due reminder",       desc: "Sent when admin triggers a fee reminder batch" },
@@ -110,20 +110,20 @@ function SettingsPanel() {
         ].map(t => (
           <label key={t.key} className="flex items-start gap-3 cursor-pointer group">
             <input type="checkbox" checked={config[t.key]} onChange={e => setConfig(c => c && ({ ...c, [t.key]: e.target.checked }))}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
             <div>
-              <p className="text-sm font-medium text-gray-800">{t.label}</p>
-              <p className="text-xs text-gray-500">{t.desc}</p>
+              <p className="text-sm font-medium text-text-primary">{t.label}</p>
+              <p className="text-xs text-text-secondary">{t.desc}</p>
             </div>
           </label>
         ))}
       </div>
 
       {/* Message templates */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
+      <div className="rounded-xl border border-border bg-surface-card shadow-sm p-5 space-y-4">
         <div>
-          <h3 className="font-semibold text-gray-900">Message Templates</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Available variables: {"{ParentName}"}, {"{LearnerName}"}, {"{Date}"}, {"{FeeName}"}, {"{Amount}"}, {"{DueDate}"}, {"{SchoolName}"}, {"{Title}"}, {"{Body}"}</p>
+          <h3 className="font-semibold text-text-primary">Message Templates</h3>
+          <p className="text-xs text-text-secondary mt-0.5">Available variables: {"{ParentName}"}, {"{LearnerName}"}, {"{Date}"}, {"{FeeName}"}, {"{Amount}"}, {"{DueDate}"}, {"{SchoolName}"}, {"{Title}"}, {"{Body}"}</p>
         </div>
         {[
           { key: "absenceTemplate" as const,      label: "Absence alert" },
@@ -131,9 +131,9 @@ function SettingsPanel() {
           { key: "announcementTemplate" as const, label: "Announcement" },
         ].map(t => (
           <div key={t.key} className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">{t.label}</label>
+            <label className="text-xs font-medium text-text-secondary">{t.label}</label>
             <textarea value={config[t.key]} onChange={e => setConfig(c => c && ({ ...c, [t.key]: e.target.value }))}
-              rows={2} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              rows={2} className="w-full rounded-md border border-border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
         ))}
       </div>
@@ -142,7 +142,7 @@ function SettingsPanel() {
         <Button onClick={save} loading={saving} className="gap-2">
           <Settings className="h-4 w-4" /> Save Settings
         </Button>
-        {saved && <span className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Saved</span>}
+        {saved && <span className="text-sm text-success-700 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Saved</span>}
       </div>
     </div>
   );
@@ -202,41 +202,41 @@ function ComposePanel({ onSent }: { onSent: () => void }) {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded-lg bg-danger-100 px-4 py-3 text-sm text-danger-700">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
         </div>
       )}
       {result && (
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+        <div className="flex items-center gap-2 rounded-lg bg-success-100 border border-success-500/20 px-4 py-3 text-sm text-success-700">
           <CheckCircle2 className="h-4 w-4 shrink-0" /> Message logged as <strong>{result.status}</strong>
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
-        <h3 className="font-semibold text-gray-900">Send Today&apos;s Absence Alerts</h3>
-        <p className="text-sm text-gray-500">Queues a WhatsApp message to each absent learner&apos;s parent for today&apos;s date.</p>
+      <div className="rounded-xl border border-border bg-surface-card shadow-sm p-5 space-y-4">
+        <h3 className="font-semibold text-text-primary">Send Today&apos;s Absence Alerts</h3>
+        <p className="text-sm text-text-secondary">Queues a WhatsApp message to each absent learner&apos;s parent for today&apos;s date.</p>
         <Button onClick={sendAbsenceReminders} loading={sending} variant="outline" className="gap-2">
           <Send className="h-4 w-4" /> Send Absence Alerts
         </Button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
-        <h3 className="font-semibold text-gray-900 mb-4">Compose Manual Message</h3>
+      <div className="rounded-xl border border-border bg-surface-card shadow-sm p-5">
+        <h3 className="font-semibold text-text-primary mb-4">Compose Manual Message</h3>
         <form onSubmit={compose} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">Recipient name</label>
+              <label className="text-xs font-medium text-text-secondary">Recipient name</label>
               <Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} placeholder="Parent name" required />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-600">WhatsApp number</label>
+              <label className="text-xs font-medium text-text-secondary">WhatsApp number</label>
               <Input value={form.recipientPhone} onChange={e => setForm(f => ({ ...f, recipientPhone: e.target.value }))} placeholder="+27 82 000 0000" required />
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-xs font-medium text-gray-600">Message</label>
+              <label className="text-xs font-medium text-text-secondary">Message</label>
               <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                 rows={3} required placeholder="Type your message..."
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full rounded-md border border-border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -261,21 +261,21 @@ function LogPanel({ refresh }: { refresh: number }) {
     api.whatsapp.log().then(r => { setLog(r.items); setTotal(r.total); }).catch(() => {}).finally(() => setLoading(false));
   }, [refresh]);
 
-  if (loading) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-text-muted" /></div>;
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-gray-500">{total} message{total !== 1 ? "s" : ""} logged</p>
+      <p className="text-sm text-text-secondary">{total} message{total !== 1 ? "s" : ""} logged</p>
       {log.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center">
-          <Phone className="h-8 w-8 text-gray-200 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">No messages logged yet.</p>
+        <div className="rounded-xl border-2 border-dashed border-border py-12 text-center">
+          <Phone className="h-8 w-8 text-text-muted mx-auto mb-2" />
+          <p className="text-sm text-text-secondary">No messages logged yet.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
           <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <thead className="bg-surface-subtle border-b border-border">
+              <tr className="text-xs font-semibold text-text-muted uppercase tracking-wider">
                 <th className="px-4 py-3 text-left">Recipient</th>
                 <th className="px-4 py-3 text-left">Trigger</th>
                 <th className="px-4 py-3 text-left">Message</th>
@@ -283,17 +283,17 @@ function LogPanel({ refresh }: { refresh: number }) {
                 <th className="px-4 py-3 text-left">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-border bg-surface-card">
               {log.map(l => (
-                <tr key={l.whatsAppLogId} className="hover:bg-gray-50">
+                <tr key={l.whatsAppLogId} className="hover:bg-surface-subtle">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{l.recipientName}</p>
-                    <p className="text-xs text-gray-400">{l.recipientPhone}</p>
+                    <p className="font-medium text-text-primary">{l.recipientName}</p>
+                    <p className="text-xs text-text-muted">{l.recipientPhone}</p>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{TRIGGER_LABELS[l.triggerType] ?? l.triggerType}</td>
-                  <td className="px-4 py-3 text-gray-600 max-w-xs"><p className="line-clamp-2 text-xs">{l.messageBody}</p></td>
+                  <td className="px-4 py-3 text-text-secondary text-xs">{TRIGGER_LABELS[l.triggerType] ?? l.triggerType}</td>
+                  <td className="px-4 py-3 text-text-secondary max-w-xs"><p className="line-clamp-2 text-xs">{l.messageBody}</p></td>
                   <td className="px-4 py-3 text-center"><StatusBadge status={l.status} /></td>
-                  <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs text-text-muted whitespace-nowrap">
                     {new Date(l.createdAt).toLocaleDateString("en-ZA", { day: "2-digit", month: "short", year: "numeric" })}
                   </td>
                 </tr>
@@ -320,10 +320,10 @@ export default function WhatsAppPage() {
   if (!hasWhatsApp) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <Phone className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">WhatsApp not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable WhatsApp Notifications in Settings.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <Phone className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">WhatsApp not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable WhatsApp Notifications in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -331,14 +331,14 @@ export default function WhatsAppPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">WhatsApp Notifications</h1>
-        <p className="text-sm text-gray-500 mt-1">Send automated WhatsApp messages to parents. Messages are logged regardless of delivery status.</p>
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">WhatsApp Notifications</h1>
+        <p className="text-sm text-text-secondary mt-1">Send automated WhatsApp messages to parents. Messages are logged regardless of delivery status.</p>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-border">
         {[{ id: "compose", label: "Compose" }, { id: "log", label: "Message Log" }, { id: "settings", label: "Settings" }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as Tab)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text-primary"}`}>
             {t.label}
           </button>
         ))}

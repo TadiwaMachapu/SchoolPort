@@ -25,7 +25,7 @@ function SsoCallback() {
   }, [params, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-900">
+    <div className="flex min-h-screen items-center justify-center bg-text-primary">
       <div className="text-center text-white">
         <div className="text-5xl mb-4 animate-spin">⚙️</div>
         <p className="text-lg">Signing you in…</p>
@@ -37,7 +37,7 @@ function SsoCallback() {
 export default function SsoCallbackPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+      <div className="flex min-h-screen items-center justify-center bg-text-primary">
         <div className="text-center text-white">
           <div className="text-5xl mb-4 animate-spin">⚙️</div>
           <p className="text-lg">Signing you in…</p>

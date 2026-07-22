@@ -10,9 +10,9 @@ import { api, MyAttendanceSummary } from "@/lib/api";
 import { useIdentity } from "@/lib/auth-context";
 
 const S = {
-  1: { label: "Present", icon: CheckCircle2, card: "bg-emerald-50 border-emerald-300", avatar: "bg-emerald-500", badge: "text-emerald-700", ring: "ring-emerald-200" },
-  0: { label: "Absent",  icon: XCircle,      card: "bg-rose-50 border-rose-300",       avatar: "bg-rose-500",    badge: "text-rose-700",    ring: "ring-rose-200"    },
-  2: { label: "Late",    icon: Clock,         card: "bg-amber-50 border-amber-300",     avatar: "bg-amber-500",   badge: "text-amber-700",   ring: "ring-amber-200"   },
+  1: { label: "Present", icon: CheckCircle2, card: "bg-success-100 border-success-500/40", avatar: "bg-success-500", badge: "text-success-700", ring: "ring-success-500/30" },
+  0: { label: "Absent",  icon: XCircle,      card: "bg-danger-100 border-danger-500/40",   avatar: "bg-danger-500",  badge: "text-danger-700",  ring: "ring-danger-500/30"  },
+  2: { label: "Late",    icon: Clock,         card: "bg-warning-100 border-warning-500/40", avatar: "bg-warning-500", badge: "text-warning-700", ring: "ring-warning-500/30" },
 } as const;
 
 type Status = 0 | 1 | 2;
@@ -20,9 +20,9 @@ const EMPTY_GUID = "00000000-0000-0000-0000-000000000000";
 
 // ── Student attendance view ────────────────────────────────────────
 const STATUS_LABELS: Record<number, { label: string; color: string }> = {
-  1: { label: "Present", color: "text-emerald-700 bg-emerald-50" },
-  0: { label: "Absent",  color: "text-rose-700 bg-rose-50"       },
-  2: { label: "Late",    color: "text-amber-700 bg-amber-50"      },
+  1: { label: "Present", color: "text-success-700 bg-success-100" },
+  0: { label: "Absent",  color: "text-danger-700 bg-danger-100"   },
+  2: { label: "Late",    color: "text-warning-700 bg-warning-100"  },
 };
 
 function StudentAttendanceView() {
@@ -63,72 +63,72 @@ function StudentAttendanceView() {
       {/* Header + month nav */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight">My Attendance</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Your attendance record by class</p>
+          <h1 className="text-xl md:text-2xl font-semibold text-text-primary tracking-tight">My Attendance</h1>
+          <p className="text-sm text-text-secondary mt-0.5">Your attendance record by class</p>
         </div>
-        <div className="flex items-center gap-1 rounded-xl border border-gray-200 p-1">
-          <button onClick={prevMonth} className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 transition-colors">‹</button>
-          <span className="px-2 text-sm font-medium text-gray-700 min-w-[90px] text-center">{MONTHS[month - 1]} {year}</span>
-          <button onClick={nextMonth} className="rounded-lg px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 transition-colors">›</button>
+        <div className="flex items-center gap-1 rounded-xl border border-border p-1">
+          <button onClick={prevMonth} className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-subtle transition-colors">‹</button>
+          <span className="px-2 text-sm font-medium text-text-primary min-w-[90px] text-center">{MONTHS[month - 1]} {year}</span>
+          <button onClick={nextMonth} className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-subtle transition-colors">›</button>
         </div>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Rate",    value: `${overallRate}%`, color: overallRate >= 90 ? "text-emerald-600" : overallRate >= 75 ? "text-amber-600" : "text-rose-600" },
-          { label: "Present", value: totalPresent, color: "text-emerald-600" },
-          { label: "Late",    value: totalLate,    color: "text-amber-600"   },
-          { label: "Absent",  value: totalAbsent,  color: "text-rose-600"    },
+          { label: "Rate",    value: `${overallRate}%`, color: overallRate >= 90 ? "text-success-700" : overallRate >= 75 ? "text-warning-700" : "text-danger-700" },
+          { label: "Present", value: totalPresent, color: "text-success-700" },
+          { label: "Late",    value: totalLate,    color: "text-warning-700"   },
+          { label: "Absent",  value: totalAbsent,  color: "text-danger-700"    },
         ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-2xl border border-gray-200 bg-white p-3 text-center shadow-sm">
+          <div key={label} className="rounded-2xl border border-border bg-surface-card p-3 text-center shadow-sm">
             <p className={`text-xl font-bold ${color}`}>{value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+            <p className="text-xs text-text-muted mt-0.5">{label}</p>
           </div>
         ))}
       </div>
 
       {loading ? (
         <div className="space-y-3">
-          {[...Array(3)].map((_, i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-gray-100" />)}
+          {[...Array(3)].map((_, i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-surface-subtle" />)}
         </div>
       ) : data.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-gray-200 py-12 text-center">
-          <CalendarDays className="h-8 w-8 text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">No attendance records for this period</p>
+        <div className="rounded-2xl border-2 border-dashed border-border py-12 text-center">
+          <CalendarDays className="h-8 w-8 text-text-muted mx-auto mb-3" />
+          <p className="text-sm text-text-secondary">No attendance records for this period</p>
         </div>
       ) : (
         <div className="space-y-3">
           {data.map(cls => (
-            <div key={cls.classId} className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div key={cls.classId} className="rounded-2xl border border-border bg-surface-card shadow-sm overflow-hidden">
               <button
                 onClick={() => setExpanded(e => e === cls.classId ? null : cls.classId)}
-                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-4 text-left hover:bg-surface-subtle transition-colors"
               >
                 <div>
-                  <p className="font-semibold text-gray-900">{cls.className}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="font-semibold text-text-primary">{cls.className}</p>
+                  <p className="text-xs text-text-muted mt-0.5">
                     {cls.present}P · {cls.absent}A · {cls.late}L · {cls.totalDays} days
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="flex items-center gap-1.5">
-                    <TrendingUp className={`h-4 w-4 ${cls.attendanceRate >= 90 ? "text-emerald-500" : cls.attendanceRate >= 75 ? "text-amber-500" : "text-rose-500"}`} />
-                    <span className={`text-sm font-bold ${cls.attendanceRate >= 90 ? "text-emerald-600" : cls.attendanceRate >= 75 ? "text-amber-600" : "text-rose-600"}`}>
+                    <TrendingUp className={`h-4 w-4 ${cls.attendanceRate >= 90 ? "text-success-500" : cls.attendanceRate >= 75 ? "text-warning-500" : "text-danger-500"}`} />
+                    <span className={`text-sm font-bold ${cls.attendanceRate >= 90 ? "text-success-700" : cls.attendanceRate >= 75 ? "text-warning-700" : "text-danger-700"}`}>
                       {cls.attendanceRate}%
                     </span>
                   </div>
-                  <span className="text-gray-400 text-sm">{expanded === cls.classId ? "▲" : "▼"}</span>
+                  <span className="text-text-muted text-sm">{expanded === cls.classId ? "▲" : "▼"}</span>
                 </div>
               </button>
 
               {expanded === cls.classId && cls.records.length > 0 && (
-                <div className="border-t border-gray-100 divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                <div className="border-t border-border divide-y divide-border max-h-64 overflow-y-auto">
                   {cls.records.map((r, i) => {
                     const cfg = STATUS_LABELS[r.status] ?? STATUS_LABELS[1];
                     return (
                       <div key={i} className="flex items-center justify-between px-4 py-2.5">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-text-secondary">
                           {new Date(r.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                         </span>
                         <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.color}`}>{cfg.label}</span>
@@ -155,9 +155,9 @@ export default function AttendancePage() {
   if (identity === "Parent") {
     return (
       <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <CalendarDays className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">Attendance</h2>
-        <p className="text-sm text-gray-400 mt-2 max-w-sm">
+        <CalendarDays className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">Attendance</h2>
+        <p className="text-sm text-text-muted mt-2 max-w-sm">
           View your child's attendance record from the <strong>Parent Portal</strong> tab.
         </p>
       </div>
@@ -165,7 +165,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <Suspense fallback={<div className="flex-1 p-8 text-center text-gray-400">Loading…</div>}>
+    <Suspense fallback={<div className="flex-1 p-8 text-center text-text-muted">Loading…</div>}>
       <AttendanceView />
     </Suspense>
   );
@@ -250,11 +250,11 @@ function AttendanceView() {
   return (
     <div className="flex flex-col h-full">
       {/* ── Top bar ─────────────────────────────────── */}
-      <div className="border-b border-gray-100 bg-white px-4 md:px-6 py-3 md:py-4 shrink-0">
+      <div className="border-b border-border bg-surface-card px-4 md:px-6 py-3 md:py-4 shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight">Attendance</h1>
-            <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+            <h1 className="text-xl md:text-2xl font-semibold text-text-primary tracking-tight">Attendance</h1>
+            <p className="text-xs md:text-sm text-text-secondary mt-0.5">
               {selectedClass?.name ?? "Select a class"} ·{" "}
               {new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
             </p>
@@ -265,20 +265,20 @@ function AttendanceView() {
               <select
                 value={classId}
                 onChange={(e) => { setClassId(e.target.value); setDone(false); }}
-                className="appearance-none rounded-xl border border-gray-200 bg-white pl-3 pr-8 py-2.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[44px]"
+                className="appearance-none rounded-xl border border-border bg-surface-card pl-3 pr-8 py-2.5 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary shadow-sm min-h-[44px]"
               >
                 {classes.map((c) => (
                   <option key={c.classId} value={c.classId}>{c.name}</option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
             </div>
             {/* Date picker */}
             <input
               type="date"
               value={date}
               onChange={(e) => { setDate(e.target.value); setDone(false); }}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm min-h-[44px]"
+              className="rounded-xl border border-border bg-surface-card px-3 py-2.5 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary shadow-sm min-h-[44px]"
             />
           </div>
         </div>
@@ -293,7 +293,7 @@ function AttendanceView() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-blue-50 border-b border-blue-100 px-4 md:px-6 py-2.5 flex items-center gap-2 text-sm text-blue-700">
+            <div className="bg-primary-50 border-b border-primary-100 px-4 md:px-6 py-2.5 flex items-center gap-2 text-sm text-primary-700">
               <CheckCheck className="h-4 w-4 shrink-0" />
               <span>New session — everyone marked <strong>Present</strong>. Tap to change.</span>
             </div>
@@ -306,7 +306,7 @@ function AttendanceView() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-emerald-50 border-b border-emerald-100 px-4 md:px-6 py-2.5 flex items-center gap-2 text-sm text-emerald-700">
+            <div className="bg-success-100 border-b border-success-500/20 px-4 md:px-6 py-2.5 flex items-center gap-2 text-sm text-success-700">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>Saved · {counts.present} present{counts.absent > 0 ? `, ${counts.absent} absent` : ""}{counts.late > 0 ? `, ${counts.late} late` : ""}</span>
             </div>
@@ -316,31 +316,31 @@ function AttendanceView() {
 
       {/* ── Summary + bulk actions ───────────────────── */}
       {!isLoading && records.length > 0 && (
-        <div className="bg-gray-50 border-b border-gray-100 px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="bg-surface-subtle border-b border-border px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 md:gap-4 text-sm font-medium">
-            <span className="flex items-center gap-1.5 text-emerald-700">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />{counts.present}P
+            <span className="flex items-center gap-1.5 text-success-700">
+              <span className="h-2 w-2 rounded-full bg-success-500" />{counts.present}P
             </span>
-            <span className="flex items-center gap-1.5 text-rose-700">
-              <span className="h-2 w-2 rounded-full bg-rose-500" />{counts.absent}A
+            <span className="flex items-center gap-1.5 text-danger-700">
+              <span className="h-2 w-2 rounded-full bg-danger-500" />{counts.absent}A
             </span>
             {counts.late > 0 && (
-              <span className="flex items-center gap-1.5 text-amber-700">
-                <span className="h-2 w-2 rounded-full bg-amber-500" />{counts.late}L
+              <span className="flex items-center gap-1.5 text-warning-700">
+                <span className="h-2 w-2 rounded-full bg-warning-500" />{counts.late}L
               </span>
             )}
-            <span className="text-gray-400 text-xs">/ {records.length}</span>
+            <span className="text-text-muted text-xs">/ {records.length}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => markAll(1)}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100 active:scale-95 transition-all min-h-[36px]"
+              className="flex items-center gap-1.5 rounded-lg border border-success-500/30 bg-success-100 px-3 py-2 text-xs font-medium text-success-700 hover:bg-success-500/20 active:scale-95 transition-all min-h-[36px]"
             >
               <CheckCheck className="h-3.5 w-3.5" /> All present
             </button>
             <button
               onClick={() => markAll(0)}
-              className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700 hover:bg-rose-100 active:scale-95 transition-all min-h-[36px]"
+              className="flex items-center gap-1.5 rounded-lg border border-danger-500/30 bg-danger-100 px-3 py-2 text-xs font-medium text-danger-700 hover:bg-danger-500/20 active:scale-95 transition-all min-h-[36px]"
             >
               <XCircle className="h-3.5 w-3.5" /> All absent
             </button>
@@ -353,13 +353,13 @@ function AttendanceView() {
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 md:gap-3">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-gray-100" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-surface-subtle" />
             ))}
           </div>
         ) : records.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <CheckCircle2 className="h-12 w-12 text-gray-200 mb-4" />
-            <p className="text-base font-medium text-gray-500">No students enrolled</p>
+          <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+            <CheckCircle2 className="h-12 w-12 text-text-muted mb-4" />
+            <p className="text-base font-medium text-text-secondary">No students enrolled</p>
             <p className="text-sm mt-1 text-center px-8">Add students to this class from the Users page</p>
           </div>
         ) : (
@@ -379,7 +379,7 @@ function AttendanceView() {
                   <div className={`h-12 w-12 md:h-11 md:w-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${cfg.avatar}`}>
                     {initials}
                   </div>
-                  <p className="text-xs font-semibold text-gray-900 text-center leading-tight line-clamp-2 w-full">
+                  <p className="text-xs font-semibold text-text-primary text-center leading-tight line-clamp-2 w-full">
                     {r.studentName}
                   </p>
                   <div className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide ${cfg.badge}`}>
@@ -395,26 +395,26 @@ function AttendanceView() {
 
       {/* ── Sticky save bar ──────────────────────────── */}
       {records.length > 0 && (
-        <div className="border-t border-gray-100 bg-white px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4 shrink-0">
-          <div className="text-sm text-gray-500 hidden sm:block">
+        <div className="border-t border-border bg-surface-card px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-4 shrink-0">
+          <div className="text-sm text-text-secondary hidden sm:block">
             {mutation.isPending ? (
-              <span className="flex items-center gap-1.5 text-blue-600">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <span className="flex items-center gap-1.5 text-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
                 Saving…
               </span>
             ) : done ? (
-              <span className="flex items-center gap-1.5 text-emerald-600">
+              <span className="flex items-center gap-1.5 text-success-700">
                 <CheckCircle2 className="h-4 w-4" /> Saved
               </span>
             ) : (
-              <span className="text-gray-400">Tap a student to change · auto-saves</span>
+              <span className="text-text-muted">Tap a student to change · auto-saves</span>
             )}
           </div>
           <Button
             onClick={triggerSave}
             loading={mutation.isPending}
             disabled={records.length === 0}
-            className={`gap-2 w-full sm:w-auto ${done ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+            className={`gap-2 w-full sm:w-auto ${done ? "bg-success-500 hover:bg-success-700" : ""}`}
           >
             {done ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
             {done ? "Saved" : "Save Attendance"}

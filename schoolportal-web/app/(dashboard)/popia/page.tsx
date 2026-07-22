@@ -67,16 +67,16 @@ function UserConsentPanel() {
     }
   }
 
-  if (!consents) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>;
+  if (!consents) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-text-muted" /></div>;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
+    <div className="rounded-xl border border-border bg-surface-card shadow-sm p-5 space-y-4">
       <div>
-        <h3 className="font-semibold text-gray-900">My Consents</h3>
-        <p className="text-xs text-gray-500 mt-0.5">You can update your consent preferences at any time. Changes take effect immediately.</p>
+        <h3 className="font-semibold text-text-primary">My Consents</h3>
+        <p className="text-xs text-text-secondary mt-0.5">You can update your consent preferences at any time. Changes take effect immediately.</p>
       </div>
       {error && (
-        <div className="flex items-center gap-2 rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded bg-danger-100 px-3 py-2 text-sm text-danger-700">
           <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
         </div>
       )}
@@ -86,17 +86,17 @@ function UserConsentPanel() {
             <input type="checkbox"
               checked={!!consents[cl.key as keyof ConsentRecord]}
               onChange={e => setConsents(c => c && ({ ...c, [cl.key]: e.target.checked }))}
-              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary" />
             <div>
-              <p className="text-sm font-medium text-gray-800">{cl.label}</p>
-              <p className="text-xs text-gray-500">{cl.desc}</p>
+              <p className="text-sm font-medium text-text-primary">{cl.label}</p>
+              <p className="text-xs text-text-secondary">{cl.desc}</p>
             </div>
           </label>
         ))}
       </div>
       <div className="flex items-center gap-3 pt-1">
         <Button onClick={save} loading={saving}>Save Preferences</Button>
-        {saved && <span className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Saved</span>}
+        {saved && <span className="text-sm text-success-700 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Saved</span>}
       </div>
     </div>
   );
@@ -131,11 +131,11 @@ function UserRequestPanel() {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-5 space-y-4">
+    <div className="rounded-xl border border-border bg-surface-card shadow-sm p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">Data Subject Requests</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Request access to, deletion of, or correction of your personal data.</p>
+          <h3 className="font-semibold text-text-primary">Data Subject Requests</h3>
+          <p className="text-xs text-text-secondary mt-0.5">Request access to, deletion of, or correction of your personal data.</p>
         </div>
         <Button onClick={() => setShowForm(v => !v)} variant="outline" size="sm">
           {showForm ? "Cancel" : "New Request"}
@@ -143,38 +143,38 @@ function UserRequestPanel() {
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="rounded-lg bg-blue-50 border border-blue-100 p-4 space-y-3">
-          {error && <p className="text-xs text-red-600">{error}</p>}
+        <form onSubmit={submit} className="rounded-lg bg-primary-50 border border-primary-100 p-4 space-y-3">
+          {error && <p className="text-xs text-danger-700">{error}</p>}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">Request type</label>
+            <label className="text-xs font-medium text-text-secondary">Request type</label>
             <select value={form.requestType} onChange={e => setForm(f => ({ ...f, requestType: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
               {REQUEST_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">Details <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="text-xs font-medium text-text-secondary">Details <span className="text-text-muted font-normal">(optional)</span></label>
             <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2} placeholder="Describe your request in detail"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full rounded-md border border-border px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
           <Button type="submit" loading={submitting} size="sm">Submit Request</Button>
         </form>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+        <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-text-muted" /></div>
       ) : requests.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-4">No requests submitted yet.</p>
+        <p className="text-sm text-text-muted text-center py-4">No requests submitted yet.</p>
       ) : (
         <div className="space-y-2">
           {requests.map(r => (
-            <div key={r.requestId} className="rounded-lg border border-gray-200 px-4 py-3 flex items-start justify-between gap-3">
+            <div key={r.requestId} className="rounded-lg border border-border px-4 py-3 flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-900">{r.requestType} request</p>
-                {r.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{r.description}</p>}
-                {r.adminNotes && <p className="text-xs text-blue-600 mt-0.5">Note: {r.adminNotes}</p>}
-                <p className="text-xs text-gray-400 mt-1">{new Date(r.createdAt).toLocaleDateString("en-ZA")}</p>
+                <p className="text-sm font-medium text-text-primary">{r.requestType} request</p>
+                {r.description && <p className="text-xs text-text-secondary mt-0.5 line-clamp-1">{r.description}</p>}
+                {r.adminNotes && <p className="text-xs text-primary mt-0.5">Note: {r.adminNotes}</p>}
+                <p className="text-xs text-text-muted mt-1">{new Date(r.createdAt).toLocaleDateString("en-ZA")}</p>
               </div>
               <StatusBadge status={r.status} />
             </div>
@@ -219,33 +219,33 @@ function AdminRequestsPanel() {
 
   return (
     <div className="space-y-4">
-      {error && <div className="flex items-center gap-2 rounded bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
+      {error && <div className="flex items-center gap-2 rounded bg-danger-100 px-4 py-3 text-sm text-danger-700"><AlertTriangle className="h-4 w-4 shrink-0" /> {error}</div>}
 
       <div className="flex items-center gap-2">
         {["", "Pending", "InProgress", "Completed", "Rejected"].map(s => (
           <button key={s} onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filter === s ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filter === s ? "bg-primary text-white" : "bg-surface-subtle text-text-secondary hover:bg-border"}`}>
             {s || "All"}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>
+        <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-text-muted" /></div>
       ) : requests.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm">No requests found.</div>
+        <div className="text-center py-12 text-text-muted text-sm">No requests found.</div>
       ) : (
         <div className="space-y-2">
           {[...pending, ...others].map(r => (
-            <div key={r.requestId} className="rounded-xl bg-white border border-gray-200 shadow-sm p-4 flex items-start justify-between gap-4">
+            <div key={r.requestId} className="rounded-xl bg-surface-card border border-border shadow-sm p-4 flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-gray-900 text-sm">{r.name}</p>
-                  <span className="text-xs text-gray-400">{r.email}</span>
+                  <p className="font-semibold text-text-primary text-sm">{r.name}</p>
+                  <span className="text-xs text-text-muted">{r.email}</span>
                 </div>
-                <p className="text-sm text-gray-700 mt-0.5">{r.requestType} request</p>
-                {r.description && <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{r.description}</p>}
-                <p className="text-xs text-gray-400 mt-1">{new Date(r.createdAt).toLocaleDateString("en-ZA")}</p>
+                <p className="text-sm text-text-primary mt-0.5">{r.requestType} request</p>
+                {r.description && <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{r.description}</p>}
+                <p className="text-xs text-text-muted mt-1">{new Date(r.createdAt).toLocaleDateString("en-ZA")}</p>
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <StatusBadge status={r.status} />
@@ -253,15 +253,15 @@ function AdminRequestsPanel() {
                   <div className="flex gap-1.5">
                     <button onClick={() => updateStatus(r.requestId, "InProgress")}
                       disabled={updating === r.requestId}
-                      className="text-xs text-blue-600 hover:underline disabled:opacity-50">
+                      className="text-xs text-primary hover:underline disabled:opacity-50">
                       {updating === r.requestId ? "..." : "In Progress"}
                     </button>
                     <button onClick={() => updateStatus(r.requestId, "Completed")}
                       disabled={updating === r.requestId}
-                      className="text-xs text-emerald-600 hover:underline disabled:opacity-50">Complete</button>
+                      className="text-xs text-success-700 hover:underline disabled:opacity-50">Complete</button>
                     <button onClick={() => updateStatus(r.requestId, "Rejected")}
                       disabled={updating === r.requestId}
-                      className="text-xs text-red-500 hover:underline disabled:opacity-50">Reject</button>
+                      className="text-xs text-danger-500 hover:underline disabled:opacity-50">Reject</button>
                   </div>
                 )}
               </div>
@@ -281,13 +281,13 @@ function AdminConsentsPanel() {
     api.popia.adminConsents().then(setConsents).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-text-muted" /></div>;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+    <div className="overflow-x-auto rounded-xl border border-border shadow-sm">
       <table className="min-w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+        <thead className="bg-surface-subtle border-b border-border">
+          <tr className="text-xs font-semibold text-text-muted uppercase tracking-wider">
             <th className="px-4 py-3 text-left">Name</th>
             <th className="px-4 py-3 text-center">Data Processing</th>
             <th className="px-4 py-3 text-center">Marketing</th>
@@ -296,21 +296,21 @@ function AdminConsentsPanel() {
             <th className="px-4 py-3 text-left">Updated</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 bg-white">
+        <tbody className="divide-y divide-border bg-surface-card">
           {consents.length === 0 ? (
-            <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">No consent records yet.</td></tr>
+            <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted text-sm">No consent records yet.</td></tr>
           ) : consents.map(c => (
-            <tr key={c.consentRecordId} className="hover:bg-gray-50">
+            <tr key={c.consentRecordId} className="hover:bg-surface-subtle">
               <td className="px-4 py-3">
-                <p className="font-medium text-gray-900">{c.name}</p>
-                <p className="text-xs text-gray-400">{c.role}</p>
+                <p className="font-medium text-text-primary">{c.name}</p>
+                <p className="text-xs text-text-muted">{c.role}</p>
               </td>
               {[c.dataProcessing, c.marketingCommunications, c.thirdPartySharing, c.photography].map((v, i) => (
                 <td key={i} className="px-4 py-3 text-center">
-                  {v ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" /> : <XCircle className="h-4 w-4 text-gray-200 mx-auto" />}
+                  {v ? <CheckCircle2 className="h-4 w-4 text-success-500 mx-auto" /> : <XCircle className="h-4 w-4 text-text-muted mx-auto" />}
                 </td>
               ))}
-              <td className="px-4 py-3 text-xs text-gray-400">{new Date(c.updatedAt).toLocaleDateString("en-ZA")}</td>
+              <td className="px-4 py-3 text-xs text-text-muted">{new Date(c.updatedAt).toLocaleDateString("en-ZA")}</td>
             </tr>
           ))}
         </tbody>
@@ -330,10 +330,10 @@ export default function PopiaPage() {
   if (!hasPopia) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <ShieldCheck className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">POPIA Centre not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable the POPIA Centre in Settings.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <ShieldCheck className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">POPIA Centre not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable the POPIA Centre in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -341,17 +341,17 @@ export default function PopiaPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">POPIA Centre</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">POPIA Centre</h1>
+        <p className="text-sm text-text-secondary mt-1">
           {isAdmin ? "Manage data subject consents and requests in compliance with POPIA." : "Manage your privacy preferences and data rights under POPIA."}
         </p>
       </div>
 
       {isAdmin && (
-        <div className="flex gap-1 border-b border-gray-200">
+        <div className="flex gap-1 border-b border-border">
           {[{ id: "consents", label: "Consent Register" }, { id: "requests", label: "Data Subject Requests" }].map(t => (
             <button key={t.id} onClick={() => setTab(t.id as "consents" | "requests")}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-800"}`}>
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === t.id ? "border-primary text-primary" : "border-transparent text-text-secondary hover:text-text-primary"}`}>
               {t.label}
             </button>
           ))}

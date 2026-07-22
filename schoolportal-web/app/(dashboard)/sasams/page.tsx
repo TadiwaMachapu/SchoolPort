@@ -33,10 +33,10 @@ export default function SaSamsPage() {
   if (!hasSaSams) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <FolderDown className="h-12 w-12 text-gray-200 mb-4" />
-        <h2 className="text-lg font-semibold text-gray-700">SA-SAMS Export not enabled</h2>
-        <p className="text-sm text-gray-400 mt-1">Enable SA-SAMS Export in Settings.</p>
-        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-blue-600 hover:underline">Go to Settings</button>
+        <FolderDown className="h-12 w-12 text-text-muted mb-4" />
+        <h2 className="text-lg font-semibold text-text-primary">SA-SAMS Export not enabled</h2>
+        <p className="text-sm text-text-muted mt-1">Enable SA-SAMS Export in Settings.</p>
+        <button onClick={() => router.push("/settings")} className="mt-4 text-sm text-primary hover:underline">Go to Settings</button>
       </div>
     );
   }
@@ -94,20 +94,20 @@ export default function SaSamsPage() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">SA-SAMS Export</h1>
-        <p className="text-sm text-gray-500 mt-1">Download school data in SA-SAMS-compatible CSV format for submission to the Department of Education.</p>
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">SA-SAMS Export</h1>
+        <p className="text-sm text-text-secondary mt-1">Download school data in SA-SAMS-compatible CSV format for submission to the Department of Education.</p>
       </div>
 
-      <div className="rounded-xl bg-amber-50 border border-amber-100 px-5 py-3 text-sm text-amber-800">
+      <div className="rounded-xl bg-warning-100 border border-warning-500/20 px-5 py-3 text-sm text-warning-700">
         <strong>Note:</strong> These exports follow the SA-SAMS field naming conventions. Verify against your provincial DoE requirements before submission.
       </div>
 
       {/* Term selector */}
       <div className="flex items-end gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-gray-600">Filter by term</label>
+          <label className="text-xs font-medium text-text-secondary">Filter by term</label>
           <select value={termId} onChange={e => setTermId(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
             <option value="">All terms</option>
             {terms.map(t => (
               <option key={t.termId} value={t.termId}>
@@ -121,19 +121,19 @@ export default function SaSamsPage() {
       {/* Export cards */}
       <div className="space-y-4">
         {exports.map(ex => (
-          <div key={ex.id} className="rounded-xl bg-white border border-gray-200 shadow-sm p-5 flex items-start justify-between gap-4">
+          <div key={ex.id} className="rounded-xl bg-surface-card border border-border shadow-sm p-5 flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <FolderDown className="h-5 w-5 text-blue-500 shrink-0" />
-                <p className="font-semibold text-gray-900">{ex.label}</p>
+                <FolderDown className="h-5 w-5 text-primary shrink-0" />
+                <p className="font-semibold text-text-primary">{ex.label}</p>
               </div>
-              <p className="text-sm text-gray-500">{ex.desc}</p>
-              <p className="text-xs text-gray-400 mt-2 font-mono">{ex.fields}</p>
+              <p className="text-sm text-text-secondary">{ex.desc}</p>
+              <p className="text-xs text-text-muted mt-2 font-mono">{ex.fields}</p>
             </div>
             <button
               onClick={() => download(ex.id)}
               disabled={loading === ex.id}
-              className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 px-4 py-2 text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 shrink-0"
+              className="flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 text-primary px-4 py-2 text-sm font-medium hover:bg-primary-100 transition-colors disabled:opacity-50 shrink-0"
             >
               {loading === ex.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Download CSV

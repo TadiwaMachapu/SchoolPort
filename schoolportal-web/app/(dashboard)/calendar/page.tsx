@@ -103,8 +103,8 @@ export default function CalendarPage() {
     <div className="p-6 lg:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Calendar & Timetable</h1>
-          <p className="text-sm text-gray-500 mt-1">School events, deadlines, and weekly schedule</p>
+          <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Calendar & Timetable</h1>
+          <p className="text-sm text-text-secondary mt-1">School events, deadlines, and weekly schedule</p>
         </div>
         {canManageCalendar && (
           <Button size="sm" onClick={() => setShowAdd(true)}>+ Add Event</Button>
@@ -120,7 +120,7 @@ export default function CalendarPage() {
         </Button>
       </div>
 
-      {loading && <div className="text-gray-400 py-16 text-center">Loading…</div>}
+      {loading && <div className="text-text-muted py-16 text-center">Loading…</div>}
 
       {!loading && tab === "month" && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -136,7 +136,7 @@ export default function CalendarPage() {
               <CardContent className="p-2">
                 <div className="grid grid-cols-7 text-center">
                   {DAYS.map(d => (
-                    <div key={d} className="py-2 text-xs font-medium text-gray-500">{d}</div>
+                    <div key={d} className="py-2 text-xs font-medium text-text-muted">{d}</div>
                   ))}
                   {cells.map((day, i) => {
                     const dayEvents = day ? eventsForDay(day) : [];
@@ -146,14 +146,14 @@ export default function CalendarPage() {
                       <div
                         key={i}
                         onClick={() => day && setSelected(new Date(year, month, day))}
-                        className={`min-h-[60px] p-1 border border-gray-100 cursor-pointer hover:bg-gray-50 rounded
-                          ${isToday(day!) ? "bg-blue-50 border-blue-300" : ""}
-                          ${isSelected ? "ring-2 ring-blue-500" : ""}
-                          ${!day ? "bg-gray-50 cursor-default" : ""}`}
+                        className={`min-h-[60px] p-1 border border-border cursor-pointer hover:bg-surface-subtle rounded
+                          ${isToday(day!) ? "bg-primary-50 border-primary-300" : ""}
+                          ${isSelected ? "ring-2 ring-primary" : ""}
+                          ${!day ? "bg-surface-subtle cursor-default" : ""}`}
                       >
                         {day && (
                           <>
-                            <span className={`text-xs font-medium ${isToday(day) ? "text-blue-700" : "text-gray-700"}`}>
+                            <span className={`text-xs font-medium ${isToday(day) ? "text-primary" : "text-text-primary"}`}>
                               {day}
                             </span>
                             <div className="mt-1 space-y-0.5">
@@ -163,7 +163,7 @@ export default function CalendarPage() {
                                 </div>
                               ))}
                               {dayEvents.length > 2 && (
-                                <div className="text-[10px] text-gray-400">+{dayEvents.length - 2} more</div>
+                                <div className="text-[10px] text-text-muted">+{dayEvents.length - 2} more</div>
                               )}
                             </div>
                           </>
@@ -186,17 +186,17 @@ export default function CalendarPage() {
                 </CardHeader>
                 <CardContent>
                   {selectedEvents.length === 0 ? (
-                    <p className="text-sm text-gray-400">No events on this day</p>
+                    <p className="text-sm text-text-muted">No events on this day</p>
                   ) : (
                     <div className="space-y-3">
                       {selectedEvents.map(ev => (
-                        <div key={ev.eventId} className="border-l-4 border-blue-400 pl-3">
-                          <p className="font-medium text-sm text-gray-900">{ev.title}</p>
-                          {ev.description && <p className="text-xs text-gray-500 mt-0.5">{ev.description}</p>}
+                        <div key={ev.eventId} className="border-l-4 border-primary pl-3">
+                          <p className="font-medium text-sm text-text-primary">{ev.title}</p>
+                          {ev.description && <p className="text-xs text-text-secondary mt-0.5">{ev.description}</p>}
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant="outline" className="text-xs capitalize">{ev.type}</Badge>
                             {!ev.allDay && (
-                              <span className="text-xs text-gray-400">
+                              <span className="text-xs text-text-muted">
                                 {new Date(ev.startAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                                 {ev.endAt && ` – ${new Date(ev.endAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`}
                               </span>
@@ -210,7 +210,7 @@ export default function CalendarPage() {
               </Card>
             ) : (
               <Card>
-                <CardContent className="p-6 text-center text-gray-400 text-sm">
+                <CardContent className="p-6 text-center text-text-muted text-sm">
                   Click a date to see events
                 </CardContent>
               </Card>
@@ -220,22 +220,22 @@ export default function CalendarPage() {
               <CardHeader><CardTitle className="text-base">This Month</CardTitle></CardHeader>
               <CardContent>
                 {events.length === 0 ? (
-                  <p className="text-sm text-gray-400">No events this month</p>
+                  <p className="text-sm text-text-muted">No events this month</p>
                 ) : (
                   <div className="space-y-2">
                     {events.slice(0, 5).map(ev => (
                       <div key={ev.eventId} className="flex items-start gap-2">
-                        <span className="text-xs text-gray-400 w-8 shrink-0 pt-0.5">
+                        <span className="text-xs text-text-muted w-8 shrink-0 pt-0.5">
                           {new Date(ev.startAt).getDate()}
                         </span>
                         <div>
-                          <p className="text-sm font-medium text-gray-800">{ev.title}</p>
+                          <p className="text-sm font-medium text-text-primary">{ev.title}</p>
                           <Badge variant="outline" className="text-[10px] capitalize">{ev.type}</Badge>
                         </div>
                       </div>
                     ))}
                     {events.length > 5 && (
-                      <p className="text-xs text-gray-400">+{events.length - 5} more events</p>
+                      <p className="text-xs text-text-muted">+{events.length - 5} more events</p>
                     )}
                   </div>
                 )}
@@ -257,19 +257,19 @@ export default function CalendarPage() {
           <CardHeader><CardTitle>Weekly Timetable</CardTitle></CardHeader>
           <CardContent className="p-0">
             {timetable.length === 0 ? (
-              <div className="py-16 text-center text-gray-400">
+              <div className="py-16 text-center text-text-muted">
                 <div className="flex justify-center mb-3">
-                  <CalendarDays className="h-10 w-10 text-gray-300" />
+                  <CalendarDays className="h-10 w-10 text-text-muted" />
                 </div>
                 <p>No timetable slots configured yet</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="border-b bg-gray-50">
+                  <thead className="border-b bg-surface-subtle">
                     <tr>
                       {[1,2,3,4,5].map(d => (
-                        <th key={d} className="px-4 py-3 text-left font-medium text-gray-600">{DAY_NAMES[d]}</th>
+                        <th key={d} className="px-4 py-3 text-left font-medium text-text-secondary">{DAY_NAMES[d]}</th>
                       ))}
                     </tr>
                   </thead>
@@ -279,14 +279,14 @@ export default function CalendarPage() {
                         <td key={d} className="px-4 py-3 align-top border-r last:border-r-0">
                           <div className="space-y-2">
                             {slotsByDay(d).length === 0 ? (
-                              <span className="text-gray-300 text-xs">—</span>
+                              <span className="text-text-muted text-xs">—</span>
                             ) : (
                               slotsByDay(d).map(slot => (
-                                <div key={slot.slotId} className="bg-blue-50 border border-blue-200 rounded p-2">
-                                  <p className="font-medium text-blue-900 text-xs">{slot.subjectName ?? slot.subject}</p>
-                                  <p className="text-blue-600 text-[10px]">{slot.startTime} – {slot.endTime}</p>
-                                  {slot.room && <p className="text-blue-400 text-[10px]">Room {slot.room}</p>}
-                                  <p className="text-blue-400 text-[10px]">{slot.className ?? slot.class}</p>
+                                <div key={slot.slotId} className="bg-primary-50 border border-primary-200 rounded p-2">
+                                  <p className="font-medium text-primary-900 text-xs">{slot.subjectName ?? slot.subject}</p>
+                                  <p className="text-primary text-[10px]">{slot.startTime} – {slot.endTime}</p>
+                                  {slot.room && <p className="text-primary text-[10px]">Room {slot.room}</p>}
+                                  <p className="text-primary text-[10px]">{slot.className ?? slot.class}</p>
                                 </div>
                               ))
                             )}
@@ -337,27 +337,27 @@ function AddEventModal({ defaultDate, onClose }: { defaultDate: Date; onClose: (
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">Add Event</h2>
-          <button onClick={onClose} className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+      <div className="w-full max-w-md rounded-2xl bg-surface-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h2 className="text-lg font-semibold text-text-primary">Add Event</h2>
+          <button onClick={onClose} className="rounded-full p-1 text-text-muted hover:bg-surface-subtle hover:text-text-secondary transition-colors">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         <form onSubmit={submit} className="p-6 space-y-4">
-          {error && <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">{error}</div>}
+          {error && <div className="rounded-lg bg-danger-100 p-3 text-sm text-danger-700">{error}</div>}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Title</label>
+            <label className="text-sm font-medium text-text-primary">Title</label>
             <Input placeholder="e.g. End of Term Exam" value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required autoFocus />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Type</label>
+              <label className="text-sm font-medium text-text-primary">Type</label>
               <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                 {EVENT_TYPES.map(t => <option key={t} value={t} className="capitalize">{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
               </select>
             </div>
@@ -365,34 +365,34 @@ function AddEventModal({ defaultDate, onClose }: { defaultDate: Date; onClose: (
               <label className="flex items-center gap-2 cursor-pointer pb-2">
                 <input type="checkbox" checked={form.allDay}
                   onChange={e => setForm(f => ({ ...f, allDay: e.target.checked }))}
-                  className="rounded text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">All day</span>
+                  className="rounded text-primary" />
+                <span className="text-sm font-medium text-text-primary">All day</span>
               </label>
             </div>
           </div>
           <div className={`grid gap-3 ${form.allDay ? "grid-cols-1" : "grid-cols-2"}`}>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">{form.allDay ? "Date" : "Start"}</label>
+              <label className="text-sm font-medium text-text-primary">{form.allDay ? "Date" : "Start"}</label>
               <input type={form.allDay ? "date" : "datetime-local"} required
                 value={form.allDay ? form.startAt.slice(0, 10) : form.startAt}
                 onChange={e => setForm(f => ({ ...f, startAt: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             {!form.allDay && (
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">End</label>
+                <label className="text-sm font-medium text-text-primary">End</label>
                 <input type="datetime-local"
                   value={form.endAt}
                   onChange={e => setForm(f => ({ ...f, endAt: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
             )}
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Description <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="text-sm font-medium text-text-primary">Description <span className="text-text-muted font-normal">(optional)</span></label>
             <textarea rows={2} placeholder="Additional details…" value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full rounded-md border border-border px-3 py-2 text-sm placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
           </div>
           <div className="flex gap-3 pt-1">
             <Button type="submit" className="flex-1" loading={saving}>Add Event</Button>

@@ -109,34 +109,34 @@ export function AssignPositionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h3 className="text-base font-semibold text-gray-900">Assign position</h3>
-          <button onClick={onClose} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-surface-card shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h3 className="text-base font-semibold text-text-primary">Assign position</h3>
+          <button onClick={onClose} className="rounded-md p-1 text-text-muted hover:bg-surface-subtle"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="space-y-4 overflow-y-auto px-5 py-4">
           {/* User search */}
           <div>
-            <label className="text-xs font-semibold text-gray-600">Staff member</label>
+            <label className="text-xs font-semibold text-text-secondary">Staff member</label>
             {user ? (
-              <div className="mt-1 flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2">
-                <span className="text-sm text-gray-900">{user.firstName} {user.lastName} <span className="text-gray-400">· {user.email}</span></span>
-                <button className="text-xs text-blue-600 hover:underline" onClick={() => { setUser(null); setResults([]); setQ(""); }}>Change</button>
+              <div className="mt-1 flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <span className="text-sm text-text-primary">{user.firstName} {user.lastName} <span className="text-text-muted">· {user.email}</span></span>
+                <button className="text-xs text-primary hover:underline" onClick={() => { setUser(null); setResults([]); setQ(""); }}>Change</button>
               </div>
             ) : (
               <>
                 <div className="relative mt-1">
-                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-text-muted" />
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email…"
-                    className="w-full rounded-lg border border-gray-200 py-2 pl-8 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    className="w-full rounded-lg border border-border py-2 pl-8 pr-3 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
                 </div>
                 {results.length > 0 && (
-                  <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-gray-100">
+                  <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-border">
                     {results.map((r) => (
                       <button key={r.userId} onClick={() => setUser(r)}
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50">
-                        <span>{r.firstName} {r.lastName}</span><span className="text-xs text-gray-400">{r.email}</span>
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-surface-subtle">
+                        <span>{r.firstName} {r.lastName}</span><span className="text-xs text-text-muted">{r.email}</span>
                       </button>
                     ))}
                   </div>
@@ -147,9 +147,9 @@ export function AssignPositionModal({
 
           {/* Position */}
           <div>
-            <label className="text-xs font-semibold text-gray-600">Position</label>
+            <label className="text-xs font-semibold text-text-secondary">Position</label>
             <select value={positionKey} onChange={(e) => setPositionKey(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+              className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary">
               <option value="">Select a position…</option>
               {grouped.map(([cat, items]) => (
                 <optgroup key={cat} label={cat}>
@@ -157,31 +157,31 @@ export function AssignPositionModal({
                 </optgroup>
               ))}
             </select>
-            {pos && !pos.inPreset && <p className="mt-1 text-xs text-amber-600">Not in this school’s size preset — allowed, just not a default.</p>}
+            {pos && !pos.inPreset && <p className="mt-1 text-xs text-warning-700">Not in this school’s size preset — allowed, just not a default.</p>}
           </div>
 
           {/* Scope picker */}
           {pos?.scopeType === SCOPE.Subject && (
             <div>
-              <label className="text-xs font-semibold text-gray-600">Subject scope</label>
+              <label className="text-xs font-semibold text-text-secondary">Subject scope</label>
               <div className="mt-1 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
                 {subjects.map((s) => (
                   <button key={s.subjectId} onClick={() => setSubjectIds((a) => toggle(a, s.subjectId))}
-                    className={cn("rounded-md px-2.5 py-1 text-xs ring-1", subjectIds.includes(s.subjectId) ? "bg-blue-600 text-white ring-blue-600" : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50")}>
+                    className={cn("rounded-md px-2.5 py-1 text-xs ring-1", subjectIds.includes(s.subjectId) ? "bg-primary text-white ring-primary" : "bg-surface-card text-text-secondary ring-border hover:bg-surface-subtle")}>
                     {subjectIds.includes(s.subjectId) && <Check className="mr-1 inline h-3 w-3" />}{s.name}
                   </button>
                 ))}
-                {subjects.length === 0 && <span className="text-xs text-gray-400">No subjects yet — seed CAPS subjects first.</span>}
+                {subjects.length === 0 && <span className="text-xs text-text-muted">No subjects yet — seed CAPS subjects first.</span>}
               </div>
             </div>
           )}
           {pos?.scopeType === SCOPE.Grade && (
             <div>
-              <label className="text-xs font-semibold text-gray-600">Grade scope</label>
+              <label className="text-xs font-semibold text-text-secondary">Grade scope</label>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {GRADES.map((g) => (
                   <button key={g} onClick={() => setGrades((a) => toggle(a, String(g)))}
-                    className={cn("rounded-md px-2.5 py-1 text-xs ring-1", grades.includes(String(g)) ? "bg-blue-600 text-white ring-blue-600" : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50")}>
+                    className={cn("rounded-md px-2.5 py-1 text-xs ring-1", grades.includes(String(g)) ? "bg-primary text-white ring-primary" : "bg-surface-card text-text-secondary ring-border hover:bg-surface-subtle")}>
                     Gr {g}
                   </button>
                 ))}
@@ -190,17 +190,17 @@ export function AssignPositionModal({
           )}
           {pos?.scopeType === SCOPE.Phase && (
             <div>
-              <label className="text-xs font-semibold text-gray-600">Phase scope</label>
+              <label className="text-xs font-semibold text-text-secondary">Phase scope</label>
               <div className="mt-1 flex gap-1.5">
                 {[["FET", "FET (Gr 10–12)"], ["SeniorPhase", "Senior Phase (Gr 7–9)"]].map(([val, lbl]) => (
                   <button key={val} onClick={() => setPhase(val)}
-                    className={cn("rounded-md px-3 py-1 text-xs ring-1", phase === val ? "bg-blue-600 text-white ring-blue-600" : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50")}>{lbl}</button>
+                    className={cn("rounded-md px-3 py-1 text-xs ring-1", phase === val ? "bg-primary text-white ring-primary" : "bg-surface-card text-text-secondary ring-border hover:bg-surface-subtle")}>{lbl}</button>
                 ))}
               </div>
             </div>
           )}
           {pos && (pos.scopeType === SCOPE.Class || pos.scopeType === SCOPE.Activity) && (
-            <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+            <p className="rounded-lg bg-surface-subtle px-3 py-2 text-xs text-text-secondary">
               {pos.displayName} is scoped operationally — assign the teacher to classes/subjects (or activities) in the Assign step / academics, not here.
             </p>
           )}
@@ -208,29 +208,29 @@ export function AssignPositionModal({
           {/* Effective dates */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-600">Effective from</label>
+              <label className="text-xs font-semibold text-text-secondary">Effective from</label>
               <input type="date" value={effectiveFrom} onChange={(e) => setEffectiveFrom(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-600">Effective to {timeLimited && <span className="text-rose-500">*</span>}</label>
+              <label className="text-xs font-semibold text-text-secondary">Effective to {timeLimited && <span className="text-danger-500">*</span>}</label>
               <input type="date" value={effectiveTo} onChange={(e) => setEffectiveTo(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
           </div>
-          {timeLimited && <p className="-mt-2 text-xs text-amber-600">{pos?.displayName} is external/system — an end date is required (cannot be permanent).</p>}
+          {timeLimited && <p className="-mt-2 text-xs text-warning-700">{pos?.displayName} is external/system — an end date is required (cannot be permanent).</p>}
           {pos?.requiresConsent && (
             <div>
-              <label className="text-xs font-semibold text-gray-600">Consent record id <span className="text-rose-500">*</span></label>
+              <label className="text-xs font-semibold text-text-secondary">Consent record id <span className="text-danger-500">*</span></label>
               <input value={consentRecordId} onChange={(e) => setConsentRecordId(e.target.value)} placeholder="ConsentRecord GUID"
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
           )}
 
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-danger-700">{error}</p>}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
+        <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button onClick={submit} loading={busy}>Assign</Button>
         </div>

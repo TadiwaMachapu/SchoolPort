@@ -66,17 +66,17 @@ export default function AnalyticsPage() {
 
   if (loading) return (
     <div className="p-8 space-y-6">
-      <div className="h-8 w-48 animate-pulse rounded-md bg-gray-200" />
+      <div className="h-8 w-48 animate-pulse rounded-md bg-surface-subtle" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[1,2,3,4].map(i => <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200" />)}
+        {[1,2,3,4].map(i => <div key={i} className="h-24 animate-pulse rounded-lg bg-surface-subtle" />)}
       </div>
       <div className="grid grid-cols-2 gap-6">
-        <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
-        <div className="h-64 animate-pulse rounded-lg bg-gray-200" />
+        <div className="h-64 animate-pulse rounded-lg bg-surface-subtle" />
+        <div className="h-64 animate-pulse rounded-lg bg-surface-subtle" />
       </div>
     </div>
   );
-  if (error) return <div className="p-8 text-red-600">{error}</div>;
+  if (error) return <div className="p-8 text-danger-700">{error}</div>;
 
   const gradeData = gradeDist ? [
     { name: "A+", value: gradeDist.aPlus },
@@ -94,18 +94,18 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Analytics</h1>
-        <p className="text-sm text-gray-500 mt-1">School-wide performance overview</p>
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">Analytics</h1>
+        <p className="text-sm text-text-secondary mt-1">School-wide performance overview</p>
       </div>
 
       {/* KPI Cards */}
       {overview && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: "Students",        value: overview.totalStudents,                    Icon: GraduationCap, bg: "bg-indigo-50",  color: "text-indigo-600" },
-            { label: "Teachers",        value: overview.totalTeachers,                    Icon: Users,         bg: "bg-violet-50",  color: "text-violet-600" },
-            { label: "Classes",         value: overview.totalClasses,                     Icon: BookOpen,      bg: "bg-emerald-50", color: "text-emerald-600" },
-            { label: "Attendance Rate", value: `${overview.attendanceRateThisMonth}%`,    Icon: CheckCircle2,  bg: "bg-teal-50",    color: "text-teal-600" },
+            { label: "Students",        value: overview.totalStudents,                    Icon: GraduationCap, bg: "bg-surface-subtle",  color: "text-text-secondary" },
+            { label: "Teachers",        value: overview.totalTeachers,                    Icon: Users,         bg: "bg-surface-subtle",  color: "text-text-secondary" },
+            { label: "Classes",         value: overview.totalClasses,                     Icon: BookOpen,      bg: "bg-surface-subtle", color: "text-text-secondary" },
+            { label: "Attendance Rate", value: `${overview.attendanceRateThisMonth}%`,    Icon: CheckCircle2,  bg: "bg-surface-subtle",    color: "text-text-secondary" },
           ].map(stat => (
             <Card key={stat.label}>
               <CardContent className="p-4 flex items-center gap-3">
@@ -113,8 +113,8 @@ export default function AnalyticsPage() {
                   <stat.Icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  <p className="text-xs text-text-secondary uppercase tracking-wide">{stat.label}</p>
+                  <p className="text-2xl font-bold text-text-primary">{stat.value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -129,8 +129,8 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle>Grade Distribution</CardTitle>
               {gradeDist && (
-                <p className="text-sm text-gray-500">
-                  School average: <span className="font-semibold text-blue-600">{gradeDist.average}%</span> across {gradeDist.total} grades
+                <p className="text-sm text-text-secondary">
+                  School average: <span className="font-semibold text-primary">{gradeDist.average}%</span> across {gradeDist.total} grades
                 </p>
               )}
             </CardHeader>
@@ -173,20 +173,20 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-gray-500">Total Assignments</p>
-              <p className="text-2xl font-bold text-gray-900">{overview.totalAssignments}</p>
+              <p className="text-sm text-text-secondary">Total Assignments</p>
+              <p className="text-2xl font-bold text-text-primary">{overview.totalAssignments}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-gray-500">Pending Grading</p>
-              <p className="text-2xl font-bold text-orange-500">{overview.pendingSubmissions}</p>
+              <p className="text-sm text-text-secondary">Pending Grading</p>
+              <p className="text-2xl font-bold text-text-primary">{overview.pendingSubmissions}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-gray-500">Published Courses</p>
-              <p className="text-2xl font-bold text-gray-900">{overview.totalCourses}</p>
+              <p className="text-sm text-text-secondary">Published Courses</p>
+              <p className="text-2xl font-bold text-text-primary">{overview.totalCourses}</p>
             </CardContent>
           </Card>
         </div>
@@ -197,32 +197,32 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-rose-500" />
+              <AlertTriangle className="h-4 w-4 text-danger-500" />
               At-Risk Students
               <Badge variant="destructive">{atRisk.length}</Badge>
             </CardTitle>
-            <p className="text-sm text-gray-500">Students with attendance below 75% in the last 30 days</p>
+            <p className="text-sm text-text-secondary">Students with attendance below 75% in the last 30 days</p>
           </CardHeader>
           <CardContent className="p-0">
             <table className="w-full text-sm">
-              <thead className="border-b border-gray-200 bg-gray-50">
+              <thead className="border-b border-border bg-surface-subtle">
                 <tr>
                   {["Student", "ID", "Attendance Rate", "Risk Level"].map(h => (
-                    <th key={h} className="px-6 py-3 text-left font-medium text-gray-500">{h}</th>
+                    <th key={h} className="px-6 py-3 text-left font-medium text-text-muted">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border">
                 {atRisk.map(s => (
-                  <tr key={s.studentId} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 font-medium text-gray-900">{s.name}</td>
-                    <td className="px-6 py-3 text-gray-500">{s.studentNumber}</td>
+                  <tr key={s.studentId} className="hover:bg-surface-subtle">
+                    <td className="px-6 py-3 font-medium text-text-primary">{s.name}</td>
+                    <td className="px-6 py-3 text-text-secondary">{s.studentNumber}</td>
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-24">
-                          <div className="bg-red-500 h-2 rounded-full" style={{ width: `${s.attendanceRate}%` }} />
+                        <div className="flex-1 bg-surface-subtle rounded-full h-2 max-w-24">
+                          <div className="bg-danger-500 h-2 rounded-full" style={{ width: `${s.attendanceRate}%` }} />
                         </div>
-                        <span className="text-red-600 font-medium">{s.attendanceRate}%</span>
+                        <span className="text-danger-700 font-medium">{s.attendanceRate}%</span>
                       </div>
                     </td>
                     <td className="px-6 py-3"><Badge variant="destructive">{s.risk}</Badge></td>
@@ -235,12 +235,12 @@ export default function AnalyticsPage() {
       )}
 
       {!gradeDist && !atRisk.length && !classPerfData.length && (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 py-16 text-center">
+        <div className="rounded-lg border-2 border-dashed border-border py-16 text-center">
           <div className="flex justify-center mb-4">
-            <TrendingUp className="h-10 w-10 text-gray-300" />
+            <TrendingUp className="h-10 w-10 text-text-muted" />
           </div>
-          <p className="text-lg font-medium text-gray-700">No data yet</p>
-          <p className="text-sm text-gray-400 mt-1">Analytics will populate as students submit work and attend classes</p>
+          <p className="text-lg font-medium text-text-primary">No data yet</p>
+          <p className="text-sm text-text-muted mt-1">Analytics will populate as students submit work and attend classes</p>
         </div>
       )}
     </div>

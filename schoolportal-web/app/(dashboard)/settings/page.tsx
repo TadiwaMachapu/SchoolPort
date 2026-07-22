@@ -52,12 +52,12 @@ function Section({ icon: Icon, title, description, children }: {
     <Card>
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-            <Icon className="h-4 w-4 text-blue-600" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50">
+            <Icon className="h-4 w-4 text-primary" />
           </div>
           <div>
             <CardTitle className="text-base">{title}</CardTitle>
-            <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{description}</p>
           </div>
         </div>
       </CardHeader>
@@ -120,15 +120,15 @@ export default function SettingsPage() {
       <Button onClick={() => save(id, () => api.schools.updateSettings(settings))} loading={saving === id}>
         Save
       </Button>
-      {saved === id && <span className="text-sm text-green-600">✓ Saved</span>}
+      {saved === id && <span className="text-sm text-success-700">✓ Saved</span>}
     </div>
   );
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">School Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Configure academic policies, grading, and branding for your school.</p>
+        <h1 className="text-2xl font-semibold text-text-primary tracking-tight">School Settings</h1>
+        <p className="text-sm text-text-secondary mt-1">Configure academic policies, grading, and branding for your school.</p>
       </div>
 
       {/* Branding */}
@@ -136,37 +136,37 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Primary Colour</label>
+              <label className="text-sm font-medium text-text-primary block mb-1">Primary Colour</label>
               <div className="flex items-center gap-2">
                 <input type="color" value={theme.primaryColor}
                   onChange={e => setTheme(t => ({ ...t, primaryColor: e.target.value }))}
-                  className="h-10 w-16 rounded border border-gray-300 cursor-pointer" />
+                  className="h-10 w-16 rounded border border-border cursor-pointer" />
                 <Input value={theme.primaryColor}
                   onChange={e => setTheme(t => ({ ...t, primaryColor: e.target.value }))}
                   placeholder="#1E40AF" className="flex-1" />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Font Family</label>
+              <label className="text-sm font-medium text-text-primary block mb-1">Font Family</label>
               <select value={theme.fontFamily}
                 onChange={e => setTheme(t => ({ ...t, fontFamily: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                 {["Inter", "Roboto", "Open Sans", "Poppins", "Lato", "Nunito"].map(f => <option key={f}>{f}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Logo URL</label>
+            <label className="text-sm font-medium text-text-primary block mb-1">Logo URL</label>
             <Input placeholder="https://yourschool.com/logo.png" value={theme.logoUrl ?? ""}
               onChange={e => setTheme(t => ({ ...t, logoUrl: e.target.value || undefined }))} />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Welcome Message</label>
+            <label className="text-sm font-medium text-text-primary block mb-1">Welcome Message</label>
             <Input placeholder="Welcome to our school portal" value={theme.welcomeMessage ?? ""}
               onChange={e => setTheme(t => ({ ...t, welcomeMessage: e.target.value || undefined }))} />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Support Email</label>
+            <label className="text-sm font-medium text-text-primary block mb-1">Support Email</label>
             <Input type="email" placeholder="support@yourschool.com" value={theme.supportEmail ?? ""}
               onChange={e => setTheme(t => ({ ...t, supportEmail: e.target.value || undefined }))} />
           </div>
@@ -184,7 +184,7 @@ export default function SettingsPage() {
             >
               Save Branding
             </Button>
-            {saved === "theme" && <span className="text-sm text-green-600">✓ Saved</span>}
+            {saved === "theme" && <span className="text-sm text-success-700">✓ Saved</span>}
           </div>
         </div>
       </Section>
@@ -192,7 +192,7 @@ export default function SettingsPage() {
       {/* Grading Scale */}
       <Section icon={GraduationCap} title="Grading Scale" description="Letter grade thresholds for your school">
         <div className="space-y-2">
-          <div className="grid grid-cols-[80px_1fr_1fr_32px] gap-2 text-xs font-medium text-gray-500 px-1 mb-1">
+          <div className="grid grid-cols-[80px_1fr_1fr_32px] gap-2 text-xs font-medium text-text-muted px-1 mb-1">
             <span>Letter</span><span>Min %</span><span>Max %</span><span />
           </div>
           {settings.gradingScale.map((g, i) => (
@@ -203,14 +203,14 @@ export default function SettingsPage() {
               <Input type="number" min={0} max={100} value={g.maxPercent}
                 onChange={e => updateGrade(i, "maxPercent", e.target.value)} />
               <button onClick={() => setSettings(s => ({ ...s, gradingScale: s.gradingScale.filter((_, j) => j !== i) }))}
-                className="flex h-8 w-8 items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                className="flex h-8 w-8 items-center justify-center rounded text-text-muted hover:text-danger-500 hover:bg-danger-100 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
           <button
             onClick={() => setSettings(s => ({ ...s, gradingScale: [...s.gradingScale, { letter: "", minPercent: 0, maxPercent: 100 }] }))}
-            className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 mt-2">
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-700 mt-2">
             <Plus className="h-4 w-4" /> Add grade
           </button>
         </div>
@@ -220,7 +220,7 @@ export default function SettingsPage() {
       {/* Academic Terms */}
       <Section icon={CalendarDays} title="Academic Terms" description="Define term dates for the school year">
         <div className="space-y-3">
-          <div className="grid grid-cols-[1fr_1fr_1fr_32px] gap-2 text-xs font-medium text-gray-500 px-1 mb-1">
+          <div className="grid grid-cols-[1fr_1fr_1fr_32px] gap-2 text-xs font-medium text-text-muted px-1 mb-1">
             <span>Name</span><span>Start</span><span>End</span><span />
           </div>
           {settings.academicTerms.map((t, i) => (
@@ -230,14 +230,14 @@ export default function SettingsPage() {
               <Input type="date" value={t.endDate?.split("T")[0] ?? ""} onChange={e => updateTerm(i, "endDate", e.target.value)} />
               <button
                 onClick={() => setSettings(s => ({ ...s, academicTerms: s.academicTerms.filter((_, j) => j !== i) }))}
-                className="flex h-8 w-8 items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                className="flex h-8 w-8 items-center justify-center rounded text-text-muted hover:text-danger-500 hover:bg-danger-100 transition-colors">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
           <button
             onClick={() => setSettings(s => ({ ...s, academicTerms: [...s.academicTerms, { name: `Term ${s.academicTerms.length + 1}`, startDate: "", endDate: "" }] }))}
-            className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 mt-1">
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary-700 mt-1">
             <Plus className="h-4 w-4" /> Add term
           </button>
         </div>
@@ -251,29 +251,29 @@ export default function SettingsPage() {
             <input type="checkbox"
               checked={settings.latePolicy.acceptLate}
               onChange={e => setSettings(s => ({ ...s, latePolicy: { ...s.latePolicy, acceptLate: e.target.checked } }))}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
             />
-            <span className="text-sm font-medium text-gray-700">Accept late submissions</span>
+            <span className="text-sm font-medium text-text-primary">Accept late submissions</span>
           </label>
 
           {settings.latePolicy.acceptLate && (
             <div className="grid grid-cols-2 gap-4 pl-7">
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Grace period (hours)</label>
+                <label className="text-sm font-medium text-text-primary block mb-1">Grace period (hours)</label>
                 <Input type="number" min={0} max={168}
                   value={settings.latePolicy.gracePeriodHours}
                   onChange={e => setSettings(s => ({ ...s, latePolicy: { ...s.latePolicy, gracePeriodHours: Number(e.target.value) } }))}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Penalty per day (%)</label>
+                <label className="text-sm font-medium text-text-primary block mb-1">Penalty per day (%)</label>
                 <Input type="number" min={0} max={100}
                   value={settings.latePolicy.penaltyPercentPerDay}
                   onChange={e => setSettings(s => ({ ...s, latePolicy: { ...s.latePolicy, penaltyPercentPerDay: Number(e.target.value) } }))}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Max penalty (%)</label>
+                <label className="text-sm font-medium text-text-primary block mb-1">Max penalty (%)</label>
                 <Input type="number" min={0} max={100}
                   value={settings.latePolicy.maxPenaltyPercent}
                   onChange={e => setSettings(s => ({ ...s, latePolicy: { ...s.latePolicy, maxPenaltyPercent: Number(e.target.value) } }))}
@@ -284,9 +284,9 @@ export default function SettingsPage() {
                   <input type="checkbox"
                     checked={settings.latePolicy.blockAfterMaxPenalty}
                     onChange={e => setSettings(s => ({ ...s, latePolicy: { ...s.latePolicy, blockAfterMaxPenalty: e.target.checked } }))}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                    className="h-4 w-4 rounded border-border text-primary"
                   />
-                  <span className="text-sm text-gray-700">Block after max penalty</span>
+                  <span className="text-sm text-text-primary">Block after max penalty</span>
                 </label>
               </div>
             </div>
@@ -300,40 +300,40 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Prefix</label>
+              <label className="text-sm font-medium text-text-primary block mb-1">Prefix</label>
               <Input value={settings.studentIdConfig.prefix}
                 onChange={e => setSettings(s => ({ ...s, studentIdConfig: { ...s.studentIdConfig, prefix: e.target.value } }))}
                 placeholder="STU" />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Padding digits</label>
+              <label className="text-sm font-medium text-text-primary block mb-1">Padding digits</label>
               <Input type="number" min={2} max={8}
                 value={settings.studentIdConfig.paddingDigits}
                 onChange={e => setSettings(s => ({ ...s, studentIdConfig: { ...s.studentIdConfig, paddingDigits: Number(e.target.value) } }))}
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Next number</label>
+              <label className="text-sm font-medium text-text-primary block mb-1">Next number</label>
               <Input type="number" min={1}
                 value={settings.studentIdConfig.nextNumber}
                 onChange={e => setSettings(s => ({ ...s, studentIdConfig: { ...s.studentIdConfig, nextNumber: Number(e.target.value) } }))}
               />
             </div>
             <div className="flex flex-col justify-between">
-              <label className="text-sm font-medium text-gray-700 block mb-1">Include year</label>
+              <label className="text-sm font-medium text-text-primary block mb-1">Include year</label>
               <label className="flex items-center gap-2 cursor-pointer h-10">
                 <input type="checkbox"
                   checked={settings.studentIdConfig.includeYear}
                   onChange={e => setSettings(s => ({ ...s, studentIdConfig: { ...s.studentIdConfig, includeYear: e.target.checked } }))}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                  className="h-4 w-4 rounded border-border text-primary"
                 />
-                <span className="text-sm text-gray-600">Include year</span>
+                <span className="text-sm text-text-secondary">Include year</span>
               </label>
             </div>
           </div>
-          <div className="rounded-md bg-gray-50 border border-gray-200 px-4 py-3">
-            <span className="text-xs text-gray-500">Example: </span>
-            <span className="font-mono text-sm text-gray-800">{studentIdExample()}</span>
+          <div className="rounded-md bg-surface-subtle border border-border px-4 py-3">
+            <span className="text-xs text-text-secondary">Example: </span>
+            <span className="font-mono text-sm text-text-primary">{studentIdExample()}</span>
           </div>
         </div>
         <SaveBtn id="studentid" />
@@ -342,17 +342,17 @@ export default function SettingsPage() {
       {/* Subjects */}
       <button
         onClick={() => router.push("/settings/subjects")}
-        className="w-full text-left rounded-xl border border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md transition-all"
+        className="w-full text-left rounded-xl border border-border bg-surface-card shadow-sm hover:border-primary-300 hover:shadow-md transition-all"
       >
         <div className="flex items-center gap-4 px-6 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 shrink-0">
-            <BookOpen className="h-4 w-4 text-blue-600" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 shrink-0">
+            <BookOpen className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-gray-900">Subjects</p>
-            <p className="text-xs text-gray-500 mt-0.5">Manage your school's CAPS subject list, add custom subjects, or seed the full SA curriculum.</p>
+            <p className="text-base font-semibold text-text-primary">Subjects</p>
+            <p className="text-xs text-text-secondary mt-0.5">Manage your school's CAPS subject list, add custom subjects, or seed the full SA curriculum.</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+          <ChevronRight className="h-4 w-4 text-text-muted shrink-0" />
         </div>
       </button>
 
@@ -360,11 +360,11 @@ export default function SettingsPage() {
       <Section icon={Globe} title="Timezone & Locale" description="Regional settings for dates and times">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Timezone</label>
+            <label className="text-sm font-medium text-text-primary block mb-1">Timezone</label>
             <select
               value={settings.timezone}
               onChange={e => setSettings(s => ({ ...s, timezone: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {[
                 "Africa/Johannesburg", "Africa/Lagos", "Africa/Nairobi", "Africa/Cairo",
@@ -375,11 +375,11 @@ export default function SettingsPage() {
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Locale</label>
+            <label className="text-sm font-medium text-text-primary block mb-1">Locale</label>
             <select
               value={settings.locale}
               onChange={e => setSettings(s => ({ ...s, locale: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {[
                 ["en-ZA", "English (South Africa)"],

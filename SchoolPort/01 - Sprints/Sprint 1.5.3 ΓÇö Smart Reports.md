@@ -11,7 +11,7 @@ Henco's most-wanted feature: "A dashboard that identifies at-risk learners and o
 
 ## Shipped — gap-closing (PR #14, MERGED 2026-07-14 `f2182561`)
 The Matric at-risk dashboard (`MatricHubService`) rendered but had correctness bugs. Fixed:
-- **Reads real captured marks.** Was reading via the submission join → saw zero Sprint 1.5.2.5 capture-grid marks. Now all marks flow through one seam, `GetCapturedGradesQuery(schoolId)` (Grade path; not absent, score present). Absent excluded (≠ 0); "missing" = past-due assignment with no grade record.
+- **Reads real captured marks.** Was reading via the submission join → saw zero [[Sprint 1.5.2.5 — Marks Capture|Sprint 1.5.2.5]] capture-grid marks. Now all marks flow through one seam, `GetCapturedGradesQuery(schoolId)` (Grade path; not absent, score present). Absent excluded (≠ 0); "missing" = past-due assignment with no grade record.
 - **50% intervention band** (Fix 1): learner-level Watch (1) / At Risk (2) / Priority (3+ or declining >10% term-over-term), counting only captured subjects. Per-subject CAPS bands (red <40 / amber <50 / green ≥50) kept distinct. Response carries the "2 of 3 captured" honesty fraction.
 - **Refinements:** single-term → declining clause can't fire, absolute count still applies; band counts only captured subjects (not enrolled-unmarked). Each with a named test.
 - **Report comments** confirmed already on Gemini + `DateTimeKind.Utc` (one of the original four AI services); removed the vestigial cost cap.
@@ -28,7 +28,7 @@ Completes v1's role-specific scope on top of the corrected at-risk dashboard.
 - DevSeed terms made relative-to-now so the term window is always live. **302 backend tests green in CI** (the term-scoping + consistency tests were the Postgres-gated ones confirmed by name on the runner). Merged to main; post-merge CI green on all 4 jobs.
 
 ## Still planned (remaining after v1)
-- [ ] **Debounced background view refresh** (still deferred from 1.5.0.5; matviews remain manual-refresh and still read the submission join — they don't yet see capture marks).
+- [ ] **Debounced background view refresh** (still deferred from [[Sprint 1.5.0.5 — Performance|1.5.0.5]]; matviews remain manual-refresh and still read the submission join — they don't yet see capture marks).
 - [ ] **`AnalyticsController` third at-risk surface** — the separate at-risk calc still to be unified onto the term-scoped `AtRiskService` seam (the others now flow through one path; this one is the last holdout).
 - [ ] **Legacy `AiService` → Anthropic swap** — retire the vestigial legacy AI service path in favour of the current provider config.
 - [ ] **`fetch-in-effect` lint cleanup** — frontend effect/data-fetching lint pass.
@@ -58,7 +58,7 @@ Completes v1's role-specific scope on top of the corrected at-risk dashboard.
 - Major time-saver during report season (Henco Q35: "high-pressure, time-sensitive")
 
 ## Debounced background view refresh
-- Finally built here (deferred from Sprint 1.5.0.5)
+- Finally built here (deferred from [[Sprint 1.5.0.5 — Performance|Sprint 1.5.0.5]])
 - Refresh at most once per 5 minutes per school after marks are captured
 - NOT per-save (bulk capture would trigger 30 refreshes)
 

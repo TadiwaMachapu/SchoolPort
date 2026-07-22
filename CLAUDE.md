@@ -30,6 +30,16 @@ Flag names are camelCase strings, matched exactly in `School.Features` jsonb, `S
 
 ---
 
+## Vault maintenance (standing instruction)
+
+At the close of any sprint or significant decision, update the relevant vault note(s) in `SchoolPort/01 - Sprints/` and `SchoolPort/04 - Decisions/` BEFORE reporting the session as complete — this is part of finishing the work, not a separate ask. Specifically:
+- Update the sprint note's frontmatter (`status`, `completed` date). The frontmatter block MUST be the first thing in the file — above the H1 — or Obsidian/Dataview will not parse it (a whole vault of notes silently failed this way until Sprint 1.6). Prefer the `obsidian-cli` skill's `obsidian property:set` over hand-editing frontmatter, so a property can't land in the wrong spot.
+- Add any new follow-ups as `- [ ]` checkbox items so they surface in the Master Index's open-follow-ups query.
+- Create a new Decision note in `04 - Decisions/` for any significant architectural or product decision, linked back to the sprint via `[[Sprint X.X]]`.
+- Use `[[wikilinks]]` generously when referencing other sprints, decisions, or people — an unlinked reference is a missed connection.
+
+---
+
 ## Phased Roadmap
 
 ### Phase 0 — Foundation — ✅ foundational items shipped (across Sprints 1.5.0–1.5.0.5)

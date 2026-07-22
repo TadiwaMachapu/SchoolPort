@@ -1,11 +1,10 @@
-# Sprint 1.5.2 — Matric Hub v1
-
 ---
-sprint: 1.5.2
+sprint: "1.5.2"
 status: shipped
-merged: 2026-07-10
-pr: 11
+completed: 2026-07-10
 ---
+
+# Sprint 1.5.2 — Matric Hub v1
 
 ## Goal
 Build out the Matric Hub shell into a real Grade 12 support tool. The highest-stakes cohort — November NSC exams, university applications, life decisions.
@@ -33,9 +32,9 @@ Single clean commit `f62c8df9` (history rebuilt off main — the working branch 
 "You are an expert NSC matric tutor for South African Grade 12 learners. Answer in a teaching style — explain concepts, give examples, test understanding. Reference CAPS curriculum where relevant. Never just give the answer — guide the learner to it. End each response with either a follow-up question to check understanding, or a practice suggestion."
 
 ## Known follow-ups
-- Tutor answers contain markdown/LaTeX but `MatricTutorCard` renders plain text — learners see raw `$$`/`###`; needs markdown + KaTeX rendering.
-- Legacy `AiService`/`AiController` (pre-sprint) still point at Anthropic; `Anthropic.SDK` package reference unused — drop both when convenient.
-- DevSeed demo-data gaps documented in the sprint spot-check (Term/UserPositions quirks on fresh seed).
+- [ ] Tutor answers contain markdown/LaTeX but `MatricTutorCard` renders plain text — learners see raw `$$`/`###`; needs markdown + KaTeX rendering.
+- [ ] Legacy `AiService`/`AiController` (pre-sprint) still point at Anthropic; `Anthropic.SDK` package reference unused — drop both when convenient.
+- [ ] DevSeed demo-data gaps documented in the sprint spot-check (Term/UserPositions quirks on fresh seed).
 
 ## Related
 - [[Pathways Feature]]

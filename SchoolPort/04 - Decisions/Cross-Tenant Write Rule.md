@@ -1,10 +1,10 @@
-# Decision: Cross-Tenant Write Rule
-
 ---
 date: 2026-06-10
 status: decided
-sprint: [[Sprint 1.5.0 — Security Layer]] Step 10
+sprint: "[[Sprint 1.5.0 — Security Layer]] Step 10"
 ---
+
+# Decision: Cross-Tenant Write Rule
 
 ## Context
 During Step 10 security testing, 19 vulnerabilities were found — all with the same root cause. A systematic rule was needed to prevent recurrence.

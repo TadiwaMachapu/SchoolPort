@@ -1,10 +1,10 @@
-# Decision: HTTP QUERY Method
-
 ---
 date: 2026-07-06
 status: decided
-sprint: .NET 10 upgrade (PR #8)
+sprint: "[[Sprint 1.5.1 — Pathways Gaps]] (.NET 10 upgrade, PR #8)"
 ---
+
+# Decision: HTTP QUERY Method
 
 ## Context
 HTTP QUERY is a proposed IETF standard — like GET but accepts a request body for complex filter parameters. Native in .NET 10 via `HttpMethod.Query`.

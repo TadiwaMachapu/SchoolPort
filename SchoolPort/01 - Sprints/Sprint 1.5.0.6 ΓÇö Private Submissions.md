@@ -1,11 +1,10 @@
-# Sprint 1.5.0.6 — Private Submissions Bucket (POPIA Fix)
-
 ---
-sprint: 1.5.0.6
-status: complete
+sprint: "1.5.0.6"
+status: shipped
 completed: 2026-07-05
-pr: #7 merged (97450835)
 ---
+
+# Sprint 1.5.0.6 — Private Submissions Bucket (POPIA Fix)
 
 ## Goal
 Fix a POPIA violation: student work files were stored in a public Supabase bucket, accessible by URL to anyone. Pre-pilot blocker.

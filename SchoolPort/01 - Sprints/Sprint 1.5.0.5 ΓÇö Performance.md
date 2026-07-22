@@ -1,11 +1,10 @@
-# Sprint 1.5.0.5 — Performance: Indexes & Materialized Views
-
 ---
-sprint: 1.5.0.5
-status: complete
+sprint: "1.5.0.5"
+status: shipped
 completed: 2026-06-15
-commit: d2c709af
 ---
+
+# Sprint 1.5.0.5 — Performance: Indexes & Materialized Views
 
 ## Goal
 Make the platform pilot-ready for performance before adding features. Index the hot query paths, add materialized views for aggregate data, fix N+1 queries.
@@ -43,8 +42,8 @@ Manual refresh only: `POST /api/admin/refresh-views` (system.refresh_views permi
 - Debounced background refresh deferred to Sprint 1.5.3
 
 ## Deferred indexes (Sprint 1.5.4)
-- fees (school_id, student_id, status) — model doesn't exist yet
-- fee_payments (school_id, student_id) — same
+- [ ] fees (school_id, student_id, status) — model doesn't exist yet
+- [ ] fee_payments (school_id, student_id) — same
 
 ## Related
 - [[Sprint 1.5.0 — Security Layer]]

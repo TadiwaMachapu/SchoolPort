@@ -1,10 +1,10 @@
-# Sprint 1.5.1 — Pathways v1 Completion (Gap Closing)
+---
+sprint: "1.5.1"
+status: shipped
+completed: 2026-07-06
+---
 
----
-sprint: 1.5.1
-status: in-progress
-branch: sprint/1.5.1-pathways-gaps
----
+# Sprint 1.5.1 — Pathways v1 Completion (Gap Closing)
 
 ## Context
 Pathways v1 was scaffolded and marked complete on 2026-06-02. On audit, the scaffold was functionally present but had five correctness gaps that make it not production-ready. This sprint closes them.

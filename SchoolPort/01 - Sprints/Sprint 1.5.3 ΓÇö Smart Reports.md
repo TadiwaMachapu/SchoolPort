@@ -1,12 +1,10 @@
-# Sprint 1.5.3 — Smart Reports v1
+---
+sprint: "1.5.3"
+status: shipped
+completed: 2026-07-16
+---
 
----
-sprint: 1.5.3
-status: v1 shipped — role views + oversight scope MERGED (PR #15); gap-closing was PR #14
-pr: 14, 15
-shipped: 2026-07-12 (PR #14 gap-closing), 2026-07-16 (PR #15 role views)
-gate: MERGED to main 2026-07-16 (merge commit 4b96e1b6); post-merge CI green all 4 jobs (Backend 302/302, Frontend, Migration replay, Architecture contract)
----
+# Sprint 1.5.3 — Smart Reports v1
 
 ## Goal
 Henco's most-wanted feature: "A dashboard that identifies at-risk learners and outstanding tasks automatically."
@@ -30,10 +28,10 @@ Completes v1's role-specific scope on top of the corrected at-risk dashboard.
 - DevSeed terms made relative-to-now so the term window is always live. **302 backend tests green in CI** (the term-scoping + consistency tests were the Postgres-gated ones confirmed by name on the runner). Merged to main; post-merge CI green on all 4 jobs.
 
 ## Still planned (remaining after v1)
-- **Debounced background view refresh** (still deferred from 1.5.0.5; matviews remain manual-refresh and still read the submission join — they don't yet see capture marks).
-- **`AnalyticsController` third at-risk surface** — the separate at-risk calc still to be unified onto the term-scoped `AtRiskService` seam (the others now flow through one path; this one is the last holdout).
-- **Legacy `AiService` → Anthropic swap** — retire the vestigial legacy AI service path in favour of the current provider config.
-- **`fetch-in-effect` lint cleanup** — frontend effect/data-fetching lint pass.
+- [ ] **Debounced background view refresh** (still deferred from 1.5.0.5; matviews remain manual-refresh and still read the submission join — they don't yet see capture marks).
+- [ ] **`AnalyticsController` third at-risk surface** — the separate at-risk calc still to be unified onto the term-scoped `AtRiskService` seam (the others now flow through one path; this one is the last holdout).
+- [ ] **Legacy `AiService` → Anthropic swap** — retire the vestigial legacy AI service path in favour of the current provider config.
+- [ ] **`fetch-in-effect` lint cleanup** — frontend effect/data-fetching lint pass.
 
 ## At-risk thresholds
 - **50%** — intervention threshold (NOT 40%). The 40% threshold in matviews is the CAPS pass line. A learner at 42% is technically passing but urgently needs help.

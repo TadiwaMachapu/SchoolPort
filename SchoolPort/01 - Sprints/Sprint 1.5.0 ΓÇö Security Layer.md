@@ -1,13 +1,10 @@
-# Sprint 1.5.0 — Identity, Positions, Permissions Security Layer
-
 ---
-sprint: 1.5.0
-status: complete
-started: 2026-05-21
+sprint: "1.5.0"
+status: shipped
 completed: 2026-06-16
-branch: feat/sprint-1.5.0-identity-positions
-pr: merged to main (5a2ae300)
 ---
+
+# Sprint 1.5.0 — Identity, Positions, Permissions Security Layer
 
 ## Goal
 Install a three-layer security model across the entire platform: Identity → Positions → Permissions. Deny-by-default, tenant-isolated, audit-logged.

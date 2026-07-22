@@ -1,12 +1,10 @@
-# Sprint 1.6 — Design Foundation & Colour Rollout
+---
+sprint: "1.6"
+status: shipped
+completed: 2026-07-22
+---
 
----
-sprint: 1.6
-status: SHIPPED — design foundation (PR #16) + hardcoded-colour rollout (PR #17) both MERGED to main
-pr: 16, 17
-shipped: 2026-07-21 (PR #16 design foundation), 2026-07-22 (PR #17 colour rollout)
-gate: MERGED to main — PR #16 merge commit 8abaf969 (2026-07-21), PR #17 merge commit 74d14376 (2026-07-22); post-merge CI green all 4 jobs (Backend 302/302, Frontend, Migration replay, Architecture contract)
----
+# Sprint 1.6 — Design Foundation & Colour Rollout
 
 ## Goal
 Give SchoolPort a real visual identity and make per-school branding *possible* — a token-driven design system, then migrate every screen off hardcoded palette utilities so a school's primary colour actually propagates.

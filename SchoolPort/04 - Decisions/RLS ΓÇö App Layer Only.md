@@ -1,10 +1,10 @@
-# Decision: RLS — Application Layer Only (Pre-Scale)
-
 ---
 date: 2026-06-19
 status: decided
-sprint: [[Sprint 1.5.0 — Security Layer]] Step 11
+sprint: "[[Sprint 1.5.0 — Security Layer]] Step 11"
 ---
+
+# Decision: RLS — Application Layer Only (Pre-Scale)
 
 ## Context
 During the Step 11 RLS audit, we found all 68 application tables have RLS enabled but zero policies and not forced. The app connects as `postgres` (rolbypassrls=true), so RLS is architecturally inert for the application.

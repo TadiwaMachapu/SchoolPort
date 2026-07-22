@@ -1,10 +1,10 @@
-# Decision: Finance Segregation of Duties Controls
-
 ---
 date: 2026-06-10
 status: decided
-sprint: [[Sprint 1.5.0 — Security Layer]] Step 6 (FIN-1/2/3)
+sprint: "[[Sprint 1.5.0 — Security Layer]] Step 6 (FIN-1/2/3)"
 ---
+
+# Decision: Finance Segregation of Duties Controls
 
 ## Context
 During the Step 6 permission migration, the live seed was found to violate SoD rules. The FinanceManager was omnipotent — held both `finance.exempt_initiate` and `finance.exempt_approve`, and the Bursar had more access than intended.

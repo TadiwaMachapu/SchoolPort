@@ -1,12 +1,10 @@
-# Sprint 1.5.2.5 — Marks Capture & Approval
+---
+sprint: "1.5.2.5"
+status: in-progress
+completed: 
+---
 
----
-sprint: 1.5.2.5
-status: Weeks 1-2 shipped; Week 3 pending HOD interview
-pr: 12
-shipped: 2026-07-11
-gate: Week 3 still needs HOD interview response
----
+# Sprint 1.5.2.5 — Marks Capture & Approval
 
 ## Goal
 The most important sprint in Phase 1.5. Every teacher uses this every week. Getting it right determines whether teachers adopt the platform.

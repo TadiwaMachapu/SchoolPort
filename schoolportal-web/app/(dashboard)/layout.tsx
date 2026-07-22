@@ -84,20 +84,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!me) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-900 p-8">
+      <div className="flex min-h-screen items-center justify-center bg-text-primary p-8">
         <div className="text-center text-white max-w-md">
           <div className="flex justify-center mb-4">
-            <svg className="h-14 w-14 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+            <svg className="h-14 w-14 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
           </div>
           <h1 className="text-2xl font-bold mb-2">API server not reachable</h1>
-          <p className="text-gray-400 mb-6">Make sure the backend is running:</p>
-          <code className="block bg-gray-800 rounded-lg p-4 text-left text-sm text-green-400 mb-6">
+          <p className="text-white/70 mb-6">Make sure the backend is running:</p>
+          <code className="block bg-white/5 rounded-lg p-4 text-left text-sm text-success-500 mb-6">
             cd C:\Projects\SchoolPort\SchoolPortal.Server{"\n"}
             dotnet run
           </code>
-          <p className="text-gray-500 text-sm">
+          <p className="text-white/50 text-sm">
             Then refresh this page. The API should be at{" "}
-            <span className="text-gray-300">{API}</span>
+            <span className="text-white/80">{API}</span>
           </p>
         </div>
       </div>

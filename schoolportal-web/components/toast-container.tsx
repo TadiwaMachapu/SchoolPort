@@ -11,17 +11,17 @@ const ICONS = {
 };
 
 const COLORS = {
-  success: "bg-emerald-50 border-emerald-200 text-emerald-800",
-  error: "bg-red-50 border-red-200 text-red-800",
-  info: "bg-blue-50 border-blue-200 text-blue-800",
-  warning: "bg-amber-50 border-amber-200 text-amber-800",
+  success: "bg-success-100 border-success-500/20 text-success-700",
+  error: "bg-danger-100 border-danger-500/20 text-danger-700",
+  info: "bg-blue-50 border-blue-200 text-blue-800", // DEFERRED: needs the info tone (see CLAUDE.md info-tone gap)
+  warning: "bg-warning-100 border-warning-500/20 text-warning-700",
 };
 
 const ICON_COLORS = {
-  success: "text-emerald-500",
-  error: "text-red-500",
-  info: "text-blue-500",
-  warning: "text-amber-500",
+  success: "text-success-500",
+  error: "text-danger-500",
+  info: "text-blue-500", // DEFERRED: info-tone gap
+  warning: "text-warning-500",
 };
 
 export function ToastContainer() {

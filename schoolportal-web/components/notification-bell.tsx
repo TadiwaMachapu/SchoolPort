@@ -81,7 +81,7 @@ export function NotificationBell() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative p-2 rounded-full hover:bg-gray-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+        className="relative p-2 rounded-full hover:bg-surface-subtle transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         aria-label="Notifications"
       >
         <span className="text-xl">🔔</span>
@@ -92,7 +92,7 @@ export function NotificationBell() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold"
+              className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold"
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </motion.span>
@@ -107,27 +107,27 @@ export function NotificationBell() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden"
+            className="absolute right-0 mt-2 w-80 bg-surface-card rounded-2xl shadow-xl border border-border z-50 overflow-hidden"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-              <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <h3 className="font-semibold text-text-primary text-sm">Notifications</h3>
               {unreadCount > 0 && (
                 <button
                   onClick={() => markAll.mutate()}
-                  className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors"
+                  className="text-xs text-primary hover:text-primary-800 font-medium transition-colors"
                 >
                   Mark all read
                 </button>
               )}
             </div>
 
-            <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-50">
+            <div className="max-h-[360px] overflow-y-auto divide-y divide-border">
               {isLoading ? (
-                <div className="py-10 text-center text-gray-400 text-sm">Loading…</div>
+                <div className="py-10 text-center text-text-muted text-sm">Loading…</div>
               ) : items.length === 0 ? (
                 <div className="py-10 text-center">
                   <p className="text-2xl mb-2">🔕</p>
-                  <p className="text-sm text-gray-400">All caught up</p>
+                  <p className="text-sm text-text-muted">All caught up</p>
                 </div>
               ) : (
                 items.map((n) => (
@@ -135,16 +135,16 @@ export function NotificationBell() {
                     key={n.notificationId}
                     onClick={() => handleItemClick(n)}
                     className={`w-full text-left flex gap-3 px-4 py-3 transition-colors ${
-                      n.isRead ? "hover:bg-gray-50" : "bg-blue-50/60 hover:bg-blue-50"
+                      n.isRead ? "hover:bg-surface-subtle" : "bg-primary-50/60 hover:bg-primary-50"
                     }`}
                   >
                     <span className="text-lg shrink-0 mt-0.5">{typeIcon(n.type)}</span>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-medium truncate ${n.isRead ? "text-gray-600" : "text-gray-900"}`}>
+                      <p className={`text-sm font-medium truncate ${n.isRead ? "text-text-secondary" : "text-text-primary"}`}>
                         {n.title}
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{n.message}</p>
+                      <p className="text-xs text-text-muted mt-1">
                         {new Date(n.createdAt).toLocaleString(undefined, {
                           month: "short", day: "numeric",
                           hour: "2-digit", minute: "2-digit",
@@ -152,7 +152,7 @@ export function NotificationBell() {
                       </p>
                     </div>
                     {!n.isRead && (
-                      <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-2 self-start" />
+                      <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-2 self-start" />
                     )}
                   </button>
                 ))

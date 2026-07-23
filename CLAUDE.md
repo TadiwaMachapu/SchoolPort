@@ -38,6 +38,8 @@ At the close of any sprint or significant decision, update the relevant vault no
 - Create a new Decision note in `04 - Decisions/` for any significant architectural or product decision, linked back to the sprint via `[[Sprint X.X]]`.
 - Use `[[wikilinks]]` generously when referencing other sprints, decisions, or people — an unlinked reference is a missed connection.
 
+**obsidian-git auto-commit/auto-push must stay OFF** — it bypasses review-before-commit for every other change in this project. If it's ever re-enabled (e.g. after reinstalling Obsidian), disable it again before doing vault work. (Config: `SchoolPort/.obsidian/plugins/obsidian-git/data.json` — `autoSaveInterval: 0`, `disablePush: true`.)
+
 ---
 
 ## Phased Roadmap

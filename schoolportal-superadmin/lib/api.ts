@@ -87,6 +87,36 @@ export interface CreateSchoolPayload {
   features?: Partial<SchoolFeatures>;
 }
 
+export interface SuperAdminAuditLog {
+  auditId: string;
+  superAdminId: string;
+  superAdminName: string;
+  superAdminEmail: string;
+  actionType: string;
+  targetSchoolId: string | null;
+  targetSchoolName: string | null;
+  previousValue: string | null;   // raw JSON diff string
+  newValue: string | null;        // raw JSON diff string
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface AuditLogFilters {
+  schoolId?: string;
+  actionType?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 // ── API ────────────────────────────────────────────────────────
 
 export const api = {
@@ -110,10 +140,22 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(features),
       }),
-    setStatus: (id: string, isActive: boolean) =>
+    setStatus: (id: string, isActive: boolean, reason?: string) =>
       request<SchoolSummary>(`/api/super/schools/${id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ isActive }),
+        body: JSON.stringify({ isActive, reason }),
       }),
+  },
+  auditLog: {
+    list: (filters: AuditLogFilters = {}) => {
+      const q = new URLSearchParams();
+      if (filters.schoolId) q.set("schoolId", filters.schoolId);
+      if (filters.actionType) q.set("actionType", filters.actionType);
+      if (filters.from) q.set("from", filters.from);
+      if (filters.to) q.set("to", filters.to);
+      q.set("page", String(filters.page ?? 1));
+      q.set("pageSize", String(filters.pageSize ?? 50));
+      return request<PagedResult<SuperAdminAuditLog>>(`/api/super/audit-log?${q.toString()}`);
+    },
   },
 };

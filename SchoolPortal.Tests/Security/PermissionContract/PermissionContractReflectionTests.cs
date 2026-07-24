@@ -286,6 +286,7 @@ public class PermissionContractReflectionTests
         ["SuperAdminController.CreateSchool"] = Super,
         ["SuperAdminController.UpdateFeatures"] = Super,
         ["SuperAdminController.SetStatus"] = Super,
+        ["SuperAdminController.GetAuditLog"] = Super,
         // Submissions
         ["SubmissionsController.CreateSubmission"] = "assignments.submit",
         ["SubmissionsController.GetSubmissionsByAssignment"] = "marks.view_class",

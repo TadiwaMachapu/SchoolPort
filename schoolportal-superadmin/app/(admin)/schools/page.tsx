@@ -5,25 +5,32 @@ import { Plus, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Loader2 } from "
 
 // ── Feature flag labels ──────────────────────────────────────────
 const FEATURE_LABELS: { key: keyof SchoolFeatures; label: string }[] = [
-  { key: "quizzes",             label: "Quizzes"             },
-  { key: "attendance",          label: "Attendance"          },
-  { key: "parentPortal",        label: "Parent Portal"       },
-  { key: "messaging",           label: "Messaging"           },
-  { key: "courses",             label: "Courses"             },
-  { key: "analytics",           label: "Analytics"           },
-  { key: "aiGrading",           label: "AI Grading"          },
-  { key: "plagiarismDetection", label: "Plagiarism Detection"},
-  { key: "sso",                 label: "SSO"                 },
-  { key: "customReports",       label: "Custom Reports"      },
-  { key: "whiteLabel",          label: "White Label"         },
-  { key: "pluginApi",           label: "Plugin API"          },
+  { key: "gradebook",        label: "Gradebook"         },
+  { key: "virtualClassroom", label: "Virtual Classroom" },
+  { key: "smartReports",     label: "Smart Reports"     },
+  { key: "saSamsExport",     label: "SA-SAMS Export"    },
+  { key: "skillsProfile",    label: "Skills Profile"    },
+  { key: "pathways",         label: "Pathways"          },
+  { key: "matricHub",        label: "Matric Hub"        },
+  { key: "sportsCulture",    label: "Sports & Culture"  },
+  { key: "schoolPay",        label: "School Pay"        },
+  { key: "schoolChat",       label: "School Chat"       },
+  { key: "whatsApp",         label: "WhatsApp"          },
+  { key: "popiaCentre",      label: "POPIA Centre"      },
 ];
+
+// Full all-off feature set (all 12 real flags present) — used to seed the create
+// form so the payload matches the backend's flat UpdateSchoolFeaturesRequest exactly.
+const ALL_FEATURES_OFF: SchoolFeatures = FEATURE_LABELS.reduce(
+  (acc, { key }) => ({ ...acc, [key]: false }),
+  {} as SchoolFeatures,
+);
 
 // ── Create School modal ──────────────────────────────────────────
 const EMPTY: CreateSchoolPayload = {
   name: "", domain: "", adminEmail: "", adminPassword: "",
   adminFirstName: "", adminLastName: "",
-  features: {},
+  features: { ...ALL_FEATURES_OFF },
 };
 
 function CreateSchoolModal({ onClose, onCreate }: {
@@ -40,6 +47,13 @@ function CreateSchoolModal({ onClose, onCreate }: {
       onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm(prev => ({ ...prev, [key]: e.target.value })),
     };
+  }
+
+  function toggleFeature(key: keyof SchoolFeatures) {
+    setForm(prev => {
+      const features = prev.features as SchoolFeatures;
+      return { ...prev, features: { ...features, [key]: !features[key] } };
+    });
   }
 
   async function submit(e: React.FormEvent) {
@@ -76,6 +90,31 @@ function CreateSchoolModal({ onClose, onCreate }: {
           <Field label="Domain (optional)" {...field("domain")}     />
           <Field label="Admin Email"    {...field("adminEmail")}    type="email"    required />
           <Field label="Admin Password" {...field("adminPassword")} type="password" required />
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-white/60">Features</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {FEATURE_LABELS.map(({ key, label }) => {
+                const on = (form.features as SchoolFeatures)[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleFeature(key)}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors
+                      ${on
+                        ? "bg-violet-600/20 text-violet-300 hover:bg-violet-600/30"
+                        : "bg-white/4 text-white/40 hover:bg-white/8 hover:text-white/60"}`}
+                  >
+                    {on
+                      ? <ToggleRight className="h-3.5 w-3.5 flex-shrink-0" />
+                      : <ToggleLeft className="h-3.5 w-3.5 flex-shrink-0" />}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-white/10 px-4 py-2 text-sm text-white/60 hover:text-white hover:border-white/20 transition-colors">

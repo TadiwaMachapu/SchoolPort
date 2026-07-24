@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SchoolPortal.Data.Entities;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using SchoolPortal.Shared.DTOs.Schools;
+using System.Text.Json;
 
 namespace SchoolPortal.Data;
 
@@ -132,6 +135,21 @@ public class SchoolPortalDbContext : DbContext
     public DbSet<MatricApsSummaryView> MatricApsSummaries { get; set; }
     public DbSet<SchoolPerformanceSummaryView> SchoolPerformanceSummaries { get; set; }
 
+    // jsonb POCO columns are mapped via Npgsql EnableDynamicJson(). With no value comparer, EF Core
+    // falls back to REFERENCE equality and cannot detect in-place mutations of the POCO
+    // (e.g. school.Features.X = ...; school.Theme.PrimaryColor = ...), so SaveChanges silently skips
+    // the column — the root cause of the feature-toggle AND branding (theme) write-path bugs.
+    // This comparer snapshots by VALUE (deep clone via serialize→deserialize) and compares
+    // STRUCTURALLY (JSON string equality), so mutations are detected and persisted.
+    private static ValueComparer<T> JsonValueComparer<T>() => new(
+        (a, b) => JsonSerializer.Serialize(a, (JsonSerializerOptions?)null)
+                == JsonSerializer.Serialize(b, (JsonSerializerOptions?)null),
+        v => v == null ? 0 : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null).GetHashCode(),
+        v => JsonSerializer.Deserialize<T>(
+                 JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                 (JsonSerializerOptions?)null)!
+    );
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -176,15 +194,18 @@ public class SchoolPortalDbContext : DbContext
             entity.Property(e => e.Features)
                   .HasColumnType("jsonb")
                   .HasColumnName("features")
-                  .HasDefaultValueSql("'{}'::jsonb");
+                  .HasDefaultValueSql("'{}'::jsonb")
+                  .Metadata.SetValueComparer(JsonValueComparer<SchoolFeatures>());
             entity.Property(e => e.Theme)
                   .HasColumnType("jsonb")
                   .HasColumnName("theme")
-                  .HasDefaultValueSql("'{}'::jsonb");
+                  .HasDefaultValueSql("'{}'::jsonb")
+                  .Metadata.SetValueComparer(JsonValueComparer<SchoolTheme>());
             entity.Property(e => e.Settings)
                   .HasColumnType("jsonb")
                   .HasColumnName("settings")
-                  .HasDefaultValueSql("'{}'::jsonb");
+                  .HasDefaultValueSql("'{}'::jsonb")
+                  .Metadata.SetValueComparer(JsonValueComparer<SchoolSettings>());
         });
 
         // AcademicYear

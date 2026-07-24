@@ -66,7 +66,18 @@ public class SuperAdminController : ControllerBase
     [RequireSuperAdmin]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetSchoolStatusRequest request)
     {
-        var school = await _service.SetStatusAsync(id, request.IsActive);
+        var school = await _service.SetStatusAsync(id, request.IsActive, request.Reason);
         return Ok(school);
+    }
+
+    [HttpGet("audit-log")]
+    [RequireSuperAdmin]
+    public async Task<IActionResult> GetAuditLog(
+        [FromQuery] Guid? schoolId, [FromQuery] string? actionType,
+        [FromQuery] DateTime? from, [FromQuery] DateTime? to,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    {
+        var result = await _service.GetAuditLogAsync(schoolId, actionType, from, to, page, pageSize);
+        return Ok(result);
     }
 }

@@ -232,6 +232,33 @@ public class PlatformStatsDto
 public class SetSchoolStatusRequest
 {
     public bool IsActive { get; set; }
+    // Optional free-text captured on the audit row (e.g. why a school was deactivated).
+    public string? Reason { get; set; }
+}
+
+/// <summary>One SuperAdmin audit row, with the actor's name/email and target school name joined.</summary>
+public class SuperAdminAuditLogDto
+{
+    public Guid AuditId { get; set; }
+    public Guid SuperAdminId { get; set; }
+    public string SuperAdminName { get; set; } = null!;
+    public string SuperAdminEmail { get; set; } = null!;
+    public string ActionType { get; set; } = null!;
+    public Guid? TargetSchoolId { get; set; }
+    public string? TargetSchoolName { get; set; }
+    public string? PreviousValue { get; set; }   // raw JSON diff string ({"flag": oldValue, ...})
+    public string? NewValue { get; set; }         // raw JSON diff string ({"flag": newValue, ...})
+    public string? Reason { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Generic paged envelope (most-recent-first lists, etc.).</summary>
+public class PagedResult<T>
+{
+    public List<T> Items { get; set; } = new();
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
 }
 
 public class SuperAdminLoginRequest

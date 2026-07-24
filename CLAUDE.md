@@ -206,6 +206,12 @@ yarn lint         # ESLint
 
 The dev server must be started via a **detached process** (e.g. `Start-Process cmd /c "yarn dev"`) because `yarn dev` in a background shell exits immediately while Node continues running. Port 3000 is the target; if it reports in-use, find the stale PID with `netstat -ano | findstr :3000` and kill it first.
 
+## schoolportal-superadmin (platform console)
+
+Separate Next.js 16 app (own `package.json`, runs on port 3001) — the SuperAdmin console, backed by `SuperAdminController`/`SuperAdminService`. Has its own dark-violet style (NOT the Sprint 1.6 token system).
+
+- **`schoolportal-superadmin` had no `postcss.config.mjs` — every page rendered unstyled since the app's creation, fixed 2026-07-24 (`feat/superadmin-audit-log`).** The app declares `@tailwindcss/postcss` but without the PostCSS config Tailwind v4 never runs, so `@import "tailwindcss"` produced no utilities (built CSS was ~369 bytes vs ~30 KB after). **If styling looks wrong in this app again, check this file exists first** (it must match `schoolportal-web/postcss.config.mjs`).
+
 ## Secrets / Configuration
 
 Real credentials are **never** in `appsettings.json` — they carry `CHANGE_ME_USE_USER_SECRETS` placeholders. Supply via:
@@ -324,6 +330,9 @@ Key relationships:
 - **Docker Desktop checkpoint-failure on this machine.** A plain `docker run … postgres:16-alpine` here exits (code 1) during the entrypoint's init→restart because the shutdown checkpoint fails on Docker Desktop's disk. Run the test container with its data dir on tmpfs and fsync off — fine for a throwaway DB and also fast:
   `docker run -d --name schoolport-test-pg -p 5433:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=schoolport_test --tmpfs /var/lib/postgresql/data:rw postgres:16-alpine -c fsync=off -c full_page_writes=off -c synchronous_commit=off`
   Then `TEST_PG_CONNECTION=Host=localhost;Port=5433;Database=schoolport_test;Username=postgres;Password=postgres`. With tmpfs the Backfill flake did not reproduce (full integration set ~14s).
+
+### Audit logging
+SchoolPort's audit trail is **purpose-built per domain, not centralised.** The generic `AuditLog` entity / `audit_logs` table exists but has been **dormant since Sprint 1.5.0 — zero writers, zero readers** (scaffolding only); **do not assume it records anything.** The actual pattern is domain-specific, append-only tables written explicitly in the service **inside the mutation's `SaveChanges`** (so the log row and its effect are one transaction), with typed columns + FK `RESTRICT`: `MarkCaptureAuditLog` (mark corrections, 1.5.2.5) and `SuperAdminAuditLog` (platform-level SuperAdmin mutations — school create / feature-flag / status, with per-flag `before→after` diffs). Wiring or retiring the generic `AuditLog` is a separate, unmade decision.
 
 ### SignalR
 `NotificationHub` at `/hubs/notifications`. On connect, users join three groups: `school:{schoolId}`, `user:{userId}`, `school:{schoolId}:role:{Role}`. JWT is extracted from the `access_token` query param (browsers can't set headers on WebSocket upgrades) — configured in `Program.cs` via `OnMessageReceived`.

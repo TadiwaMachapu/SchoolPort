@@ -51,6 +51,7 @@ public class SchoolPortalDbContext : DbContext
     public DbSet<CriteriaScore> CriteriaScores { get; set; }
     public DbSet<ApprovalRecord> ApprovalRecords { get; set; }
     public DbSet<MarkCaptureAuditLog> MarkCaptureAuditLogs { get; set; }
+    public DbSet<SuperAdminAuditLog> SuperAdminAuditLogs { get; set; }
 
     // Calendar & Timetable
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
@@ -478,6 +479,23 @@ public class SchoolPortalDbContext : DbContext
             entity.HasOne(e => e.Grade).WithMany().HasForeignKey(e => e.GradeId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.School).WithMany().HasForeignKey(e => e.SchoolId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.ChangedByUser).WithMany().HasForeignKey(e => e.ChangedByUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SuperAdminAuditLog — append-only platform-action history. FKs Restrict: audit must
+        // survive. Actor is a SuperAdmin (outside the school identity model), target is a School
+        // (nullable for no-single-target actions). Mirrors MarkCaptureAuditLog.
+        modelBuilder.Entity<SuperAdminAuditLog>(entity =>
+        {
+            entity.ToTable("super_admin_audit_logs");
+            entity.HasKey(e => e.AuditId);
+            entity.Property(e => e.AuditId).HasDefaultValueSql("gen_random_uuid()");
+            entity.Property(e => e.ActionType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.TargetSchoolId);
+            entity.HasIndex(e => new { e.SuperAdminId, e.CreatedAt });
+            entity.HasOne(e => e.SuperAdmin).WithMany().HasForeignKey(e => e.SuperAdminId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.TargetSchool).WithMany().HasForeignKey(e => e.TargetSchoolId).OnDelete(DeleteBehavior.Restrict);
         });
 
         // Attendance

@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, School, LogOut } from "lucide-react";
+import { LayoutDashboard, School, ScrollText, LogOut } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/schools",   label: "Schools",   icon: School },
+  { href: "/audit-log", label: "Audit Log", icon: ScrollText },
 ];
 
 function getAdminName(): string {

@@ -31,6 +31,8 @@ CLAUDE.md, **hardcoded-colour blocker** (the real propagation gap, closed by [[S
 
 **Verified by direct DB query:** saving `PrimaryColor` `#4A8C2A → #123456` via `PUT /api/schools/theme` (Greendale admin) then reading the row directly showed the `theme` jsonb **persisted the change** (`FontFamily` preserved); a features toggle likewise persisted with siblings unchanged. Full suite 302/302 green. (Demo values restored afterward.)
 
+**Re-confirmed LIVE in production (2026-07-24, [[Sprint 1.6.1 — SuperAdmin Audit Trail]]):** the fix is deployed on `main` and exercised against the live DB, not just theoretically. A real feature toggle through the SuperAdmin console persisted correctly AND its audit row landed atomically in `super_admin_audit_logs` (`{"virtualClassroom": false}` → `{"virtualClassroom": true}` for Greendale) — verified by direct query. Because the flag write and the audit write share one `SaveChanges`, a landed audit row is proof the jsonb write path itself works in production. 312/312 tests green; the `ValueComparer` is covered by the DbContext-level suite. **This decision is closed — fix is live, tested, and verified in production.**
+
 - [x] Verify the branding write path end-to-end (save primary colour → `School.Theme` persisted). Persistence gap found and fixed.
 - [ ] Still open (separate, non-blocking): decide whether to remove the unconsumed `SchoolTheme.FontFamily`.
 
@@ -39,5 +41,6 @@ CLAUDE.md, **hardcoded-colour blocker** (the real propagation gap, closed by [[S
 - If a saved brand does NOT propagate (e.g. a chart/colour-as-prop surface, or a persistence gap), it re-scopes into a real branding-sprint fix — overlaps the [[Sprint 1.6 — Design Foundation & Colour Rollout]] chart-theming / category-colour follow-ups.
 
 ## Related
+- [[Sprint 1.6.1 — SuperAdmin Audit Trail]] — the sprint whose jsonb `ValueComparer` fix closed this note; re-verified live
 - [[Sprint 1.6 — Design Foundation & Colour Rollout]]
 - [[Greendale High School (Demo)]]

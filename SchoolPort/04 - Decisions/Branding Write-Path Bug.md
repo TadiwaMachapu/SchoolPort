@@ -1,6 +1,6 @@
 ---
 date: 2026-07-22
-status: pending
+status: resolved
 sprint: "[[Sprint 1.6 — Design Foundation & Colour Rollout]]"
 affects: SchoolTheme, per-school branding, SchoolsController
 ---
@@ -23,9 +23,16 @@ CLAUDE.md, **hardcoded-colour blocker** (the real propagation gap, closed by [[S
 > **⚠️ Hardcoded colour utilities BLOCK per-school branding.** … Migrating them to `bg-primary`/`text-primary`/token utilities is a **prerequisite for the branding sprint**.
 
 ## Decision
-**Pending** — this is a *verify*, not a confirmed bug. Before the branding sprint, confirm end-to-end that a school saving a new primary colour (`school.manage` → SchoolsController theme write) actually takes effect across the now-tokenised UI, and resolve the documented `FontFamily` follow-up.
+**Resolved (2026-07-24)** — the verify surfaced a **real persistence gap**, exactly the "or a persistence gap" branch anticipated under Consequences.
 
-- [ ] Verify the branding write path end-to-end (save primary colour → `School.Theme` persisted → `--color-primary` applied across tokenised screens), and decide whether to remove the unconsumed `SchoolTheme.FontFamily`.
+**Root cause confirmed:** the per-school jsonb POCO columns on `School` (`Theme`, `Features`, `Settings`) are mapped via Npgsql `EnableDynamicJson()` with **no `ValueComparer`**, so EF Core used **reference equality** for change tracking and could not detect in-place mutations. `SchoolService.UpdateThemeAsync` mutates `school.Theme.PrimaryColor = …` on the same instance → `SaveChanges` returned 200 and bumped `updated_at` but **silently never wrote the `theme` column**. (Same defect class hit `UpdateFeaturesAsync` and the settings write paths.)
+
+**Fixed in** commit `cece4c7c` (PR #18 `fix/jsonb-write-path`) — added a deep JSON `ValueComparer` (structural equality + serialize→deserialize snapshot) to all three jsonb properties in `SchoolPortalDbContext`; no migration.
+
+**Verified by direct DB query:** saving `PrimaryColor` `#4A8C2A → #123456` via `PUT /api/schools/theme` (Greendale admin) then reading the row directly showed the `theme` jsonb **persisted the change** (`FontFamily` preserved); a features toggle likewise persisted with siblings unchanged. Full suite 302/302 green. (Demo values restored afterward.)
+
+- [x] Verify the branding write path end-to-end (save primary colour → `School.Theme` persisted). Persistence gap found and fixed.
+- [ ] Still open (separate, non-blocking): decide whether to remove the unconsumed `SchoolTheme.FontFamily`.
 
 ## Consequences
 - If the write path is sound, this closes to `decided` with no code change beyond the optional `FontFamily` removal.
